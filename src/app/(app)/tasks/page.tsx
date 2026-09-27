@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, Stat, Badge, Table, Th, Td, Empty } from "@/components/ui";
 import { date } from "@/lib/format";
+import { AddTaskButton, DoneButton } from "./task-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +10,22 @@ const DAY = 86400000;
 
 export default async function TasksPage() {
   const supabase = await createClient();
-  const [{ data: tasks }, { data: milestones }] = await Promise.all([
+  const [{ data: tasks }, { data: milestones }, { data: projects }, { data: staff }] = await Promise.all([
     supabase.from("project_tasks")
       .select("*, projects(id, code, name), profiles:assignee_id(full_name)")
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase.from("milestones")
       .select("*, projects(id, code, name)")
       .order("planned_date", { ascending: true, nullsFirst: false }),
+    supabase.from("projects").select("id, code, name, status").order("code", { ascending: false }),
+    supabase.from("profiles").select("id, full_name, email").eq("is_active", true).order("full_name"),
   ]);
+  // finished and dropped jobs go to the bottom of the list
+  const closed = new Set(["completed", "cancelled"]);
+  const projectOptions = [...(projects ?? [])]
+    .sort((a, b) => Number(closed.has(a.status)) - Number(closed.has(b.status)))
+    .map((p) => ({ id: p.id, label: `${p.code} · ${p.name}` }));
+  const people = (staff ?? []).map((p) => ({ id: p.id, name: p.full_name || p.email || "—" }));
 
   const list = tasks ?? [];
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -47,7 +56,8 @@ export default async function TasksPage() {
 
   return (
     <div>
-      <PageHeader title="Tasks & calendar" subtitle="What's due across every project" />
+      <PageHeader title="Tasks & calendar" subtitle="What's due across every project"
+        action={<AddTaskButton projects={projectOptions} people={people} />} />
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Open tasks" value={String(open.length)} hint={`${list.length} total`} />
         <Stat label="Overdue" value={String(overdue.length)} tone={overdue.length ? "bad" : "good"} />
@@ -88,10 +98,10 @@ export default async function TasksPage() {
 
       <Card>
         <CardHeader title="All open tasks" />
-        {open.length === 0 ? <Empty message="Nothing outstanding." /> : (
+        {open.length === 0 ? <Empty message="Nothing outstanding. Use “Add task” to add one." /> : (
           <Table>
             <thead><tr>
-              <Th>Task</Th><Th>Project</Th><Th>Assignee</Th><Th>Status</Th><Th right>Due</Th>
+              <Th>Task</Th><Th>Project</Th><Th>Assignee</Th><Th>Status</Th><Th right>Due</Th><Th right>{""}</Th>
             </tr></thead>
             <tbody>
               {open.map((t) => {
@@ -108,6 +118,7 @@ export default async function TasksPage() {
                     <Td className="text-xs text-[var(--muted)]">{a?.full_name ?? "Unassigned"}</Td>
                     <Td><Badge value={t.status} /></Td>
                     <Td right className={`text-xs ${late ? "font-medium text-red-700" : ""}`}>{date(t.due_date)}</Td>
+                    <Td right><DoneButton id={t.id} /></Td>
                   </tr>
                 );
               })}
