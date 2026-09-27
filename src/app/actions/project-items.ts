@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isLocked, projectOf, LOCKED } from "@/lib/project-lock";
 import type { Result } from "./projects";
+import { today } from "@/lib/format";
 
 const text = (fd: FormData, k: string) => {
   const v = String(fd.get(k) ?? "").trim();
@@ -18,7 +19,6 @@ const int = (fd: FormData, k: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
 
 /* ------------------------------------------------------------------ */
 /* Variations                                                          */

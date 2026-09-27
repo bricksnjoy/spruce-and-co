@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { money, num } from "@/lib/format";
+import { money, num, today } from "@/lib/format";
 import { readBillPhoto, checkVendor, saveBills } from "@/app/actions/bill-intake";
 import { shrinkForReading } from "@/lib/shrink-photo";
 import type { ExtractResult, SaveResult } from "@/app/actions/bill-intake";
@@ -40,7 +40,7 @@ const blank = (activityNo: string): Draft => ({
   shop: "",
   supplier_tin: "",
   bill_no: "",
-  issue_date: new Date().toISOString().slice(0, 10),
+  issue_date: today(),
   subtotal: "",
   gst_rate: "8",
   tax_amount: "",

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { poolPosition } from "@/lib/pool";
 import { addMonths, monthLabel, monthStart, monthsCovered, payableNow, planCovers } from "@/lib/salaries";
+import { today } from "@/lib/format";
 
 export type SalaryResult = { error?: string; ok?: boolean; paid?: number; skipped?: string[] };
 
@@ -128,7 +129,7 @@ async function payOne(
       entry_type: "withdrawal",
       amount: -due.amount,
       origin: "salary",
-      entry_date: new Date().toISOString().slice(0, 10),
+      entry_date: today(),
       note: `Salary · ${person} · ${monthLabel(month)}`,
       created_by: userId,
     })

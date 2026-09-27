@@ -14,6 +14,7 @@ import {
 } from "@/lib/documents";
 import { SignerPicker } from "../../quotation-form";
 import { DeleteTemplate } from "../template-buttons";
+import { today } from "@/lib/format";
 
 const input =
   "w-full rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-2 text-sm outline-none focus:border-[var(--brand)]";
@@ -56,8 +57,8 @@ export function TemplateEditor({
   const t = <K extends keyof TemplateTail>(k: K, v: TemplateTail[K]) => setTail((x) => ({ ...x, [k]: v }));
 
   const isQuote = template.kind === "quotation";
-  const today = new Date().toISOString().slice(0, 10);
-  const sampleNumber = docNumber(header.number_prefix, 6, today, header.number_pad);
+  const todayIso = today();
+  const sampleNumber = docNumber(header.number_prefix, 6, todayIso, header.number_pad);
   const payload = JSON.stringify({ id: template.id, name, header, body, tail });
   const saved = Boolean(state?.ok) && !pending && submitted === payload;
 
@@ -228,7 +229,7 @@ export function TemplateEditor({
                 kind: template.kind,
                 number: sampleNumber,
                 quotationNumber: isQuote ? null : "SC-Q/26/06",
-                date: today,
+                date: todayIso,
                 untilDate: null,
                 duration: "13 days",
                 toName: "Huzam (7458876)",

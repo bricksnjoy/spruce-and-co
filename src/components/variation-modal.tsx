@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { addVariation, updateVariation } from "@/app/actions/project-items";
 import type { Result } from "@/app/actions/projects";
+import { today } from "@/lib/format";
 
 export interface VariationValues {
   id?: string;
@@ -102,7 +103,7 @@ export function VariationModal({
             <div>
               <label htmlFor="v-date" className={label}>Date</label>
               <input id="v-date" name="raised_date" type="date"
-                defaultValue={values?.raised_date ?? new Date().toISOString().slice(0, 10)}
+                defaultValue={values?.raised_date ?? today()}
                 className={input} />
             </div>
           </div>

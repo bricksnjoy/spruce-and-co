@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader, Stat, Table, Th, Td, Empty } from "@/components/ui";
 import { INVOICE_STATUSES, INVOICE_STATUS_LABEL, STATUS_TONE, type InvoiceStatus } from "@/lib/documents";
-import { money, date, num } from "@/lib/format";
+import { money, date, num, today } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +21,13 @@ export default async function InvoicesPage({
     supabase.from("invoice_totals").select("*"),
   ]);
   const totalOf = new Map((totals ?? []).map((t) => [t.invoice_id, num(t.total)]));
-  const today = new Date().toISOString().slice(0, 10);
+  const todayIso = today();
   const rows = (invoices ?? []).map((i) => ({
     ...i,
     total: totalOf.get(i.id) ?? 0,
     quotation: i.quotations as unknown as { id: string; number: string } | null,
     project: i.projects as unknown as { id: string; code: string } | null,
-    overdue: i.status === "sent" && i.due_date !== null && i.due_date < today,
+    overdue: i.status === "sent" && i.due_date !== null && i.due_date < todayIso,
   }));
   const sum = (s: InvoiceStatus[]) => rows.filter((r) => s.includes(r.status as InvoiceStatus)).reduce((a, r) => a + r.total, 0);
   const shown = INVOICE_STATUSES.includes(filter as InvoiceStatus) ? rows.filter((r) => r.status === filter) : rows;

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isLocked, LOCKED } from "@/lib/project-lock";
 import { extractBill, extractionAvailable } from "@/lib/extract-bill";
 import type { VendorCandidate, VendorConfirm } from "./project-items";
+import { today } from "@/lib/format";
 
 export type ExtractResult = {
   error?: string;
@@ -171,7 +172,7 @@ export async function saveBills(_prev: unknown, fd: FormData): Promise<SaveResul
     .eq("project_id", projectId);
 
   let seq = existing ?? 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const todayIso = today();
   const rows: Record<string, unknown>[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -221,7 +222,7 @@ export async function saveBills(_prev: unknown, fd: FormData): Promise<SaveResul
       project_id: projectId,
       category_id: t(fd, p("category_id")),
       status: "paid",
-      issue_date: t(fd, p("issue_date")) ?? today,
+      issue_date: t(fd, p("issue_date")) ?? todayIso,
       subtotal: net,
       tax_amount: gst,
       total,

@@ -17,6 +17,7 @@ import {
   type TemplateHeader,
   type TemplateTail,
 } from "@/lib/documents";
+import { today } from "@/lib/format";
 
 export type DocResult = { error?: string; ok?: boolean; id?: string };
 
@@ -212,7 +213,7 @@ export async function saveQuotation(_prev: unknown, fd: FormData): Promise<DocRe
     to_name: q.to_name.trim(),
     to_details: q.to_details?.trim() || null,
     title: q.title?.trim() || null,
-    issue_date: q.issue_date || new Date().toISOString().slice(0, 10),
+    issue_date: q.issue_date || today(),
     valid_until: q.valid_until || null,
     duration: q.duration?.trim() || null,
     signatory_id: q.signatory_id || null,
@@ -347,7 +348,7 @@ export async function convertToInvoice(_prev: unknown, fd: FormData): Promise<Do
   const quotationId = String(fd.get("quotation_id") ?? "");
   const basis = String(fd.get("basis") ?? "percent") === "amount" ? "amount" : "percent";
   const value = Number(String(fd.get("value") ?? "").replace(/[^0-9.]/g, ""));
-  const issueDate = String(fd.get("issue_date") ?? "") || new Date().toISOString().slice(0, 10);
+  const issueDate = String(fd.get("issue_date") ?? "") || today();
   const dueDate = String(fd.get("due_date") ?? "") || null;
   const templateId = String(fd.get("template_id") ?? "") || null;
   const label = String(fd.get("label") ?? "").trim();
@@ -477,7 +478,7 @@ export async function updateInvoice(_prev: unknown, fd: FormData): Promise<DocRe
       to_name: toName,
       to_details: String(fd.get("to_details") ?? "").trim() || null,
       title: String(fd.get("title") ?? "").trim() || null,
-      issue_date: String(fd.get("issue_date") ?? "") || new Date().toISOString().slice(0, 10),
+      issue_date: String(fd.get("issue_date") ?? "") || today(),
       due_date: String(fd.get("due_date") ?? "") || null,
       terms: String(fd.get("terms") ?? ""),
       signatory_id: String(fd.get("signatory_id") ?? "") || null,

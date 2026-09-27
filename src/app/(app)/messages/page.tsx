@@ -1,12 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, Stat, Table, Th, Td, Empty } from "@/components/ui";
 import { channelReady, smsBalance } from "@/lib/messaging";
+import { dateTime } from "@/lib/format";
 import { Composer, type Contact } from "./composer";
 
 export const dynamic = "force-dynamic";
 
-const when = (iso: string) =>
-  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
 export default async function MessagesPage() {
   const supabase = await createClient();
@@ -71,7 +70,7 @@ export default async function MessagesPage() {
                 const by = m.profiles as unknown as { full_name: string } | null;
                 return (
                   <tr key={m.id} className="align-top hover:bg-[var(--hover)]">
-                    <Td className="whitespace-nowrap text-xs text-[var(--muted)]">{when(m.created_at)}</Td>
+                    <Td className="whitespace-nowrap text-xs text-[var(--muted)]">{dateTime(m.created_at)}</Td>
                     <Td>
                       <span className="mr-1.5 rounded bg-[var(--brand-soft)] px-1.5 py-0.5 text-[10px] font-semibold uppercase text-[var(--brand)]">
                         {m.channel === "sms" ? "SMS" : "Email"}

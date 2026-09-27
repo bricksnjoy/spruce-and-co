@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, CardHeader, Table, Th, Td, Empty } from "@/components/ui";
-import { money, date, num } from "@/lib/format";
+import { money, date, num, today } from "@/lib/format";
 import { PaidToggle } from "@/components/repay-modal";
 import {
   addInvestment,
@@ -265,7 +265,7 @@ function AddInvestor({
             <div>
               <label className={tiny}>Date</label>
               <input name="funded_on" type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)} className={input} />
+                defaultValue={today()} className={input} />
             </div>
           </div>
         </>
@@ -340,7 +340,7 @@ function AddReinvestment({
         <div>
           <label className={tiny}>Date</label>
           <input name="funded_on" type="date"
-            defaultValue={new Date().toISOString().slice(0, 10)} className={input} />
+            defaultValue={today()} className={input} />
         </div>
       </div>
       {state?.error && (

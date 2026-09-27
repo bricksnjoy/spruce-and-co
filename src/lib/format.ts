@@ -17,10 +17,25 @@ export const moneyExact = money;
 export const pct = (n: number | null | undefined, digits = 1) =>
   `${Number(n ?? 0).toFixed(digits)}%`;
 
+/** Dates and times are shown in Maldives time, whether rendered on the server (UTC) or in the browser. */
+export const TZ = "Indian/Maldives";
+
 export const date = (d: string | null | undefined) =>
-  d ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(d)) : "—";
+  d ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: TZ }).format(new Date(d)) : "—";
+
+export const dateTime = (d: string | null | undefined) =>
+  d
+    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: TZ }).format(new Date(d))
+    : "—";
 
 export const num = (n: unknown) => Number(n ?? 0);
+
+/**
+ * Today's date (YYYY-MM-DD) in the Maldives. The server runs on UTC, so
+ * taking the date from toISOString() gave yesterday until 5am here.
+ */
+export const today = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
 
 export function titleize(s: string | null | undefined) {
   if (!s) return "—";

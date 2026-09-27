@@ -9,7 +9,7 @@ import {
 } from "@/app/actions/documents";
 import { QUOTE_STATUSES, QUOTE_STATUS_LABEL, STATUS_TONE, addDays, round2, type QuoteStatus, type SigningKit } from "@/lib/documents";
 import { SignerPicker } from "../quotation-form";
-import { money } from "@/lib/format";
+import { money, today } from "@/lib/format";
 
 const input =
   "w-full rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-2 text-sm outline-none focus:border-[var(--brand)]";
@@ -148,8 +148,8 @@ function ConvertModal({
   // nothing billed yet: suggest the usual advance; otherwise, whatever is left
   const [value, setValue] = useState(fresh ? "75" : String(Number(remainingPct.toFixed(2))));
   const [templateId, setTemplateId] = useState(templates.find((t) => t.is_default)?.id ?? templates[0]?.id ?? "");
-  const today = new Date().toISOString().slice(0, 10);
-  const [issue, setIssue] = useState(today);
+  const todayIso = today();
+  const [issue, setIssue] = useState(todayIso);
   const dueDays = templates.find((t) => t.id === templateId)?.due_days ?? 0;
 
   const v = Number(value) || 0;
@@ -241,7 +241,7 @@ function ConvertModal({
             <div>
               <label htmlFor="c-due" className={label}>Due date</label>
               <input id="c-due" name="due_date" type="date" key={`${issue}-${dueDays}`}
-                defaultValue={dueDays ? addDays(issue || today, dueDays) : ""} className={input} />
+                defaultValue={dueDays ? addDays(issue || todayIso, dueDays) : ""} className={input} />
             </div>
           </div>
 

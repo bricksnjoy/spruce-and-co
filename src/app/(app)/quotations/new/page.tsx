@@ -5,6 +5,7 @@ import { addDays } from "@/lib/documents";
 import { quotationLines, type EstimateInput, type EstimateResult } from "@/lib/estimator";
 import { QuotationForm } from "../quotation-form";
 import { formData } from "../form-data";
+import { today } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function NewQuotationPage({
   const template = templates[0];
   const estLines = est ? quotationLines(est.inputs as EstimateInput, est.result as EstimateResult) : null;
   const projectId = projectParam ?? est?.project_id ?? undefined;
-  const today = new Date().toISOString().slice(0, 10);
+  const todayIso = today();
 
   // started from a project: it arrives already addressed to that project's client
   const project = projects.find((p) => p.id === projectId);
@@ -52,8 +53,8 @@ export default async function NewQuotationPage({
             to_name: client?.name ?? "",
             to_details: client ? [client.phone, client.address].filter(Boolean).join("\n") : "",
             title: project?.name ?? est?.name ?? "",
-            issue_date: today,
-            valid_until: template.body.valid_days ? addDays(today, template.body.valid_days) : null,
+            issue_date: todayIso,
+            valid_until: template.body.valid_days ? addDays(todayIso, template.body.valid_days) : null,
             duration: "",
             signatory_id: template.tail.signatory_id || kit.signatories[0]?.id || null,
             show_stamp: template.tail.show_stamp,

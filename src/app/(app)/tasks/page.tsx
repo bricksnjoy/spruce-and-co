@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, Stat, Badge, Table, Th, Td, Empty } from "@/components/ui";
-import { date } from "@/lib/format";
+import { date, today as todayIso } from "@/lib/format";
 import { AddTaskButton, DoneButton } from "./task-controls";
 
 export const dynamic = "force-dynamic";
@@ -28,18 +28,19 @@ export default async function TasksPage() {
   const people = (staff ?? []).map((p) => ({ id: p.id, name: p.full_name || p.email || "—" }));
 
   const list = tasks ?? [];
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const weekAhead = new Date(today.getTime() + 7 * DAY);
+  // dates compared as YYYY-MM-DD strings, with "today" taken in Maldives time
+  const today = todayIso();
+  const start = new Date(`${today}T00:00:00Z`);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const weekAhead = iso(new Date(start.getTime() + 7 * DAY));
 
   const open = list.filter((t) => t.status !== "completed");
-  const overdue = open.filter((t) => t.due_date && new Date(t.due_date) < today);
-  const dueThisWeek = open.filter(
-    (t) => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) <= weekAhead,
-  );
+  const overdue = open.filter((t) => t.due_date && t.due_date < today);
+  const dueThisWeek = open.filter((t) => t.due_date && t.due_date >= today && t.due_date <= weekAhead);
   const blocked = open.filter((t) => t.status === "blocked");
 
   // simple 14-day calendar strip
-  const days = Array.from({ length: 14 }, (_, i) => new Date(today.getTime() + i * DAY));
+  const days = Array.from({ length: 14 }, (_, i) => new Date(start.getTime() + i * DAY));
   const byDay = new Map<string, { tasks: number; milestones: number }>();
   for (const t of open) {
     if (!t.due_date) continue;
@@ -69,19 +70,20 @@ export default async function TasksPage() {
         <CardHeader title="Next 14 days" subtitle="Tasks and milestones falling due" />
         <div className="flex gap-1.5 overflow-x-auto px-5 py-4">
           {days.map((d) => {
-            const k = d.toISOString().slice(0, 10);
+            const k = iso(d);
             const r = byDay.get(k);
-            const isToday = d.getTime() === today.getTime();
-            const weekend = [0, 6].includes(d.getDay());
+            const isToday = k === today;
+            // the Maldives weekend is Friday and Saturday
+            const weekend = [5, 6].includes(d.getUTCDay());
             return (
               <div key={k}
                 className={`min-w-[58px] rounded-lg border p-2 text-center ${
                   isToday ? "border-[var(--brand)] bg-[var(--brand-soft)]" : weekend ? "border-[var(--border)] bg-[var(--bg)]" : "border-[var(--border)]"
                 }`}>
                 <p className="text-[10px] uppercase text-[var(--muted)]">
-                  {new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(d)}
+                  {new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" }).format(d)}
                 </p>
-                <p className="text-sm font-semibold">{d.getDate()}</p>
+                <p className="text-sm font-semibold">{d.getUTCDate()}</p>
                 <div className="mt-1 flex justify-center gap-1">
                   {r?.tasks ? <span className="rounded bg-[var(--brand)] px-1 text-[10px] font-medium text-white">{r.tasks}</span> : null}
                   {r?.milestones ? <span className="rounded bg-[var(--accent)] px-1 text-[10px] font-medium text-white">{r.milestones}</span> : null}
@@ -107,7 +109,7 @@ export default async function TasksPage() {
               {open.map((t) => {
                 const proj = t.projects as unknown as { id: string; code: string; name: string } | null;
                 const a = t.profiles as unknown as { full_name: string } | null;
-                const late = t.due_date && new Date(t.due_date) < today;
+                const late = t.due_date && t.due_date < today;
                 return (
                   <tr key={t.id} className="hover:bg-[var(--hover)]">
                     <Td>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { poolPosition } from "@/lib/pool";
+import { today } from "@/lib/format";
 
 export type PoolResult = { error?: string; ok?: boolean };
 
@@ -23,7 +24,7 @@ export async function recordContributions(_prev: unknown, fd: FormData): Promise
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
 
-  const date = String(fd.get("entry_date") ?? "").trim() || new Date().toISOString().slice(0, 10);
+  const date = String(fd.get("entry_date") ?? "").trim() || today();
   const note = String(fd.get("note") ?? "").trim() || null;
   const count = Number(fd.get("count") ?? 0);
 
@@ -84,7 +85,7 @@ export async function recordWithdrawal(_prev: unknown, fd: FormData): Promise<Po
     member_id: memberId,
     entry_type: "withdrawal",
     amount: -amount,
-    entry_date: String(fd.get("entry_date") ?? "").trim() || new Date().toISOString().slice(0, 10),
+    entry_date: String(fd.get("entry_date") ?? "").trim() || today(),
     note: String(fd.get("note") ?? "").trim() || null,
     created_by: user.id,
   });

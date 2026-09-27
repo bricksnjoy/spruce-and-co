@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { money } from "@/lib/format";
+import { date, money, today } from "@/lib/format";
 import {
   recordRepayment,
   deleteRepayment,
@@ -106,7 +106,7 @@ function RepayModal({ target, onClose }: { target: RepayTarget; onClose: () => v
             <div>
               <label htmlFor="r-date" className={label}>Paid on</label>
               <input id="r-date" name="paid_on" type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)} className={input} />
+                defaultValue={today()} className={input} />
             </div>
             <div>
               <label htmlFor="r-note" className={label}>Note</label>
@@ -194,7 +194,7 @@ export function PaidToggle({
     <span className="inline-flex items-center gap-2">
       {error && <span className="text-xs text-red-700">{error}</span>}
       <button type="button" onClick={toggle} disabled={pending}
-        title={paidAt ? `Marked paid ${new Date(paidAt).toLocaleDateString("en-GB")} — press to undo` : undefined}
+        title={paidAt ? `Marked paid ${date(paidAt)} — press to undo` : undefined}
         className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
           paidAt
             ? "bg-emerald-600 text-white hover:bg-emerald-700"

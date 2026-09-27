@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isLocked, LOCKED } from "@/lib/project-lock";
+import { today } from "@/lib/format";
 
 export type StatusResult = { error?: string; ok?: boolean };
 
@@ -31,7 +32,7 @@ export async function markCompleted(_prev: unknown, fd: FormData): Promise<Statu
 
   const projectId = String(fd.get("project_id") ?? "");
   if (!projectId) return { error: "Missing project." };
-  const on = String(fd.get("date") ?? "").trim() || new Date().toISOString().slice(0, 10);
+  const on = String(fd.get("date") ?? "").trim() || today();
 
   const { error: upErr } = await supabase
     .from("projects")
@@ -133,7 +134,7 @@ export async function markPaymentReceived(_prev: unknown, fd: FormData): Promise
 
   const projectId = String(fd.get("project_id") ?? "");
   if (!projectId) return { error: "Missing project." };
-  const on = String(fd.get("date") ?? "").trim() || new Date().toISOString().slice(0, 10);
+  const on = String(fd.get("date") ?? "").trim() || today();
   const amountRaw = String(fd.get("amount") ?? "").replace(/[^0-9.-]/g, "");
   const amount = amountRaw ? Number(amountRaw) : null;
 

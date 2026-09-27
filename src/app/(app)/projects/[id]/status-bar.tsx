@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { money, date } from "@/lib/format";
+import { money, date, today } from "@/lib/format";
 import {
   markCompleted,
   unmarkCompleted,
@@ -50,7 +50,7 @@ export function StatusBar({
 
   const [askCompleted, setAskCompleted] = useState(false);
   const [askPaid, setAskPaid] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  const todayIso = today();
 
   const error =
     completeState?.error ?? undoCompleteState?.error ?? payState?.error ?? undoPayState?.error;
@@ -79,7 +79,7 @@ export function StatusBar({
           ) : askCompleted ? (
             <form action={completeAction} className="mt-1 flex items-center gap-2">
               <input type="hidden" name="project_id" value={projectId} />
-              <input type="date" name="date" defaultValue={today} className={input} />
+              <input type="date" name="date" defaultValue={todayIso} className={input} />
               <button type="submit" disabled={completing}
                 className="rounded-lg bg-[var(--brand)] px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--brand-hover)] disabled:opacity-60">
                 {completing ? "Saving…" : "Confirm completed"}
@@ -119,7 +119,7 @@ export function StatusBar({
           ) : askPaid ? (
             <form action={payAction} className="mt-1 flex flex-wrap items-center gap-2">
               <input type="hidden" name="project_id" value={projectId} />
-              <input type="date" name="date" defaultValue={today} className={input} />
+              <input type="date" name="date" defaultValue={todayIso} className={input} />
               <input type="number" step="0.01" name="amount" defaultValue={expected || ""}
                 placeholder="Amount" className={`${input} w-36`} />
               <button type="submit" disabled={paying}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { today } from "@/lib/format";
 
 export type RepaymentResult = { error?: string; ok?: boolean };
 
@@ -31,7 +32,7 @@ export async function recordRepayment(_prev: unknown, fd: FormData): Promise<Rep
 
   const investorId = String(fd.get("investor_id") ?? "");
   const projectId = String(fd.get("project_id") ?? "");
-  const paidOn = String(fd.get("paid_on") ?? "").trim() || new Date().toISOString().slice(0, 10);
+  const paidOn = String(fd.get("paid_on") ?? "").trim() || today();
   const note = String(fd.get("note") ?? "").trim() || null;
   const amt = (k: string) => {
     const n = Number(String(fd.get(k) ?? "").replace(/[^0-9.]/g, ""));
@@ -176,7 +177,7 @@ export async function markInvestorPaid(projectId: string, investorId: string): P
         investor_id: investorId,
         entry_type: "settlement",
         amount: -Number(accrual.amount),
-        entry_date: new Date().toISOString().slice(0, 10),
+        entry_date: today(),
         source: "manual",
         note: "Investor marked as paid",
         created_by: user.id,

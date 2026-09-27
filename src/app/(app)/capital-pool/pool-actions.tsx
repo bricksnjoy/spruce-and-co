@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { money } from "@/lib/format";
+import { money, today } from "@/lib/format";
 import {
   recordContributions,
   recordWithdrawal,
@@ -127,7 +127,7 @@ function ContributionModal({ members, onClose }: { members: Member[]; onClose: (
           <div>
             <label htmlFor="c-date" className={label}>Date</label>
             <input id="c-date" name="entry_date" type="date"
-              defaultValue={new Date().toISOString().slice(0, 10)} className={input} />
+              defaultValue={today()} className={input} />
           </div>
           <div>
             <label htmlFor="c-note" className={label}>Note</label>
@@ -196,7 +196,7 @@ function WithdrawalModal({
           <div>
             <label htmlFor="w-date" className={label}>Date</label>
             <input id="w-date" name="entry_date" type="date"
-              defaultValue={new Date().toISOString().slice(0, 10)} className={input} />
+              defaultValue={today()} className={input} />
           </div>
           <div>
             <label htmlFor="w-note" className={label}>Note</label>

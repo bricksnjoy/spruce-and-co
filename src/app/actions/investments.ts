@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isLocked, projectOf, LOCKED } from "@/lib/project-lock";
 import { poolPosition, ratioSnapshot } from "@/lib/pool";
+import { today } from "@/lib/format";
 
 export type InvestmentResult = { error?: string; ok?: boolean };
 
@@ -91,7 +92,7 @@ export async function addInvestment(_prev: unknown, fd: FormData): Promise<Inves
     source_type: "investor",
     investor_id: investorId,
     amount,
-    funded_on: text(fd, "funded_on") ?? new Date().toISOString().slice(0, 10),
+    funded_on: text(fd, "funded_on") ?? today(),
     sort_order: (count ?? 0) + 1,
   });
   if (error) return { error: error.message };
@@ -141,7 +142,7 @@ export async function addReinvestment(_prev: unknown, fd: FormData): Promise<Inv
       name: "Capital Pool",
       source_type: "capital_pool",
       amount,
-      funded_on: text(fd, "funded_on") ?? new Date().toISOString().slice(0, 10),
+      funded_on: text(fd, "funded_on") ?? today(),
       sort_order: (count ?? 0) + 1,
     })
     .select("id")

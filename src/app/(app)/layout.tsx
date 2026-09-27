@@ -6,6 +6,7 @@ import { signOut } from "@/app/actions/auth";
 import { initials } from "@/lib/format";
 import { Badge } from "@/components/ui";
 import { Logo, Wordmark } from "@/components/logo";
+import { MobileNav } from "@/components/mobile-nav";
 
 export default async function AppLayout({
   children,
@@ -47,8 +48,17 @@ export default async function AppLayout({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-6">
-          <p className="text-sm text-[var(--muted)] md:hidden">Spruce &amp; Co</p>
+        <header className="flex h-16 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
+          <div className="flex items-center gap-2 md:hidden">
+            <MobileNav>
+              <div className="flex h-16 items-center gap-2.5 border-b border-[var(--border)] px-5">
+                <Logo size={34} />
+                <Wordmark size="sm" />
+              </div>
+              <Sidebar groups={groups} quickActions={quickActions} />
+            </MobileNav>
+            <Logo size={28} />
+          </div>
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium leading-tight">{name}</p>
@@ -70,7 +80,7 @@ export default async function AppLayout({
             </form>
           </div>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );
