@@ -111,7 +111,7 @@ export function Composer({ contacts, ready }: { contacts: Contact[]; ready: Reco
             {channel === "email" ? (
               <>Email isn&apos;t connected yet. Add <code>RESEND_API_KEY</code> and <code>EMAIL_FROM</code> (e.g. <code>Spruce &amp; Co &lt;office@yourdomain.com&gt;</code>) in Vercel → Settings → Environment Variables, then redeploy.</>
             ) : (
-              <>SMS isn&apos;t connected yet. Add <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code> and <code>TWILIO_FROM</code> (your sender number or name) in Vercel → Settings → Environment Variables, then redeploy.</>
+              <>SMS isn&apos;t connected yet. Add <code>MSGOWL_API_KEY</code> (from the Message Owl console → API keys) and <code>MSGOWL_SENDER_ID</code> (your approved sender name) in Vercel → Settings → Environment Variables, then redeploy.</>
             )}
           </div>
         )}

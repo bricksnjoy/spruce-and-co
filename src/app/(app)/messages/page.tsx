@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, Stat, Table, Th, Td, Empty } from "@/components/ui";
-import { channelReady } from "@/lib/messaging";
+import { channelReady, smsBalance } from "@/lib/messaging";
 import { Composer, type Contact } from "./composer";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +16,8 @@ export default async function MessagesPage() {
     if (channel) q = q.eq("channel", channel);
     return q;
   };
-  const [{ count: emails }, { count: texts }, { count: failed }] = await Promise.all([
-    count("email", "sent"), count("sms", "sent"), count(null, "failed"),
+  const [{ count: emails }, { count: texts }, { count: failed }, balance] = await Promise.all([
+    count("email", "sent"), count("sms", "sent"), count(null, "failed"), smsBalance(),
   ]);
   const [{ data: history }, { data: clients }, { data: shops }, { data: people }, { data: investors }] = await Promise.all([
     supabase.from("messages")
@@ -50,7 +50,8 @@ export default async function MessagesPage() {
       <PageHeader title="Message center" subtitle="Send an SMS or email to anyone, and see what was sent" />
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Emails · 30 days" value={String(emails ?? 0)} />
-        <Stat label="SMS · 30 days" value={String(texts ?? 0)} />
+        <Stat label="SMS · 30 days" value={String(texts ?? 0)}
+          hint={balance != null ? `Message Owl balance: ${balance}` : undefined} />
         <Stat label="Failed · 30 days" value={String(failed ?? 0)}
           tone={failed ? "bad" : "default"} />
         <Stat label="Contacts" value={String(contacts.length)} hint="with a phone or email" />
