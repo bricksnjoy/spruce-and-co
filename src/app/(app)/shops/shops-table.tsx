@@ -20,10 +20,10 @@ export interface ShopRow extends ShopValues {
 type Sort = "spend" | "name" | "bills" | "recent";
 
 const SORTS: { key: Sort; label: string }[] = [
+  { key: "name", label: "Shop name (A–Z)" },
   { key: "spend", label: "Most spent" },
   { key: "bills", label: "Most bills" },
   { key: "recent", label: "Most recent" },
-  { key: "name", label: "Name" },
 ];
 
 export function ShopsTable({ rows }: { rows: ShopRow[] }) {
@@ -31,7 +31,7 @@ export function ShopsTable({ rows }: { rows: ShopRow[] }) {
   const [editing, setEditing] = useState<ShopRow | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState<Sort>("spend");
+  const [sort, setSort] = useState<Sort>("name");
   /** shops with no TIN cannot go on a GST claim, so they are worth isolating */
   const [onlyMissingTin, setOnlyMissingTin] = useState(false);
 
@@ -49,7 +49,7 @@ export function ShopsTable({ rows }: { rows: ShopRow[] }) {
     });
 
     return [...filtered].sort((a, b) => {
-      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "name") return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
       if (sort === "bills") return b.bills - a.bills || b.spend - a.spend;
       if (sort === "recent") return (b.last_bill ?? "").localeCompare(a.last_bill ?? "");
       return b.spend - a.spend || a.name.localeCompare(b.name);
