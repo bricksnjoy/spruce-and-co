@@ -15,7 +15,8 @@ import { InvestmentsPanel, type InvestmentRow } from "./investments-panel";
 import { ProfitShareCard, type ShareLine } from "./profit-share-card";
 import { ProjectViews } from "./project-views";
 import { QuotationsPanel, type ProjectDoc } from "./quotations-panel";
-import { PlanPanel, programmeProgress, type MilestoneRow, type Person, type PhaseRow, type TaskRow } from "./plan-panel";
+import { programmeProgress } from "@/lib/programme";
+import { PlanPanel, type MilestoneRow, type Person, type PhaseRow, type TaskRow } from "./plan-panel";
 import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
 export const dynamic = "force-dynamic";

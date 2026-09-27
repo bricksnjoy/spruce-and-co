@@ -18,6 +18,7 @@ import {
   type TaskInput,
 } from "@/app/actions/programme";
 import { money, date } from "@/lib/format";
+import { daysBetween, programmeProgress, today } from "@/lib/programme";
 
 export interface PhaseRow {
   id: string;
@@ -64,10 +65,6 @@ const STATUS: Record<PhaseStatus, { label: string; bar: string; chip: string }> 
   blocked: { label: "Blocked", bar: "#d97706", chip: "bg-amber-50 text-amber-800" },
   completed: { label: "Done", bar: "#15803d", chip: "bg-emerald-50 text-emerald-800" },
 };
-const DAY = 86_400_000;
-const ms = (d: string) => new Date(`${d}T00:00:00Z`).getTime();
-const today = () => new Date().toISOString().slice(0, 10);
-const daysBetween = (a: string, b: string) => Math.round((ms(b) - ms(a)) / DAY);
 
 /** Runs a server action, keeping its error to show. */
 function useRun() {
@@ -80,20 +77,6 @@ function useRun() {
       if (!r.error) then?.();
     });
   return { pending, error, run };
-}
-
-/** How far along the work is, weighted by each phase's length, and how far it should be by today. */
-export function programmeProgress(phases: PhaseRow[]) {
-  const len = (p: PhaseRow) => (p.start_date && p.end_date ? Math.max(1, daysBetween(p.start_date, p.end_date) + 1) : 1);
-  const total = phases.reduce((s, p) => s + len(p), 0) || 1;
-  const done = phases.reduce((s, p) => s + (len(p) * Number(p.progress_pct || 0)) / 100, 0);
-  const t = today();
-  const due = phases.reduce((s, p) => {
-    if (!p.start_date || !p.end_date || t < p.start_date) return s;
-    if (t > p.end_date) return s + len(p);
-    return s + daysBetween(p.start_date, t) + 1;
-  }, 0);
-  return { actual: Math.round((done / total) * 100), expected: Math.round((due / total) * 100) };
 }
 
 /** "in 3 days", "2 days late", "due today" */
