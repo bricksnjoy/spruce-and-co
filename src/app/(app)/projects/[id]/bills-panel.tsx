@@ -115,7 +115,7 @@ export function BillsPanel({
                           <label className={tiny}>Rate</label>
                           <select name="gst_rate" defaultValue={String(b.gst_rate)} className={input}>
                             <option value="0">None</option>
-                            <option value="6">6%</option>
+                            <option value="6">6% (before 2023)</option>
                             <option value="8">8%</option>
                             <option value="12">12%</option>
                           </select>

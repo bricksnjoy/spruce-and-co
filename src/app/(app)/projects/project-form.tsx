@@ -155,8 +155,8 @@ export function ProjectForm({
         <div>
           <label htmlFor="gst_amount" className={label}>GST</label>
           <input id="gst_amount" name="gst_amount" type="number" step="0.01"
-            defaultValue={values.gst_amount ?? ""} placeholder="Leave blank for 6%" className={input} />
-          <p className="mt-1 text-xs text-[var(--muted)]">Blank calculates 6% of value + variations.</p>
+            defaultValue={values.gst_amount ?? ""} placeholder="Leave blank for 8%" className={input} />
+          <p className="mt-1 text-xs text-[var(--muted)]">Blank calculates 8% of value + variations.</p>
         </div>
         <div>
           <label htmlFor="progress_pct" className={label}>Progress (%)</label>

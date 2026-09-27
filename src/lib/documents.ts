@@ -130,7 +130,7 @@ export const DEFAULT_BODY: TemplateBody = {
   show_unit: false,
   show_duration: true,
   tax_label: "GST",
-  tax_rate: 0,
+  tax_rate: 8,
   valid_days: 60,
   due_days: 2,
 };

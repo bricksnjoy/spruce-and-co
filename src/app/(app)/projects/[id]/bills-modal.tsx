@@ -454,7 +454,7 @@ export function BillsModal({
               <label className={tiny}>GST rate</label>
               <select value={draft.gst_rate} onChange={(e) => set("gst_rate", e.target.value)} className={input}>
                 <option value="0">No GST</option>
-                <option value="6">6%</option>
+                <option value="6">6% (before 2023)</option>
                 <option value="8">8%</option>
                 <option value="12">12%</option>
               </select>
