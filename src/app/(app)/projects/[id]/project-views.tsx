@@ -4,7 +4,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
 export type SectionKey =
-  | "plan"
   | "cost"
   | "profit"
   | "investments"
@@ -20,7 +19,7 @@ export interface Section {
 }
 
 // the boxes, in the order they are laid out
-const BOX_ORDER: SectionKey[] = ["plan", "cost", "profit", "investments", "bills", "variations", "quotations"];
+const BOX_ORDER: SectionKey[] = ["cost", "profit", "investments", "bills", "variations", "quotations"];
 
 /**
  * The project's sections, laid out either as the full page (classic) or as a
@@ -61,7 +60,6 @@ export function ProjectViews({
         <div className="grid gap-4 xl:grid-cols-2">
           {sections.cost.node}
           {sections.profit.node}
-          <div className="xl:col-span-2">{sections.plan.node}</div>
           <div className="xl:col-span-2">{sections.quotations.node}</div>
           <div className="xl:col-span-2">{sections.variations.node}</div>
           <div className="xl:col-span-2">{sections.investments.node}</div>
@@ -69,7 +67,7 @@ export function ProjectViews({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-6">
             {BOX_ORDER.map((k) => {
               const s = sections[k];
               const active = openBox === k;

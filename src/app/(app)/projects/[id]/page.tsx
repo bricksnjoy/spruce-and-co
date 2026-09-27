@@ -15,8 +15,6 @@ import { InvestmentsPanel, type InvestmentRow } from "./investments-panel";
 import { ProfitShareCard, type ShareLine } from "./profit-share-card";
 import { ProjectViews } from "./project-views";
 import { QuotationsPanel, type ProjectDoc } from "./quotations-panel";
-import { programmeProgress } from "@/lib/programme";
-import { PlanPanel, type MilestoneRow, type Person, type PhaseRow, type TaskRow } from "./plan-panel";
 import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +40,6 @@ export default async function ProjectDetailPage({
 
   const [
     { data: project },
-    { data: phases },
-    { data: milestones },
-    { data: tasks },
     { data: budget },
     { data: bills },
     { data: splits },
@@ -58,14 +53,8 @@ export default async function ProjectDetailPage({
     { data: investorBalances },
     { data: projectQuotes },
     { data: projectInvoices },
-    { data: staff },
   ] = await Promise.all([
     supabase.from("projects").select("*, clients(name)").eq("id", id).single(),
-    supabase.from("project_phases").select("*").eq("project_id", id).order("sort_order"),
-    supabase.from("milestones").select("*").eq("project_id", id)
-      .order("planned_date", { nullsFirst: false }),
-    supabase.from("project_tasks").select("*").eq("project_id", id)
-      .order("due_date", { nullsFirst: false }),
     supabase.from("budget_lines").select("*, cost_categories(name)").eq("project_id", id),
     supabase.from("bills")
       .select("*, vendors(name, tin), cost_categories(name)")
@@ -108,21 +97,7 @@ export default async function ProjectDetailPage({
       .select("id, number, issue_date, status, title, quotation_id")
       .eq("project_id", id)
       .order("seq"),
-    supabase.from("profiles").select("id, full_name, email").order("full_name"),
   ]);
-  const phaseRows = (phases ?? []).map((x): PhaseRow => ({
-    id: x.id, name: x.name, status: x.status, start_date: x.start_date, end_date: x.end_date, progress_pct: Number(x.progress_pct),
-  }));
-  const milestoneRows = (milestones ?? []).map((x): MilestoneRow => ({
-    id: x.id, name: x.name, phase_id: x.phase_id, planned_date: x.planned_date, actual_date: x.actual_date, status: x.status,
-    is_payment_milestone: x.is_payment_milestone, payment_amount: Number(x.payment_amount), notes: x.notes,
-  }));
-  const taskRows = (tasks ?? []).map((x): TaskRow => ({
-    id: x.id, title: x.title, phase_id: x.phase_id, status: x.status, due_date: x.due_date, assignee_id: x.assignee_id, description: x.description,
-  }));
-  const people: Person[] = (staff ?? []).map((x) => ({ id: x.id, name: x.full_name || x.email || "—" }));
-  const projectDates = project as { start_date: string | null; end_date: string | null } | null;
-
 
   // what each quotation and invoice comes to, with tax
   const [{ data: qTotals }, { data: iTotals }] = await Promise.all([
@@ -236,7 +211,6 @@ export default async function ProjectDetailPage({
 
   const client = project?.clients as unknown as { name: string } | null;
   const revised = num(p.value) + num(p.variation);
-  const openTasks = (tasks ?? []).filter((t) => t.status !== "completed").length;
   const initialView: ProjectView =
     (await cookies()).get(VIEW_COOKIE)?.value === "boxes" ? "boxes" : "classic";
 
@@ -407,16 +381,6 @@ export default async function ProjectDetailPage({
               ? `${projectQuotes.length} · ${projectQuotes.some((q) => q.status === "won") ? "won" : projectQuotes[0].status}`
               : "None yet",
             node: <QuotationsPanel projectId={id} docs={projectDocs} />,
-          },
-          plan: {
-            title: "Plan",
-            summary: phaseRows.length
-              ? `${programmeProgress(phaseRows).actual}% done · ${openTasks} open task${openTasks === 1 ? "" : "s"}`
-              : `${openTasks} open task${openTasks === 1 ? "" : "s"}`,
-            node: (
-              <PlanPanel projectId={id} projectStart={projectDates?.start_date ?? null} projectEnd={projectDates?.end_date ?? null}
-                phases={phaseRows} milestones={milestoneRows} tasks={taskRows} people={people} />
-            ),
           },
         }}
       />
