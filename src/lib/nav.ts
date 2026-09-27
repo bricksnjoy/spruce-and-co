@@ -60,6 +60,15 @@ export const NAV: NavGroup[] = [
       { href: "/investors", label: "Investors", roles: MONEY },
       { href: "/financing", label: "Project Financing", roles: MONEY },
       { href: "/internal", label: "Internal Account", roles: MONEY },
+    ],
+  },
+  {
+    group: "Accounting",
+    defaultOpen: true,
+    items: [
+      { href: "/accounting", label: "Overview", roles: MONEY },
+      { href: "/accounting/ledger", label: "Ledger", roles: MONEY },
+      { href: "/accounting/audit", label: "Self-audit", roles: MONEY },
       { href: "/gst", label: "GST Input Schedule", roles: MONEY },
     ],
   },

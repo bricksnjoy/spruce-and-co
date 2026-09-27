@@ -88,7 +88,9 @@ export function Sidebar({
               {expanded && (
                 <ul className="mb-1 space-y-0.5 pl-1">
                   {g.items.map((item) => {
-                    const active = isActive(pathname, item.href);
+                    // the closest match wins: /accounting/ledger is not also /accounting
+                    const active = isActive(pathname, item.href) &&
+                      !g.items.some((o) => o.href.length > item.href.length && isActive(pathname, o.href));
                     return (
                       <li key={item.href}>
                         <Link
