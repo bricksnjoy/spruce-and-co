@@ -4,15 +4,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
 export type SectionKey =
-  | "tasks"
+  | "plan"
   | "cost"
   | "profit"
   | "investments"
   | "bills"
   | "variations"
-  | "quotations"
-  | "programme"
-  | "milestones";
+  | "quotations";
 
 export interface Section {
   title: string;
@@ -22,7 +20,7 @@ export interface Section {
 }
 
 // the boxes, in the order they are laid out
-const BOX_ORDER: SectionKey[] = ["tasks", "cost", "profit", "investments", "bills", "variations", "quotations"];
+const BOX_ORDER: SectionKey[] = ["plan", "cost", "profit", "investments", "bills", "variations", "quotations"];
 
 /**
  * The project's sections, laid out either as the full page (classic) or as a
@@ -63,13 +61,11 @@ export function ProjectViews({
         <div className="grid gap-4 xl:grid-cols-2">
           {sections.cost.node}
           {sections.profit.node}
-          {sections.programme.node}
-          {sections.milestones.node}
+          <div className="xl:col-span-2">{sections.plan.node}</div>
           <div className="xl:col-span-2">{sections.quotations.node}</div>
           <div className="xl:col-span-2">{sections.variations.node}</div>
           <div className="xl:col-span-2">{sections.investments.node}</div>
           <div className="xl:col-span-2">{sections.bills.node}</div>
-          <div className="xl:col-span-2">{sections.tasks.node}</div>
         </div>
       ) : (
         <>

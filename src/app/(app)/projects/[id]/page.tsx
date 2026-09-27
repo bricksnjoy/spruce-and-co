@@ -6,7 +6,7 @@ import {
   Card, CardHeader, PageHeader, Stat, Badge, Table, Th, Td, Empty,
 } from "@/components/ui";
 import { extractionAvailable } from "@/lib/extract-bill";
-import { money, date, num, pct } from "@/lib/format";
+import { money, num, pct } from "@/lib/format";
 import type { ProjectPnl } from "@/lib/types";
 import { StatusBar } from "./status-bar";
 import { VariationsPanel } from "./variations-panel";
@@ -15,7 +15,7 @@ import { InvestmentsPanel, type InvestmentRow } from "./investments-panel";
 import { ProfitShareCard, type ShareLine } from "./profit-share-card";
 import { ProjectViews } from "./project-views";
 import { QuotationsPanel, type ProjectDoc } from "./quotations-panel";
-import { MilestonesPanel, ProgrammePanel, programmeProgress, type MilestoneRow, type PhaseRow } from "./programme-panel";
+import { PlanPanel, programmeProgress, type MilestoneRow, type Person, type PhaseRow, type TaskRow } from "./plan-panel";
 import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +57,7 @@ export default async function ProjectDetailPage({
     { data: investorBalances },
     { data: projectQuotes },
     { data: projectInvoices },
+    { data: staff },
   ] = await Promise.all([
     supabase.from("projects").select("*, clients(name)").eq("id", id).single(),
     supabase.from("project_phases").select("*").eq("project_id", id).order("sort_order"),
@@ -106,6 +107,7 @@ export default async function ProjectDetailPage({
       .select("id, number, issue_date, status, title, quotation_id")
       .eq("project_id", id)
       .order("seq"),
+    supabase.from("profiles").select("id, full_name, email").order("full_name"),
   ]);
   const phaseRows = (phases ?? []).map((x): PhaseRow => ({
     id: x.id, name: x.name, status: x.status, start_date: x.start_date, end_date: x.end_date, progress_pct: Number(x.progress_pct),
@@ -114,6 +116,10 @@ export default async function ProjectDetailPage({
     id: x.id, name: x.name, phase_id: x.phase_id, planned_date: x.planned_date, actual_date: x.actual_date, status: x.status,
     is_payment_milestone: x.is_payment_milestone, payment_amount: Number(x.payment_amount), notes: x.notes,
   }));
+  const taskRows = (tasks ?? []).map((x): TaskRow => ({
+    id: x.id, title: x.title, phase_id: x.phase_id, status: x.status, due_date: x.due_date, assignee_id: x.assignee_id, description: x.description,
+  }));
+  const people: Person[] = (staff ?? []).map((x) => ({ id: x.id, name: x.full_name || x.email || "—" }));
   const projectDates = project as { start_date: string | null; end_date: string | null } | null;
 
 
@@ -308,33 +314,6 @@ export default async function ProjectDetailPage({
       <ProjectViews
         initialView={initialView}
         sections={{
-          tasks: {
-            title: "Tasks",
-            summary: `${openTasks} open · ${tasks?.length ?? 0} in all`,
-            node: (
-        <Card>
-          <CardHeader title="Tasks" />
-          {!tasks?.length ? (
-            <Empty message="No tasks." />
-          ) : (
-            <Table>
-              <thead>
-                <tr><Th>Task</Th><Th>Status</Th><Th right>Due</Th></tr>
-              </thead>
-              <tbody>
-                {tasks.map((t) => (
-                  <tr key={t.id}>
-                    <Td>{t.title}</Td>
-                    <Td><Badge value={t.status} /></Td>
-                    <Td right className="text-xs">{date(t.due_date)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card>
-        ),
-          },
           cost: {
             title: "Cost breakdown",
             summary: money(p.exp),
@@ -428,15 +407,15 @@ export default async function ProjectDetailPage({
               : "None yet",
             node: <QuotationsPanel projectId={id} docs={projectDocs} />,
           },
-          programme: {
-            title: "Programme",
-            summary: phaseRows.length ? `${programmeProgress(phaseRows).actual}% done · ${phaseRows.filter((p) => p.status === "completed").length} of ${phaseRows.length} phases` : "Not planned yet",
-            node: <ProgrammePanel projectId={id} projectStart={projectDates?.start_date ?? null} projectEnd={projectDates?.end_date ?? null} phases={phaseRows} />,
-          },
-          milestones: {
-            title: "Milestones",
-            summary: milestoneRows.length ? `${milestoneRows.filter((m) => m.status === "completed").length} of ${milestoneRows.length} reached` : "None yet",
-            node: <MilestonesPanel projectId={id} milestones={milestoneRows} phases={phaseRows} />,
+          plan: {
+            title: "Plan",
+            summary: phaseRows.length
+              ? `${programmeProgress(phaseRows).actual}% done · ${openTasks} open task${openTasks === 1 ? "" : "s"}`
+              : `${openTasks} open task${openTasks === 1 ? "" : "s"}`,
+            node: (
+              <PlanPanel projectId={id} projectStart={projectDates?.start_date ?? null} projectEnd={projectDates?.end_date ?? null}
+                phases={phaseRows} milestones={milestoneRows} tasks={taskRows} people={people} />
+            ),
           },
         }}
       />

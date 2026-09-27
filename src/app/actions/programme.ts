@@ -173,3 +173,81 @@ export async function deleteMilestone(id: string, projectId: string): Promise<Pr
   refresh(projectId);
   return { ok: true };
 }
+
+/* ─────────────── tasks ─────────────── */
+
+export interface TaskInput {
+  id?: string;
+  project_id: string;
+  phase_id: string | null;
+  title: string;
+  due_date: string | null;
+  assignee_id: string | null;
+  description: string;
+}
+
+/** A phase with tasks is as far along as its tasks are done. */
+async function syncPhase(supabase: Awaited<ReturnType<typeof createClient>>, phaseId: string | null) {
+  if (!phaseId) return;
+  const [{ data: tasks }, { data: phase }] = await Promise.all([
+    supabase.from("project_tasks").select("status").eq("phase_id", phaseId),
+    supabase.from("project_phases").select("status").eq("id", phaseId).maybeSingle(),
+  ]);
+  if (!tasks?.length || !phase) return;
+  const done = tasks.filter((t) => t.status === "completed").length;
+  const progress = Math.round((done / tasks.length) * 100);
+  const status: PhaseStatus =
+    done === tasks.length ? "completed" : phase.status === "blocked" ? "blocked" : done > 0 || tasks.some((t) => t.status === "in_progress") ? "in_progress" : "not_started";
+  await supabase.from("project_phases").update({ progress_pct: progress, status }).eq("id", phaseId);
+}
+
+export async function saveTask(t: TaskInput): Promise<ProgrammeResult> {
+  const supabase = await createClient();
+  const title = t.title?.trim();
+  if (!title) return { error: "Say what the task is." };
+  const row = {
+    title,
+    phase_id: t.phase_id || null,
+    due_date: dateOrNull(t.due_date),
+    assignee_id: t.assignee_id || null,
+    description: t.description?.trim() || null,
+  };
+  let before: string | null = null;
+  if (t.id) {
+    const { data: old } = await supabase.from("project_tasks").select("phase_id").eq("id", t.id).maybeSingle();
+    before = old?.phase_id ?? null;
+  }
+  const { error } = t.id
+    ? await supabase.from("project_tasks").update(row).eq("id", t.id)
+    : await supabase.from("project_tasks").insert({ ...row, project_id: t.project_id });
+  if (error) return { error: error.message };
+  await Promise.all([syncPhase(supabase, row.phase_id), before !== row.phase_id ? syncPhase(supabase, before) : null]);
+  refresh(t.project_id);
+  return { ok: true };
+}
+
+/** Tick a task done or not, and move its phase along with it. */
+export async function toggleTask(id: string, projectId: string, done: boolean): Promise<ProgrammeResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_tasks")
+    .update(done ? { status: "completed", completed_at: new Date().toISOString() } : { status: "not_started", completed_at: null })
+    .eq("id", id)
+    .select("phase_id")
+    .maybeSingle();
+  if (error) return { error: error.message };
+  await syncPhase(supabase, data?.phase_id ?? null);
+  refresh(projectId);
+  return { ok: true };
+}
+
+export async function deleteTask(id: string, projectId: string): Promise<ProgrammeResult> {
+  const supabase = await createClient();
+  const { data: old } = await supabase.from("project_tasks").select("phase_id").eq("id", id).maybeSingle();
+  const { error, count } = await supabase.from("project_tasks").delete({ count: "exact" }).eq("id", id);
+  if (error) return { error: error.message };
+  if (!count) return { error: "Only an admin can delete a task." };
+  await syncPhase(supabase, old?.phase_id ?? null);
+  refresh(projectId);
+  return { ok: true };
+}
