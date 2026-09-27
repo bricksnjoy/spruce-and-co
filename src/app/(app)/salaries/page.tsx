@@ -68,7 +68,7 @@ export default async function SalariesPage({
   // this month's run: who is covered, what can go out, and why not if nothing.
   // Several plans can draw on one share, so each member's free amount is spent
   // down as the list goes.
-  let freeCash = pos.available;
+  const cash = { free: pos.available };
   const freeLeft = new Map(pos.members.map((mm) => [mm.id, mm.free]));
   const run = (plans ?? [])
     .filter((p) =>
@@ -84,11 +84,11 @@ export default async function SalariesPage({
         : payableNow(
             num(p.monthly_amount),
             freeLeft.get(p.paid_from_member_id) ?? 0,
-            freeCash,
+            cash.free,
             member?.balance ?? 0,
           );
       if (due) {
-        freeCash -= due.amount;
+        cash.free -= due.amount;
         freeLeft.set(p.paid_from_member_id, (freeLeft.get(p.paid_from_member_id) ?? 0) - due.amount);
       }
       return { plan: p, person, member, paid, due };

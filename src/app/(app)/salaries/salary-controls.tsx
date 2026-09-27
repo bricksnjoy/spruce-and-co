@@ -73,10 +73,10 @@ function PlanModal({
 
   // their own share by default; employees are always paid from company money
   const defaultMember = isEmployee ? company?.id : person?.pool_member_id ?? company?.id;
-  const [memberId, setMemberId] = useState(defaultMember ?? "");
-  useEffect(() => {
-    setMemberId(defaultMember ?? "");
-  }, [defaultMember]);
+  // a choice made for this person; otherwise their default
+  const [picked, setPicked] = useState<{ person: string; member: string } | null>(null);
+  const memberId = picked?.person === personId ? picked.member : (defaultMember ?? "");
+  const setMemberId = (member: string) => setPicked({ person: personId, member });
 
   const [monthly, setMonthly] = useState("");
   const [term, setTerm] = useState<"until_empty" | "fixed">("until_empty");

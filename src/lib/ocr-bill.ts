@@ -128,7 +128,8 @@ function findDate(text: string): string {
   // day first, which is how the Maldives writes dates
   const dmy = text.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2}|\d{2})\b/);
   if (dmy) {
-    let [, d, m, y] = dmy;
+    const [, d, m] = dmy;
+    let y = dmy[3];
     if (y.length === 2) y = `20${y}`;
     const day = Number(d);
     const mon = Number(m);

@@ -91,7 +91,7 @@ export default async function InternalAccountPage() {
     null,
   );
   const waitingDays = oldest
-    ? Math.floor((Date.now() - new Date(oldest).getTime()) / 86_400_000)
+    ? daysSince(oldest)
     : 0;
 
   return (
@@ -188,7 +188,7 @@ export default async function InternalAccountPage() {
             <ul className="divide-y divide-[var(--border)] text-sm">
               {awaiting.map((p) => {
                 const days = p.completed_at
-                  ? Math.floor((Date.now() - new Date(p.completed_at).getTime()) / 86_400_000)
+                  ? daysSince(p.completed_at)
                   : 0;
                 return (
                   <li key={p.id} className="flex items-center gap-3 px-5 py-3">
@@ -278,4 +278,9 @@ export default async function InternalAccountPage() {
       </Card>
     </div>
   );
+}
+
+/** Whole days from then until now, when the page is rendered. */
+function daysSince(iso: string) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }

@@ -159,6 +159,8 @@ export function BillsModal({
   // once everything saves, hand back to the page
   useEffect(() => {
     if (saveState?.saved) {
+      // the save finishing is an outside event: reset and close in answer to it
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStaged([]);
       setDraft(blank(defaultActivityNo));
       onClose();

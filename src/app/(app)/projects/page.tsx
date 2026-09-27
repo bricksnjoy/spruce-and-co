@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Card, PageHeader, Stat, Badge, Progress, Table, Th, Td, Empty, Button } from "@/components/ui";
+import { Card, PageHeader, Stat, Badge, Progress, Table, Th, Td, Button } from "@/components/ui";
 import { money, num } from "@/lib/format";
 import type { ProjectPnl } from "@/lib/types";
 

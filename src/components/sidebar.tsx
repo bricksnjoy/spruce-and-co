@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { NavGroup, NavItem } from "@/lib/nav";
 
 function isActive(pathname: string, href: string) {
@@ -34,26 +34,9 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
 
-  // a group starts open if it's flagged open or the current route lives inside it
-  const [open, setOpen] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(
-      groups.map((g) => [
-        g.group,
-        Boolean(g.defaultOpen) || g.items.some((i) => isActive(pathname, i.href)),
-      ]),
-    ),
-  );
+  // groups the user has opened or closed; any other group is open when the page is in it
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  // keep the active group expanded as the user navigates
-  useEffect(() => {
-    setOpen((prev) => {
-      const next = { ...prev };
-      for (const g of groups) {
-        if (g.items.some((i) => isActive(pathname, i.href))) next[g.group] = true;
-      }
-      return next;
-    });
-  }, [pathname, groups]);
 
   return (
     <div className="flex flex-col gap-1 p-3">
@@ -78,13 +61,13 @@ export function Sidebar({
 
       <nav className="flex flex-col gap-0.5">
         {groups.map((g) => {
-          const expanded = open[g.group] ?? false;
           const hasActive = g.items.some((i) => isActive(pathname, i.href));
+          const expanded = open[g.group] ?? (Boolean(g.defaultOpen) || hasActive);
           return (
             <div key={g.group}>
               <button
                 type="button"
-                onClick={() => setOpen((p) => ({ ...p, [g.group]: !p[g.group] }))}
+                onClick={() => setOpen((p) => ({ ...p, [g.group]: !expanded }))}
                 aria-expanded={expanded}
                 className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
                   hasActive ? "text-[var(--brand)]" : "text-[var(--muted)]"

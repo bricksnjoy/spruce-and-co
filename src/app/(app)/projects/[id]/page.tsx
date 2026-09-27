@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import {
-  Card, CardHeader, PageHeader, Stat, Badge, Progress, Table, Th, Td, Empty,
+  Card, CardHeader, PageHeader, Stat, Badge, Table, Th, Td, Empty,
 } from "@/components/ui";
 import { extractionAvailable } from "@/lib/extract-bill";
 import { money, date, num, pct } from "@/lib/format";
@@ -15,6 +15,7 @@ import { InvestmentsPanel, type InvestmentRow } from "./investments-panel";
 import { ProfitShareCard, type ShareLine } from "./profit-share-card";
 import { ProjectViews } from "./project-views";
 import { QuotationsPanel, type ProjectDoc } from "./quotations-panel";
+import { MilestonesPanel, ProgrammePanel, programmeProgress, type MilestoneRow, type PhaseRow } from "./programme-panel";
 import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
 export const dynamic = "force-dynamic";
@@ -106,6 +107,15 @@ export default async function ProjectDetailPage({
       .eq("project_id", id)
       .order("seq"),
   ]);
+  const phaseRows = (phases ?? []).map((x): PhaseRow => ({
+    id: x.id, name: x.name, status: x.status, start_date: x.start_date, end_date: x.end_date, progress_pct: Number(x.progress_pct),
+  }));
+  const milestoneRows = (milestones ?? []).map((x): MilestoneRow => ({
+    id: x.id, name: x.name, phase_id: x.phase_id, planned_date: x.planned_date, actual_date: x.actual_date, status: x.status,
+    is_payment_milestone: x.is_payment_milestone, payment_amount: Number(x.payment_amount), notes: x.notes,
+  }));
+  const projectDates = project as { start_date: string | null; end_date: string | null } | null;
+
 
   // what each quotation and invoice comes to, with tax
   const [{ data: qTotals }, { data: iTotals }] = await Promise.all([
@@ -418,56 +428,16 @@ export default async function ProjectDetailPage({
               : "None yet",
             node: <QuotationsPanel projectId={id} docs={projectDocs} />,
           },
-          programme: { title: "Programme", summary: "", node: (
-        <Card>
-          <CardHeader title="Programme" subtitle="Phases and progress" />
-          {!phases?.length ? (
-            <Empty message="No phases defined." />
-          ) : (
-            <Table>
-              <thead>
-                <tr><Th>Phase</Th><Th>Status</Th><Th>Progress</Th><Th right>Dates</Th></tr>
-              </thead>
-              <tbody>
-                {phases.map((ph) => (
-                  <tr key={ph.id}>
-                    <Td className="font-medium">{ph.name}</Td>
-                    <Td><Badge value={ph.status} /></Td>
-                    <Td><Progress value={num(ph.progress_pct)} /></Td>
-                    <Td right className="text-xs text-[var(--muted)]">
-                      {date(ph.start_date)} → {date(ph.end_date)}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card>
-        ) },
-          milestones: { title: "Milestones", summary: "", node: (
-        <Card>
-          <CardHeader title="Milestones" />
-          {!milestones?.length ? (
-            <Empty message="No milestones set." />
-          ) : (
-            <Table>
-              <thead>
-                <tr><Th>Milestone</Th><Th>Status</Th><Th right>Planned</Th><Th right>Actual</Th></tr>
-              </thead>
-              <tbody>
-                {milestones.map((m) => (
-                  <tr key={m.id}>
-                    <Td>{m.name}</Td>
-                    <Td><Badge value={m.status} /></Td>
-                    <Td right className="text-xs">{date(m.planned_date)}</Td>
-                    <Td right className="text-xs">{date(m.actual_date)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card>
-        ) },
+          programme: {
+            title: "Programme",
+            summary: phaseRows.length ? `${programmeProgress(phaseRows).actual}% done · ${phaseRows.filter((p) => p.status === "completed").length} of ${phaseRows.length} phases` : "Not planned yet",
+            node: <ProgrammePanel projectId={id} projectStart={projectDates?.start_date ?? null} projectEnd={projectDates?.end_date ?? null} phases={phaseRows} />,
+          },
+          milestones: {
+            title: "Milestones",
+            summary: milestoneRows.length ? `${milestoneRows.filter((m) => m.status === "completed").length} of ${milestoneRows.length} reached` : "None yet",
+            node: <MilestonesPanel projectId={id} milestones={milestoneRows} phases={phaseRows} />,
+          },
         }}
       />
     </div>
