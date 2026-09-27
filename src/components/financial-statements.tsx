@@ -64,10 +64,16 @@ function Sheet({ data, title, sub, page, children, sign, noFooterNote, dense }: 
     <section className={`doc-sheet mx-auto mb-6 flex min-h-[297mm] w-[210mm] max-w-full flex-col bg-white px-[18mm] pb-[12mm] pt-[16mm] text-[12px] leading-snug text-black shadow-[0_2px_12px_rgba(0,0,0,0.12)] print:mb-0 print:break-after-page print:last:break-after-auto ${dense ? "[&_td]:py-px" : ""}`}
       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
       <header className="mb-4">
-        <p className="text-[14px] font-bold">{data.company.name}</p>
-        <p className="text-[13px] font-bold">{title}</p>
-        <p className="font-semibold">{sub}</p>
-        <p className="mt-0.5 text-[11px] italic">(All Amounts in Maldivian Rufiyaa Unless Otherwise Stated)</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[14px] font-bold">{data.company.name}</p>
+            <p className="text-[13px] font-bold">{title}</p>
+            <p className="font-semibold">{sub}</p>
+            <p className="mt-0.5 text-[11px] italic">(All Amounts in Maldivian Rufiyaa Unless Otherwise Stated)</p>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- a plain img prints reliably */}
+          <img src="/logo-mark.png" alt="Spruce & Co" className="h-[18mm] w-[18mm] shrink-0 object-contain" />
+        </div>
         {current.toDate && !noFooterNote && (
           <p className="mt-2 border border-black px-2 py-1 text-[10px]">
             Draft — the year is not over. Figures are to date and will change until 31 December {current.year}.
