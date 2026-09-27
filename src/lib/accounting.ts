@@ -109,7 +109,7 @@ export async function loadRecords(supabase: Supabase) {
     { data: company },
   ] = await Promise.all([
     supabase.from("projects").select("id, code, name, status, contract_value, gst_amount, completed_at, payment_received_at, payment_received_amount, start_date, end_date"),
-    supabase.from("bills").select("id, bill_no, vendor_id, project_id, category_id, status, issue_date, due_date, subtotal, tax_amount, total, amount_paid, description, attachment_path, gst_rate, created_at, vendors(name, tin), cost_categories(name)"),
+    supabase.from("bills").select("id, bill_no, vendor_id, project_id, category_id, status, issue_date, due_date, subtotal, tax_amount, total, amount_paid, description, attachment_path, gst_rate, expense_class, created_at, vendors(name, tin), cost_categories(name)"),
     supabase.from("invoices").select("id, number, seq, project_id, client_id, to_name, title, issue_date, due_date, status, paid_at"),
     supabase.from("invoice_totals").select("invoice_id, subtotal, tax, total"),
     supabase.from("salary_payments").select("id, person_id, month, amount, paid_on, pool_entry_id, slip_path, people(name)"),

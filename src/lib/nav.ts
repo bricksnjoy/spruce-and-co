@@ -69,6 +69,7 @@ export const NAV: NavGroup[] = [
       { href: "/accounting", label: "Overview", roles: MONEY },
       { href: "/accounting/ledger", label: "Ledger", roles: MONEY },
       { href: "/accounting/audit", label: "Self-audit", roles: MONEY },
+      { href: "/accounting/statements", label: "Financial statements", roles: MONEY },
       { href: "/gst", label: "GST Input Schedule", roles: MONEY },
     ],
   },

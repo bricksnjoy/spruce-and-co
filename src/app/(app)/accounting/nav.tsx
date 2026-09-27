@@ -4,6 +4,7 @@ import { PERIODS, type Period } from "@/lib/accounting";
 const TABS: [string, string][] = [
   ["/accounting", "Overview"],
   ["/accounting/ledger", "Ledger"],
+  ["/accounting/statements", "Statements"],
   ["/accounting/audit", "Self-audit"],
 ];
 
