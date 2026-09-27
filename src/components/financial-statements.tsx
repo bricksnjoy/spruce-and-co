@@ -14,8 +14,36 @@ const fmt = (v: number) => {
   return r < 0 ? `(${s})` : s;
 };
 
-const NOTES_FROM = 5;
-const NOTES_TO = 7;
+/** Amounts in sentences: plain numbers, never brackets or dashes. */
+const prose = (v: number) => Math.round(v).toLocaleString("en-US");
+
+const NOTES_FROM = 6;
+const NOTES_TO = 8;
+const long = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+/** The board's approval: signed and stamped once recorded, a blank line until then. */
+function Approval({ data, lead }: { data: StatementsData; lead: string }) {
+  const info = data.info;
+  const signer = info?.signer;
+  return (
+    <div className="mt-8 break-inside-avoid text-[12px]">
+      <p>
+        {lead} {info?.approved_on ? `${long(info.approved_on)} and signed on its behalf by:` : "………………………………"}
+      </p>
+      <div className="relative mt-3 flex h-[22mm] w-72 items-end">
+        {/* eslint-disable-next-line @next/next/no-img-element -- plain images print reliably */}
+        {info?.approved_on && signer?.signatureUrl && <img src={signer.signatureUrl} alt="Signature" className="max-h-[20mm] max-w-[48mm] object-contain" />}
+        {/* eslint-disable-next-line @next/next/no-img-element -- plain images print reliably */}
+        {info?.approved_on && info.stampUrl && <img src={info.stampUrl} alt="Company stamp" className="absolute left-[40mm] top-0 h-[22mm] w-[22mm] object-contain opacity-90" />}
+      </div>
+      <div className="w-64 border-t border-dotted border-black pt-1">
+        {signer ? <p className="font-semibold">{signer.name}</p> : null}
+        <p className={signer ? "" : "font-semibold"}>{signer?.title || "Managing Director"}</p>
+        <p>{data.company.name}</p>
+      </div>
+    </div>
+  );
+}
 
 type RowKind = "item" | "head" | "sub" | "total" | "gap";
 
@@ -74,22 +102,14 @@ function Sheet({ data, title, sub, page, children, sign, noFooterNote, dense }: 
           {/* eslint-disable-next-line @next/next/no-img-element -- a plain img prints reliably */}
           <img src="/logo-mark.png" alt="Spruce & Co" className="h-[18mm] w-[18mm] shrink-0 object-contain" />
         </div>
-        {current.toDate && !noFooterNote && (
+        {current.toDate && !dense && (
           <p className="mt-2 border border-black px-2 py-1 text-[10px]">
             Draft — the year is not over. Figures are to date and will change until 31 December {current.year}.
           </p>
         )}
       </header>
       <div className="flex-1">{children}</div>
-      {sign && (
-        <div className="mt-8 text-[12px]">
-          <p>These financial statements were approved by the Board of Directors on ………………………………</p>
-          <div className="mt-14 w-64 border-t border-dotted border-black pt-1">
-            <p className="font-semibold">Managing Director</p>
-            <p>{data.company.name}</p>
-          </div>
-        </div>
-      )}
+      {sign && <Approval data={data} lead="These financial statements were approved by the Board of Directors on" />}
       <footer className="mt-6 flex items-end justify-between text-[10px]">
         <span className="italic">{noFooterNote ? "" : `The notes on pages ${NOTES_FROM} to ${NOTES_TO} are an integral part of these financial statements.`}</span>
         <span className="ml-4 shrink-0">Page {page}</span>
@@ -194,8 +214,60 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
 
   return (
     <div>
-      {/* 1 — Statement of Financial Position */}
-      <Sheet data={data} page={1} title="Statement of Financial Position" sub={`As at 31 December ${c.year}`} sign>
+      {/* 1 — Directors' report */}
+      <Sheet data={data} page={1} title="Directors' Report" sub={`For the year ended 31 December ${c.year}`} noFooterNote>
+        <div className="space-y-3 text-[12px] leading-relaxed">
+          <p>The directors present their report together with the financial statements of {data.company.name} for the year ended 31 December {c.year}.</p>
+          <div>
+            <p className="font-bold">Principal activities</p>
+            <p>{data.info?.principal_activity || "The company carries out interior fit-out, joinery and construction work in the Maldives."}</p>
+          </div>
+          <div>
+            <p className="font-bold">Results</p>
+            <p>
+              Revenue for the year was MVR {prose(c.performance.revenue)} (MVR {prose(p.performance.revenue)} in {p.year}), and the company made a
+              {c.performance.pat >= 0 ? " profit" : " loss"} after tax of MVR {prose(Math.abs(c.performance.pat))} ({p.performance.pat >= 0 ? "profit" : "loss"} of MVR {prose(Math.abs(p.performance.pat))} in {p.year}).
+              At 31 December {c.year} total assets were MVR {prose(cp.totalAssets)} and total equity MVR {prose(cp.equity.total)}.
+            </p>
+          </div>
+          <div>
+            <p className="font-bold">Profit shares</p>
+            <p>
+              {Math.abs(c.equity.shares) > 0.5
+                ? `Profit shares of MVR ${prose(-c.equity.shares)} were allocated to partners and investors during the year${c.equity.kept > 0.5 ? `, of which MVR ${prose(c.equity.kept)} was kept in the business as partners' capital` : ""}.`
+                : "No profit shares were allocated during the year."}
+            </p>
+          </div>
+          <div>
+            <p className="font-bold">Directors</p>
+            <p>The directors who held office during the year and up to the date of this report were:</p>
+            {data.info?.directors.length ? (
+              <ul className="ml-5 list-disc">{data.info.directors.map((d) => <li key={d}>{d}</li>)}</ul>
+            ) : (
+              <p className="text-[#777]">…………………………………………</p>
+            )}
+          </div>
+          <div>
+            <p className="font-bold">Statement of directors&apos; responsibilities</p>
+            <p>
+              The directors are responsible for preparing financial statements for each year that give a true and fair view of the state of affairs
+              of the company and of its profit or loss for that year, for keeping proper accounting records, and for safeguarding the assets of the
+              company. In preparing these statements the directors have selected suitable accounting policies, applied them consistently, and made
+              judgements and estimates that are reasonable and prudent.
+            </p>
+          </div>
+          {data.info?.report_note && (
+            <div>
+              <p className="font-bold">Other matters</p>
+              <p className="whitespace-pre-line">{data.info.report_note}</p>
+            </div>
+          )}
+          <Approval data={data} lead="This report was approved by the Board of Directors on" />
+        </div>
+      </Sheet>
+
+      {/* 2 — Statement of Financial Position */}
+      <Sheet data={data} page={2} title="Statement of Financial Position" sub={`As at 31 December ${c.year}`} sign>
         <table className={T}>
           <Columns a={c} b={p} />
           <tbody>
@@ -229,7 +301,7 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
       </Sheet>
 
       {/* 2 — Statement of Comprehensive Income */}
-      <Sheet data={data} page={2} title="Statement of Comprehensive Income" sub={`For the year ended 31 December ${c.year}`}>
+      <Sheet data={data} page={3} title="Statement of Comprehensive Income" sub={`For the year ended 31 December ${c.year}`}>
         <table className={T}>
           <Columns a={c} b={p} />
           <tbody>
@@ -252,7 +324,7 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
       </Sheet>
 
       {/* 3 — Statement of Changes in Equity */}
-      <Sheet data={data} page={3} title="Statement of Changes in Equity" sub={`For the year ended 31 December ${c.year}`}>
+      <Sheet data={data} page={4} title="Statement of Changes in Equity" sub={`For the year ended 31 December ${c.year}`}>
         <table className={T}>
           <thead>
             <tr className="align-bottom text-[11px] font-bold">
@@ -272,7 +344,7 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
       </Sheet>
 
       {/* 4 — Statement of Cash Flows */}
-      <Sheet data={data} page={4} title="Statement of Cash Flows" sub={`For the year ended 31 December ${c.year}`}>
+      <Sheet data={data} page={5} title="Statement of Cash Flows" sub={`For the year ended 31 December ${c.year}`}>
         <table className={T}>
           <Columns a={c} b={p} />
           <tbody>
@@ -280,6 +352,7 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
             {cfRows("Profit before tax", cc.pbt, pc.pbt)}
             <Row label="Adjustments for:" />
             {cfRows("Depreciation", cc.depreciation, pc.depreciation, { note: 7, indent: true })}
+            {(Math.abs(cc.disposal) > 0.5 || Math.abs(pc.disposal) > 0.5) && cfRows("Loss / (gain) on disposal of equipment", cc.disposal, pc.disposal, { note: 7, indent: true })}
             {cfRows("Finance costs", cc.finance, pc.finance, { note: 5, indent: true })}
             {cfRows("Operating profit before working capital changes", cc.adjusted, pc.adjusted, { kind: "sub" })}
             <Row label="Changes in working capital:" />
@@ -307,7 +380,7 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
       </Sheet>
 
       {/* 5 — Notes: policies, revenue and cost of sales */}
-      <Sheet data={data} page={5} title="Notes to the Financial Statements" sub={`For the year ended 31 December ${c.year}`} noFooterNote dense>
+      <Sheet data={data} page={6} title="Notes to the Financial Statements" sub={`For the year ended 31 December ${c.year}`} noFooterNote dense>
         <Note n={1} title="Basis of preparation and accounting policies">
           <div className="space-y-1.5 text-[11px]">
             <p>
@@ -323,8 +396,8 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
             <p><b>Property, plant and equipment</b> is stated at cost less depreciation, charged evenly over {s.asset_life_years} years.</p>
             <p><b>Profit shares</b> to partners and investors are appropriations of profit, not expenses. Those kept in the business are added to
               partners&apos; capital; those not yet settled are shown as due to partners and investors.</p>
-            <p><b>Income tax</b> is an estimate of business profit tax at {s.bpt_rate}% of taxable profit above MVR {s.bpt_threshold.toLocaleString("en-US")}
-              {" "}each year, before any adjustments made in the return.</p>
+            <p><b>Income tax</b> is business profit tax at {s.bpt_rate}% of taxable profit above MVR {s.bpt_threshold.toLocaleString("en-US")} a year.
+              {c.taxFiled ? " It is the figure worked out for the tax return, after adjustments for expenses not allowed and allowances claimed." : " It is an estimate from profit in the accounts, before the adjustments made in the tax return."}</p>
             <p><b>GST</b>{s.gst_registered ? " is charged at 8% and collected on behalf of the MIRA; revenue is shown net of it." : ": the company is not registered, so revenue and costs are shown including any GST paid."}</p>
           </div>
         </Note>
@@ -334,7 +407,7 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
       </Sheet>
 
       {/* 6 — Notes: the rest of the income statement, and assets */}
-      <Sheet data={data} page={6} title="Notes to the Financial Statements (continued)" sub={`For the year ended 31 December ${c.year}`} noFooterNote dense>
+      <Sheet data={data} page={7} title="Notes to the Financial Statements (continued)" sub={`For the year ended 31 December ${c.year}`} noFooterNote dense>
         {noteHead}
         <Note n={4} title="Administrative expenses">{noteTable(c.notes.admin, p.notes.admin, "Total administrative expenses", 8)}</Note>
         <Note n={5} title="Finance costs">{noteTable(c.notes.finance, p.notes.finance, "Total finance costs", 4)}</Note>
@@ -342,8 +415,13 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
           <table className={T}>
             <tbody>
               <Row label="Profit before tax" a={c.performance.pbt} b={p.performance.pbt} />
-              <Row label={`Tax-free threshold`} a={-Math.min(Math.max(0, c.performance.pbt), s.bpt_threshold)} b={-Math.min(Math.max(0, p.performance.pbt), s.bpt_threshold)} />
-              <Row label={`Business profit tax at ${s.bpt_rate}% (estimate)`} a={c.performance.tax} b={p.performance.tax} kind="total" />
+              {c.taxFiled || p.taxFiled ? (
+                <Row label="Adjustments made in the tax return" a={c.taxFiled ? c.performance.tax - (Math.max(0, c.performance.pbt - s.bpt_threshold) * s.bpt_rate) / 100 : 0}
+                  b={p.taxFiled ? p.performance.tax - (Math.max(0, p.performance.pbt - s.bpt_threshold) * s.bpt_rate) / 100 : 0} />
+              ) : (
+                <Row label="Tax-free threshold" a={-Math.min(Math.max(0, c.performance.pbt), s.bpt_threshold)} b={-Math.min(Math.max(0, p.performance.pbt), s.bpt_threshold)} />
+              )}
+              <Row label={`Business profit tax at ${s.bpt_rate}%${c.taxFiled ? "" : " (estimate)"}`} a={c.performance.tax} b={p.performance.tax} kind="total" />
             </tbody>
           </table>
         </Note>
@@ -360,7 +438,7 @@ export function FinancialStatements({ data }: { data: StatementsData }) {
       </Sheet>
 
       {/* 7 — Notes: the rest of the balance sheet */}
-      <Sheet data={data} page={7} title="Notes to the Financial Statements (continued)" sub={`As at 31 December ${c.year}`} noFooterNote dense>
+      <Sheet data={data} page={8} title="Notes to the Financial Statements (continued)" sub={`As at 31 December ${c.year}`} noFooterNote dense>
         {noteHead}
         <Note n={9} title="Trade and other receivables">{noteTable(c.notes.receivables.filter(([, v]) => v > 0), p.notes.receivables.filter(([, v]) => v > 0), "Total receivables", 6)}</Note>
         <Note n={10} title="Cash and cash equivalents">

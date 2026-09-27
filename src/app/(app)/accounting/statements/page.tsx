@@ -32,8 +32,12 @@ export default async function StatementsPage({ searchParams }: { searchParams: P
             {y}
           </Link>
         ))}
+        <a href={`/accounting/statements/xlsx?year=${c.year}`}
+          className="ml-auto rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--hover)]">
+          Excel
+        </a>
         <Link href={`/print/statements?year=${c.year}`}
-          className="ml-auto rounded-lg bg-[var(--brand)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--brand-hover)]">
+          className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--brand-hover)]">
           Print / Save PDF
         </Link>
       </div>

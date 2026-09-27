@@ -5,16 +5,20 @@ const TABS: [string, string][] = [
   ["/accounting", "Overview"],
   ["/accounting/ledger", "Ledger"],
   ["/accounting/statements", "Statements"],
+  ["/accounting/bank", "Bank"],
+  ["/accounting/tax", "Tax"],
+  ["/accounting/equipment", "Equipment"],
+  ["/accounting/year-end", "Year end"],
   ["/accounting/audit", "Self-audit"],
 ];
 
 /** The accounting pages, as tabs. */
 export function AccountingTabs({ active }: { active: string }) {
   return (
-    <div className="mb-5 flex gap-1 border-b border-[var(--border)]">
+    <div className="mb-5 flex gap-1 overflow-x-auto border-b border-[var(--border)]">
       {TABS.map(([href, label]) => (
         <Link key={href} href={href}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+          className={`-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium ${
             active === href ? "border-[var(--brand)] text-[var(--brand)]" : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
           }`}>
           {label}

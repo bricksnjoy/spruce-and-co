@@ -107,6 +107,9 @@ export async function loadRecords(supabase: Supabase) {
     { data: variations },
     { data: quotations },
     { data: company },
+    { data: taxPayments },
+    { data: assets },
+    { data: taxReturns },
   ] = await Promise.all([
     supabase.from("projects").select("id, code, name, status, contract_value, gst_amount, completed_at, payment_received_at, payment_received_amount, start_date, end_date"),
     supabase.from("bills").select("id, bill_no, vendor_id, project_id, category_id, status, issue_date, due_date, subtotal, tax_amount, total, amount_paid, description, attachment_path, gst_rate, expense_class, created_at, vendors(name, tin), cost_categories(name)"),
@@ -121,6 +124,9 @@ export async function loadRecords(supabase: Supabase) {
     supabase.from("variations").select("project_id, status, cost_impact"),
     supabase.from("quotations").select("id, number, project_id, status, issue_date"),
     supabase.from("company").select("gst_registered").eq("id", true).maybeSingle(),
+    supabase.from("tax_payments").select("id, paid_on, kind, period, amount, reference"),
+    supabase.from("assets").select("id, name, category, purchased_on, cost, life_years, bill_id, disposed_on, disposal_amount"),
+    supabase.from("tax_returns").select("year, tax, filed_on"),
   ]);
   return {
     projects: projects ?? [],
@@ -136,6 +142,9 @@ export async function loadRecords(supabase: Supabase) {
     variations: variations ?? [],
     quotations: quotations ?? [],
     gstRegistered: Boolean(company?.gst_registered),
+    taxPayments: taxPayments ?? [],
+    assets: assets ?? [],
+    taxReturns: taxReturns ?? [],
   };
 }
 
