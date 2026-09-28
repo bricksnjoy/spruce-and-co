@@ -8,6 +8,7 @@ Your answers to the Phase 1 questions. On 28 Sep 2026 you replied **"defaults OK
 |---|---|---|
 | 28 Sep 2026 | Phase 0 (audit) | ✅ Approved: "check using sample data, and approve for next phase". The sample-data check is in AUDIT.md §8 |
 | 28 Sep 2026 | Data | ✅ The records deleted on 27 Sep were **test data**. Nothing is imported from the change log; the ledger starts clean, with real opening balances at 1 Jan 2026 |
+| 28 Sep 2026 | Reference data (R1) | ✅ **Real:** the 4 people, 5 capital-pool members and 4 signatories. **Not confirmed:** 39 vendors, 2 clients, 2 investors. They will be migrated marked "check", so nothing is lost and you can archive test entries |
 | 28 Sep 2026 | Phase 1 (questions and features) | ✅ "defaults OK": all suggested defaults and ★ feature picks accepted |
 
 ---

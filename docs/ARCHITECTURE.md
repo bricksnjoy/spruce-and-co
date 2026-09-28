@@ -405,9 +405,7 @@ These stay reachable from the sidebar: Estimator, Tasks, Messages. **Top bar:** 
 
 **Q1. Resolved (28 Sep).** The deleted records were test data. Nothing is imported: the ledger starts empty, and real opening balances as at 1 January 2026 are entered through the opening-balance import (migration 014 creates the empty import, not figures).
 
-**R1. Is the remaining reference data real?** There are 39 vendors, 2 clients, 2 investors, 4 people, 5 capital-pool members and 4 signatories.
-- **Suggested default:** the vendors, pool members, signatories and profit scheme are real and are migrated.
-- The 2 clients, 2 investors and 4 people are migrated too, but marked "check", so you can archive any test entries.
+**R1. Answered (28 Sep).** The people, capital-pool members and signatories are real. Vendors, clients and investors are migrated marked "check".
 
 **Q2. Where do we try the new screens before cut-over?**
 
