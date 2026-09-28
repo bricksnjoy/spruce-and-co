@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
-import { freshDb, one, q } from "./harness";
+import { freshDb, one, q, assertHealthy } from "./harness";
 import { accountId, balance, doc, journal, project } from "./books";
 
 let db: PGlite;
@@ -28,6 +28,8 @@ beforeEach(async () => {
   const adv = await doc(db, { type: "staff_advance", date: "2026-02-15", employee: site, bank: "1010", total: 2000 });
   await db.query(`insert into advance_recoveries (employee_id, advance_transaction_id, instalment, start_month) values ($1, $2, 500, '2026-03-01')`, [site, adv]);
 });
+
+afterEach(async () => { await assertHealthy(db); });
 
 async function marchRun() {
   const run = await db.transaction(async (tx) => (await one<{ id: string }>(tx, `select create_payroll_run('2026-03-01', '2026-03-31') id`)).id);

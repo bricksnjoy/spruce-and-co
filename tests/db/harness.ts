@@ -48,3 +48,9 @@ export async function one<T = Record<string, unknown>>(db: Db, sql: string, para
 
 /** Numeric columns come back as strings; compare money as exact decimal strings. */
 export const n = (v: unknown) => Number(v ?? 0).toFixed(2);
+
+/** The §13 invariants must hold after every scenario. */
+export async function assertHealthy(db: Db) {
+  const bad = await q<{ no: number; name: string; detail: string }>(db, `select no, name, detail from health_check() where not ok`);
+  if (bad.length) throw new Error("Health check failed: " + bad.map((b) => `#${b.no} ${b.name} (${b.detail})`).join("; "));
+}

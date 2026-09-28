@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
-import { freshDb, one, q } from "./harness";
+import { freshDb, one, q, assertHealthy } from "./harness";
 import { balance, contact, doc, journal, project } from "./books";
 
 let db: PGlite;
@@ -19,6 +19,8 @@ beforeEach(async () => {
   await db.query(`insert into budget_lines (project_id, description, budget_amount, budget_category) values
     ($1, 'Materials', 400000, 'materials'), ($1, 'Subcontract', 200000, 'subcontractors')`, [p]);
 });
+
+afterEach(async () => { await assertHealthy(db); });
 
 describe("project value (§4)", () => {
   it("approved variations update the revised contract value; pending and rejected do not", async () => {

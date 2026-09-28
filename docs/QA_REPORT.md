@@ -1,0 +1,56 @@
+# QA report
+
+Kept up to date as the rebuild goes. The latest run is at the top.
+
+## Phase 3 — engines (28 Sep 2026)
+
+**How it is tested**
+- Every database migration runs on a local copy of Postgres (PGlite, Postgres 18 in WebAssembly). The same SQL files will later be applied to Supabase.
+- The starting point is a copy of production's schema (`db/baseline/existing.sql`).
+- **After every test scenario, the Health Check (§13 invariants) must pass.**
+- Command: `npm test`.
+
+| Area | File | Tests | Result |
+|---|---|---|---|
+| Settings, rates, accounts, contacts | `tests/db/foundation.test.ts` | 6 | ✅ |
+| Posting rules (§3), void, delete, closing-date lock, applications, derived status, FX | `tests/db/posting.test.ts` | 28 | ✅ |
+| Project value (§4): variations, % complete, over/under billing, ledger profit, POC WIP + reversal, stage | `tests/db/project-value.test.ts` | 6 | ✅ |
+| Payroll (§7): gross to net, pension, WHT brackets, no-pay, advances, allocation = 100%, posting, payment, remittance | `tests/db/payroll.test.ts` | 6 | ✅ |
+| GST (§8): quarter totals, non-claimable to cost, claim needs TIN and tax invoice, filing lock and next-return adjustments, settlement, payment, carry-forward, filing order | `tests/db/gst.test.ts` | 5 | ✅ |
+| Profit split and payouts (§5, §6): worked example exact, zero, loss, single financier, external-only, no financing, rounding, dividends setting, scheme = 100%, scheme at start, payout block, over-payout, bad-debt adjustment, late entry and review flag | `tests/db/financing.test.ts` | 11 | ✅ |
+| Property (§13): 25 random sequences of up to 30 steps (sales, payments, bills, voids, edits, payroll, GST returns, financing, completion, bad debts, payouts) | `tests/db/property.test.ts` | 1 | ✅ |
+| Migrations are reversible and non-destructive | `tests/db/migrations.test.ts` | 1 | ✅ |
+| **Total** | | **64** | **✅ all pass** |
+
+A one-off stress run of **150 more random sequences** (seed 7) also passed.
+
+**Bugs the tests caught, all fixed:**
+- An invoice could be edited below what had already been paid on it. The property test found this; posting now refuses.
+- Receivable and payable lines could be posted without a customer or vendor. Found by Health Check #4.
+- A GST payment could be posted outside a filed return. Found by Health Check #9.
+- In the payroll trigger, the remittance posting and the split calculation, where the tests caught them.
+
+**Build:**
+- `tsc`: 0 errors
+- `eslint --max-warnings 0`: clean
+- `next build`: OK
+
+**The 13 invariants** (`health_check()`, also for the Health page on real data):
+
+| # | Invariant | Status |
+|---|---|---|
+| 1–9, 12, 13 | as in §13 | checked directly |
+| 10 | Cash flow = change in cash | follows from 2 and 3 for now; checked directly once the cash-flow report is built (Phase 4, Reports) |
+| 11 | Equity statement = balance-sheet equity | follows from 3 for now; checked directly once the equity report is built (Phase 4, Reports) |
+
+## Still open
+
+| Item | Why | When |
+|---|---|---|
+| Migrations applied to Supabase | Not yet: waiting for the test-database decision (Q2) | Phase 4, module 1 |
+| Row-level security for the new tables (migration 013), payroll permission | Built with the screens that use it | Phase 4 |
+| Banking (010), assets / recurring / purchase orders (011) | Their modules come later in Phase 4 | Phase 4 |
+| Save/void RPCs called by the screens | Written per module | Phase 4 |
+| End-to-end browser tests | Need a reachable Supabase (Q3) | Phase 4–5 |
+| Withholding-tax brackets, pension-rate confirmation, GST due day | Your figures (📝) | Before the first real payroll / GST filing |
+| Assumptions I1–I9 | Your confirmation | Any time |

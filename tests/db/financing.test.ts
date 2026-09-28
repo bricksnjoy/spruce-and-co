@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
-import { freshDb, one, q } from "./harness";
+import { freshDb, one, q, assertHealthy } from "./harness";
 import { balance, contact, contactId, doc, journal, project } from "./books";
 
 let db: PGlite;
@@ -10,15 +10,16 @@ let lender: string;
 let mujahid: string;
 let muaz: string;
 let mushahid: string;
-let mariyam: string;
 
 beforeEach(async () => {
   db = await freshDb();
   client = await contact(db, "Client", ["customer"]);
   vendor = await contact(db, "Supplier", ["vendor"]);
   lender = await contact(db, "External Lender", ["lender"]);
-  [mujahid, muaz, mushahid, mariyam] = await Promise.all(["Mujahid", "Muaz", "Mushahid", "Mariyam Zahir"].map((n) => contactId(db, n)));
+  [mujahid, muaz, mushahid] = await Promise.all(["Mujahid", "Muaz", "Mushahid"].map((n) => contactId(db, n)));
 });
+
+afterEach(async () => { await assertHealthy(db); });
 
 /** A project with revenue and costs giving `profit`, financed as given. */
 async function setup(profit: number, financing: [string, number][], opts: { revenue?: number } = {}) {

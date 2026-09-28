@@ -123,3 +123,21 @@ Choose **include**, **skip**, or **include with changes**. ★ = I recommend it.
 | Tags (site / island) | Tag transactions by island or site for reporting across projects | later | ✅ later (not in this build) |
 | Cash-flow forecast | 12-week view of expected client receipts (billing stages) against bills, payroll and payouts due | ★ | ✅ include |
 | Document inbox | Forward supplier invoices to an email address; they land as draft bills | later | ✅ later (not in this build) |
+
+---
+
+## I. Assumptions made while building Phase 3 — please confirm 📝
+
+The spec and your answers did not cover these. Each is built as a setting or a simple rule that is easy to change.
+
+| # | Assumption | Where | Change by |
+|---|---|---|---|
+| I1 | Only **basic salary** counts toward pension; **all earnings** count toward withholding tax; no-pay reduces both | pay item flags | ticking or unticking per pay item in Settings |
+| I2 | A no-pay day costs **basic ÷ 30** | `settings.nopay_days_divisor` | the setting |
+| I3 | A project with **no financing**: the 20% financing pool is not paid to anyone and stays with the company. The fixed shares still apply | split calculator | tell me if the pool should go elsewhere |
+| I4 | Site staff time that is not allocated to a project goes to **Admin Salaries / Employer Pension** (overhead) | payroll posting | tell me if it should be Direct Labour with no project |
+| I5 | Payouts need the project to be **completed** as well as the client balance being 0 | payout gate | — |
+| I6 | Every share is **rounded down to the laari**; all remainders stay with the company (as §5 says) | split calculator | — |
+| I7 | GST returns are **filed in order** (Q1 before Q2) | GST filing | — |
+| I8 | An adjustment to a split (bad debt, late entry) is **dated with the entry that caused it** | distributions | — |
+| I9 | Retention is **off** (B1), so the engine does not post retention yet; it is added when you switch it on | — | — |

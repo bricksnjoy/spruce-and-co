@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
-import { freshDb, one } from "./harness";
+import { freshDb, one, assertHealthy } from "./harness";
 import { balance, contact, doc, journal, project, status } from "./books";
 
 let db: PGlite;
@@ -16,6 +16,8 @@ beforeEach(async () => {
   unregistered = await contact(db, "Small Shop", ["vendor"]);
   p1 = await project(db, "P-001", client, 100000);
 });
+
+afterEach(async () => { await assertHealthy(db); });
 
 const invoice = (amount: number, extra: Partial<Parameters<typeof doc>[1]> = {}) =>
   doc(db, { type: "invoice", date: "2026-03-10", dueDate: "2026-12-31", contact: client, project: p1,
@@ -124,7 +126,9 @@ describe("posting rules (§3): every rule gives these exact lines, and they bala
   });
 
   it("15 · opening balances: the difference goes to Opening Balance Equity", async () => {
-    const id = await doc(db, { type: "opening_balance", date: "2025-12-31", lines: [{ account: "1010", debit: 50000 }, { account: "2000", credit: 12000 }] });
+    await expect(doc(db, { type: "opening_balance", date: "2025-12-31", lines: [{ account: "2000", credit: 12000 }] }))
+      .rejects.toThrow(/need a customer or vendor/);
+    const id = await doc(db, { type: "opening_balance", date: "2025-12-31", lines: [{ account: "1010", debit: 50000 }, { account: "2000", credit: 12000, contact: supplier }] });
     expect(await journal(db, id)).toEqual([["1010", 50000, 0], ["2000", 0, 12000], ["3900", 0, 38000]]);
   });
 
@@ -160,8 +164,8 @@ describe("posting rules (§3): every rule gives these exact lines, and they bala
   });
 
   it("27, 29 · GST payment and BPT provision", async () => {
-    const pay = await doc(db, { type: "gst_payment", date: "2026-04-28", bank: "1010", total: 740 });
-    expect(await journal(db, pay)).toEqual([["1010", 0, 740], ["2110", 740, 0]]);
+    // a GST payment belongs to a filed return (the full flow is in gst.test.ts)
+    await expect(doc(db, { type: "gst_payment", date: "2026-04-28", bank: "1010", total: 740 })).rejects.toThrow(/filed return/);
     const bpt = await doc(db, { type: "bpt_provision", date: "2026-12-31", lines: [{ account: "6400", debit: 37500 }, { account: "2300", credit: 37500 }] });
     expect(await journal(db, bpt)).toEqual([["2300", 0, 37500], ["6400", 37500, 0]]);
   });
@@ -180,6 +184,15 @@ describe("post on save, void, delete, locks", () => {
       await tx.query(`select post_transaction($1)`, [id]);
     });
     expect(await journal(db, id)).toEqual([["1100", 2700, 0], ["2100", 0, 200], ["4000", 0, 2500]]);
+  });
+
+  it("an invoice cannot be edited below what has already been paid on it (found by the property test)", async () => {
+    const inv = await invoice(1000);
+    await doc(db, { type: "customer_payment", date: "2026-03-20", contact: client, total: 1000, apply: [{ to: inv, amount: 1000 }] });
+    await expect(db.transaction(async (tx) => {
+      await tx.query(`update transaction_lines set rate = 100 where transaction_id = $1`, [inv]);
+      await tx.query(`select post_transaction($1)`, [inv]);
+    })).rejects.toThrow(/More is applied/);
   });
 
   it("void keeps the document and removes its effect; a paid invoice must lose its payment first", async () => {

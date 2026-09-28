@@ -169,6 +169,9 @@ declare v numeric := round(coalesce(p_amount, 0), 2); h numeric;
 begin
   if v = 0 then return; end if;
   if p_account is null then raise exception 'A line on this % has no account', replace(t.type::text, '_', ' '); end if;
+  if p_contact is null and exists (select 1 from public.accounts where id = p_account and subtype in ('ar', 'ap')) then
+    raise exception 'Receivable and payable lines need a customer or vendor';
+  end if;
   h := round(abs(v) * t.fx_rate, 2);
   insert into public.journal_lines (transaction_id, line_no, date, account_id, debit, credit, home_debit, home_credit,
     currency, fx_rate, contact_id, project_id, employee_id, tax_period_id, component, memo)
@@ -420,6 +423,9 @@ begin
 
   -- 27 · GST paid to MIRA
   when 'gst_payment' then
+    if t.tax_period_id is null or not public._line_frozen(t.tax_period_id) then
+      raise exception 'GST is paid against a filed return';
+    end if;
     perform public._jl(t, public.acct('gst_payable'), v_total, null, null, null, null, null, t.tax_period_id);
     perform public._jl(t, public._money_account(t), -v_total, null, null, null, null);
 
@@ -473,6 +479,12 @@ begin
   delete from public.journal_lines where transaction_id = p_id and not public._line_frozen(tax_period_id);
   if t.voided_at is null and not t.is_draft and t.type not in ('estimate', 'purchase_order') then
     perform public._recalc_lines(t);
+    -- an edit may not leave a document worth less than what is applied to or from it
+    if coalesce((select sum(amount) from public.applications where to_transaction_id = p_id), 0) > public.doc_total(p_id)
+       or coalesce((select sum(amount) from public.applications where from_transaction_id = p_id), 0) > public.doc_total(p_id) then
+      raise exception 'More is applied to this % than its new total; remove or reduce the payments first', replace(t.type::text, '_', ' ')
+        using errcode = 'P0001';
+    end if;
     perform public._post_rules(t);
     perform public._fx_balance(t);
   end if;

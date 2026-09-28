@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
-import { freshDb, one } from "./harness";
+import { freshDb, one, assertHealthy } from "./harness";
 import { accountId, balance, contact, doc, journal } from "./books";
 
 let db: PGlite;
@@ -26,6 +26,8 @@ beforeEach(async () => {
   client = await contact(db, "Client", ["customer"]);
   supplier = await contact(db, "Supplier", ["vendor"], { tin: "1000123GST501", gst: true });
 });
+
+afterEach(async () => { await assertHealthy(db); });
 
 describe("GST quarters (§8)", () => {
   it("adds up each quarter's output and input tax; non-claimable GST is not input tax", async () => {
