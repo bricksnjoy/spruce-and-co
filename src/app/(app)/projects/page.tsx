@@ -6,11 +6,16 @@ import type { ProjectPnl } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
+  const showArchived = (await searchParams).archived === "1";
   const supabase = await createClient();
-  const { data } = await supabase.from("project_pnl").select("*").order("code");
+  const [{ data }, { data: archivedRows }] = await Promise.all([
+    supabase.from("project_pnl").select("*").order("code"),
+    supabase.from("projects").select("id").not("archived_at", "is", null),
+  ]);
+  const archivedIds = new Set((archivedRows ?? []).map((r) => r.id));
 
-  const projects = (data ?? []) as ProjectPnl[];
+  const projects = ((data ?? []) as ProjectPnl[]).filter((p) => archivedIds.has(p.id) === showArchived);
   const live = projects.filter((p) => p.status === "in_progress");
   const value = projects.reduce((s, p) => s + num(p.value) + num(p.variation), 0);
   const exp = projects.reduce((s, p) => s + num(p.exp), 0);
@@ -19,7 +24,7 @@ export default async function ProjectsPage() {
     <div>
       <PageHeader
         title="Projects"
-        subtitle="Every job, with its live cost position"
+        subtitle={showArchived ? "Archived projects: still on the books, out of the working lists" : "Every job, with its live cost position"}
         action={<Button href="/projects/new">+ New project</Button>}
       />
 
@@ -34,10 +39,16 @@ export default async function ProjectsPage() {
         />
       </div>
 
+      <div className="mb-3 flex justify-end text-xs">
+        <Link href={showArchived ? "/projects" : "/projects?archived=1"} className="text-[var(--muted)] hover:underline">
+          {showArchived ? "← Back to current projects" : `Archived (${archivedIds.size})`}
+        </Link>
+      </div>
+
       <Card>
         {projects.length === 0 ? (
           <div className="px-5 py-12 text-center">
-            <p className="text-sm text-[var(--muted)]">No projects yet.</p>
+            <p className="text-sm text-[var(--muted)]">{showArchived ? "No archived projects." : "No projects yet."}</p>
             <div className="mt-4"><Button href="/projects/new">+ New project</Button></div>
           </div>
         ) : (

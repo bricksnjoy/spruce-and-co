@@ -14,6 +14,7 @@ import { BillsPanel } from "./bills-panel";
 import { InvestmentsPanel, type InvestmentRow } from "./investments-panel";
 import { ProfitShareCard, type ShareLine } from "./profit-share-card";
 import { ProjectViews } from "./project-views";
+import { ArchiveButton } from "./archive-button";
 import { QuotationsPanel, type ProjectDoc } from "./quotations-panel";
 import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
@@ -226,6 +227,7 @@ export default async function ProjectDetailPage({
         subtitle={`${p.code}${client?.name ? ` · ${client.name}` : ""}`}
         action={
           <div className="flex items-center gap-3">
+            {project.archived_at && <Badge value="archived" />}
             <Badge value={p.status} />
             {!locked && (
               <Link
@@ -235,6 +237,7 @@ export default async function ProjectDetailPage({
                 Edit project
               </Link>
             )}
+            <ArchiveButton id={id} archived={Boolean(project.archived_at)} />
           </div>
         }
       />

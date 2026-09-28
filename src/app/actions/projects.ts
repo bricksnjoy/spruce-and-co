@@ -159,47 +159,22 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
 }
 
 /**
- * Delete a project and everything that only exists for it (phases, tasks,
- * variations, budget, financing). Refused while money has been settled
- * against it — invoices, profit shares, pool entries or investor repayments —
- * since deleting would leave those figures hanging. Its bills are deleted too
- * when asked; otherwise they are kept as general costs. Quotations and
- * estimates are kept, unlinked. Everything removed stays in the change log.
+ * Archive a project, or bring it back. Nothing is deleted: its bills,
+ * invoices, payments and profit shares stay on the books and in every
+ * report; it only leaves the working lists and pickers.
  */
-export async function deleteProject(id: string, withBills: boolean): Promise<Result> {
+export async function setProjectArchived(id: string, archived: boolean): Promise<Result> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
-  const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (me?.role !== "admin") return { error: "Only an admin can delete a project." };
-  if (await isLocked(supabase, id)) return { error: "This project is completed and paid. Undo the payment first if it really has to go." };
-
-  const count = (table: string) =>
-    supabase.from(table).select("id", { count: "exact", head: true }).eq("project_id", id).then((r) => r.count ?? 0);
-  const [invoices, shares, pool, repayments] = await Promise.all([
-    count("invoices"),
-    count("internal_account_entries"),
-    count("capital_pool_entries"),
-    count("investor_repayments"),
-  ]);
-  const blocking = [
-    invoices && `${invoices} invoice${invoices > 1 ? "s" : ""}`,
-    shares && `${shares} profit share entr${shares > 1 ? "ies" : "y"}`,
-    pool && `${pool} capital pool entr${pool > 1 ? "ies" : "y"}`,
-    repayments && `${repayments} investor repayment${repayments > 1 ? "s" : ""}`,
-  ].filter(Boolean);
-  if (blocking.length) return { error: `It still has ${blocking.join(", ")}. Remove or move those first.` };
-
-  if (withBills) {
-    const { error } = await supabase.from("bills").delete().eq("project_id", id);
-    if (error) return { error: `Could not delete its bills: ${error.message}` };
-  }
-  const { error, count: gone } = await supabase.from("projects").delete({ count: "exact" }).eq("id", id);
+  const { error, count } = await supabase
+    .from("projects")
+    .update({ archived_at: archived ? new Date().toISOString() : null }, { count: "exact" })
+    .eq("id", id);
   if (error) return { error: error.message };
-  if (!gone) return { error: "The project was not deleted. Only an admin can delete a project." };
-
+  if (!count) return { error: "You don't have permission to archive projects." };
   revalidatePath("/", "layout");
-  redirect("/projects");
+  return { ok: true };
 }
