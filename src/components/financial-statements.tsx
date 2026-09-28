@@ -15,7 +15,7 @@ const fmt = (v: number) => {
 };
 
 /** Amounts in sentences: plain numbers, never brackets or dashes. */
-const prose = (v: number) => Math.round(v).toLocaleString("en-US");
+const prose = (v: number) => (Math.round(v) || 0).toLocaleString("en-US");
 
 const NOTES_FROM = 6;
 const NOTES_TO = 8;

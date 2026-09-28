@@ -3,13 +3,16 @@
  * made a 5.56 GST line read as 6, which does not reconcile against the bill
  * in the photo beside it.
  */
-export const money = (n: number | null | undefined, currency = "MVR") =>
-  new Intl.NumberFormat("en-MV", {
+export const money = (n: number | null | undefined, currency = "MVR") => {
+  // anything that rounds to zero is plain zero, never "-0.00"
+  const v = Math.round(Number(n ?? 0) * 100) / 100 || 0;
+  return new Intl.NumberFormat("en-MV", {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number(n ?? 0));
+  }).format(v);
+};
 
 /** Kept as its own name for the places that always meant the exact figure. */
 export const moneyExact = money;
