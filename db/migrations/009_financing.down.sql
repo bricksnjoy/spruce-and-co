@@ -1,0 +1,21 @@
+drop view if exists public.partner_statement_v;
+drop function if exists public.payout_status(uuid);
+drop function if exists public.adjust_distribution(uuid, text, date);
+drop function if exists public.complete_project(uuid, date);
+drop function if exists public._post_distribution(uuid, date);
+drop function if exists public.preview_split(uuid);
+drop function if exists public.split_profit(uuid, numeric);
+drop table if exists public.distribution_lines;
+drop table if exists public.distributions;
+drop view if exists public.project_financing_v;
+drop trigger if exists projects_scheme on public.projects;
+drop function if exists public.set_project_scheme();
+drop function if exists public.scheme_on(date);
+update public.projects set scheme_id = null;
+alter table public.projects drop constraint if exists projects_scheme_fk;
+drop table if exists public.scheme_allocations;
+drop function if exists public.check_scheme_total();
+drop table if exists public.profit_schemes;
+-- the ledger's hooks go back to doing nothing
+create or replace function public._after_post(p_id uuid, p_old_projects uuid[]) returns void language plpgsql as $$ begin end $$;
+create or replace function public._payout_gate(t public.transactions) returns void language plpgsql as $$ begin end $$;
