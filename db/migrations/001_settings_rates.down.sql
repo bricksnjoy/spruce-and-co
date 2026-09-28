@@ -1,0 +1,12 @@
+alter table public.profiles drop column if exists can_payroll;
+drop function if exists public.next_doc_number(text, date);
+drop table if exists public.document_sequences;
+drop function if exists public.tax_rate(uuid, date);
+drop function if exists public.bracket_tax(numeric, jsonb);
+drop function if exists public.rate_brackets(text, text, date);
+drop function if exists public.rate_value(text, text, date);
+drop table if exists public.tax_codes;
+drop table if exists public.rates;
+drop table if exists public.exchange_rates;
+drop table if exists public.currencies;
+drop table if exists public.settings;
