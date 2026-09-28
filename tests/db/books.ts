@@ -1,7 +1,5 @@
-import type { PGlite, Transaction } from "@electric-sql/pglite";
-import { one, q } from "./harness";
-
-type Db = PGlite | Transaction;
+import type { PGlite } from "@electric-sql/pglite";
+import { one, q, type Db } from "./harness";
 
 export interface LineSpec {
   account?: string;       // account code
@@ -109,13 +107,15 @@ export async function contactId(db: Db, name: string) {
 }
 
 export async function project(db: Db, code: string, customer: string | null, contractValue: number, extra: { start?: string } = {}) {
-  return (await one<{ id: string }>(db,
-    `insert into projects (code, name, client_id, contract_value, status, start_date)
-     values ($1, $1, null, $2, 'in_progress', coalesce($3::date, '2026-01-01')) returning id`,
-    [code, contractValue, extra.start ?? null]).then(async (p) => {
-      if (customer) await db.query(`update projects set customer_id = $1 where id = $2`, [customer, p.id]).catch(() => undefined);
-      return p;
-    })).id;
+  const { id } = await one<{ id: string }>(db,
+    `insert into projects (code, name, contract_value, status, start_date)
+     values ($1, $1, $2, 'in_progress', coalesce($3::date, '2026-01-01')) returning id`,
+    [code, contractValue, extra.start ?? null]);
+  // projects.customer_id arrives with migration 006
+  const hasCustomer = await one<{ ok: boolean }>(db,
+    `select exists (select 1 from information_schema.columns where table_name = 'projects' and column_name = 'customer_id') ok`);
+  if (customer && hasCustomer.ok) await db.query(`update projects set customer_id = $1 where id = $2`, [customer, id]);
+  return id;
 }
 
 export async function status(db: Db, id: string) {

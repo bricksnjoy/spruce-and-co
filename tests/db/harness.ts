@@ -1,6 +1,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { PGlite } from "@electric-sql/pglite";
+import { PGlite, type Transaction } from "@electric-sql/pglite";
+
+export type Db = PGlite | Transaction;
 
 const ROOT = join(__dirname, "..", "..", "db");
 
@@ -34,11 +36,11 @@ export async function freshDb(): Promise<PGlite> {
 }
 
 /** Run a statement and return its rows. */
-export async function q<T = Record<string, unknown>>(db: PGlite, sql: string, params: unknown[] = []): Promise<T[]> {
+export async function q<T = Record<string, unknown>>(db: Db, sql: string, params: unknown[] = []): Promise<T[]> {
   return (await db.query<T>(sql, params)).rows;
 }
 
-export async function one<T = Record<string, unknown>>(db: PGlite, sql: string, params: unknown[] = []): Promise<T> {
+export async function one<T = Record<string, unknown>>(db: Db, sql: string, params: unknown[] = []): Promise<T> {
   const rows = await q<T>(db, sql, params);
   if (rows.length !== 1) throw new Error(`expected one row, got ${rows.length}: ${sql}`);
   return rows[0];
