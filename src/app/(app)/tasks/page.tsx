@@ -17,7 +17,7 @@ export default async function TasksPage() {
     supabase.from("milestones")
       .select("*, projects(id, code, name)")
       .order("planned_date", { ascending: true, nullsFirst: false }),
-    supabase.from("projects").select("id, code, name, status").order("code", { ascending: false }),
+    supabase.from("projects").select("id, code, name, status").is("archived_at", null).order("code", { ascending: false }),
     supabase.from("profiles").select("id, full_name, email").eq("is_active", true).order("full_name"),
   ]);
   // finished and dropped jobs go to the bottom of the list

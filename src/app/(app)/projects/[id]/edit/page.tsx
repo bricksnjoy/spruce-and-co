@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader } from "@/components/ui";
 import { ProjectForm } from "../../project-form";
-import { DeleteProject } from "./delete-project";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +14,9 @@ export default async function EditProjectPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const [{ data: project }, { data: clients }, { count: bills }, { data: me }] = await Promise.all([
+  const [{ data: project }, { data: clients }] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).maybeSingle(),
     supabase.from("clients").select("id, name").order("name"),
-    supabase.from("bills").select("id", { count: "exact", head: true }).eq("project_id", id),
-    supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle(),
   ]);
 
   if (!project) notFound();
@@ -55,12 +49,6 @@ export default async function EditProjectPage({
           }}
         />
       </Card>
-      {me?.role === "admin" && (
-        <Card className="mt-6 border-red-200 p-6">
-          <h2 className="mb-2 text-sm font-semibold text-red-800">Delete project</h2>
-          <DeleteProject id={project.id} code={project.code} bills={bills ?? 0} />
-        </Card>
-      )}
     </div>
   );
 }
