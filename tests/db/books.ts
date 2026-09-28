@@ -51,7 +51,7 @@ export async function doc(db: PGlite, d: DocSpec): Promise<string> {
     const { id } = await one<{ id: string }>(tx,
       `insert into transactions (type, date, number, due_date, contact_id, project_id, employee_id, bank_account_id, total_amount,
          fx_rate, currency, memo, supplier_tin, tax_invoice_no, tax_invoice_date, customs_ref, is_draft, tax_period_id)
-       values ($1::txn_type, $2, $3, $4, $5, $6, $7, $8, $9, coalesce($10::numeric, 1), coalesce($11, 'MVR'), $12, $13, $14, $15, $16, coalesce($17, false), $18)
+       values ($1::txn_type, $2, $3, $4, $5, $6, $7, $8, $9::numeric, coalesce($10::numeric, 1), coalesce($11, 'MVR'), $12, $13, $14, $15, $16, coalesce($17, false), $18)
        returning id`,
       [d.type, d.date, d.number ?? null, d.dueDate ?? null, d.contact ?? null, d.project ?? null, d.employee ?? null, bank,
         d.total ?? null, d.fx ?? null, d.currency ?? null, d.memo ?? null, d.supplierTin ?? null, d.taxInvoiceNo ?? null,
@@ -62,8 +62,9 @@ export async function doc(db: PGlite, d: DocSpec): Promise<string> {
       await tx.query(
         `insert into transaction_lines (transaction_id, line_no, account_id, description, qty, rate, amount, tax_code_id, tax_amount,
            gst_claimable, project_id, employee_id, contact_id, component, debit, credit)
-         values ($1, $2, (select id from accounts where code = $3), $4, $5, $6, coalesce($7, 0),
-           (select id from tax_codes where code = $8), coalesce($9, 0), coalesce($10, false), $11, $12, $13, $14, coalesce($15, 0), coalesce($16, 0))`,
+         values ($1, $2, (select id from accounts where code = $3), $4, $5::numeric, $6::numeric, coalesce($7::numeric, 0),
+           (select id from tax_codes where code = $8), coalesce($9::numeric, 0), coalesce($10::boolean, false), $11::uuid, $12::uuid, $13::uuid, $14,
+           coalesce($15::numeric, 0), coalesce($16::numeric, 0))`,
         [id, i, l.account ?? null, l.description ?? null, l.qty ?? null, l.rate ?? null, l.amount ?? null, l.tax ?? null,
           l.taxAmount ?? null, l.claimable ?? null, l.project ?? null, l.employee ?? null, l.contact ?? null, l.component ?? null,
           l.debit ?? null, l.credit ?? null]);
