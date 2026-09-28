@@ -4,7 +4,7 @@ Date: 28 September 2026 · Branch: `rebuild/accounting` (from `claude/jolly-cann
 
 ## 0. Headline findings
 
-1. **The live books are nearly empty.** Between 12:43 and 12:58 UTC on 27 September one admin account deleted:
+1. **The live books are nearly empty.** *(Update 28 Sep: you confirmed the deleted records were test data, so no real data was lost. A-01 still stands, because the delete button could have done the same to real data. It was replaced by Archive in `3cf457a`.)* Between 12:43 and 12:58 UTC on 27 September one admin account deleted:
    - 3 projects
    - 105 bills
    - 64 profit-share entries

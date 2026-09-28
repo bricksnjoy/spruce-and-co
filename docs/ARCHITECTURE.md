@@ -284,7 +284,7 @@ Every rule runs inside `post_transaction(id)`, which deletes that transaction's 
 | 011 | `assets_recurring_po` | asset columns, recurring_templates, reminder_rules, PO support |
 | 012 | `reports` | report views: TB, P&L, BS, CF, SOCE, aging, partner statement, and `health_check()` returning the §13 invariants |
 | 013 | `security` | RLS, RPC-only writes, the payroll permission, revoking grants from PUBLIC |
-| 014 | `opening_balances` | the go-live `opening_balance` transaction (depends on §9 Q1) |
+| 014 | `opening_balances` | the opening-balance import (Excel template → one `opening_balance` transaction dated 31 Dec 2025, reviewed before posting). No historic data is imported (the deleted records were test data) |
 | 015 | `cutover` *(later, with your OK)* | old money tables revoked to read-only; the old routes redirect |
 | 016 | `cleanup` *(A9, after sign-off)* | drop `funding_rounds`, `commitments`, unused enums; drop the `backup_20260928` schema only when you say so |
 
@@ -403,11 +403,11 @@ These stay reachable from the sidebar: Estimator, Tasks, Messages. **Top bar:** 
 
 ## 9. Needs your answer before Phase 3
 
-**Q1. A1 and A2 don't fit together.**
+**Q1. Resolved (28 Sep).** The deleted records were test data. Nothing is imported: the ledger starts empty, and real opening balances as at 1 January 2026 are entered through the opening-balance import (migration 014 creates the empty import, not figures).
 
-You chose to use the deleted 2026 data *only for opening balances* (A1), and 1 January 2026 as the opening date (A2). But those transactions happened *after* 1 January 2026, so they can't be opening balances at that date. Pick one:
-- **(a)** Opening balances at **1 Jan 2026**, and the deleted 2026 documents re-imported automatically from the change log as proper posted documents: 105 bills, 3 projects and their financing, the invoice and the salary payment. You review them before they post. **My recommendation:** it gives a real 2026 ledger and clean first-year statements.
-- **(b)** Opening balances at the **go-live date** (e.g. 1 Oct 2026), summarising everything before it as balances. This is simpler, but the 2026 statements would have no detail for Jan–Sep.
+**R1. Is the remaining reference data real?** There are 39 vendors, 2 clients, 2 investors, 4 people, 5 capital-pool members and 4 signatories.
+- **Suggested default:** the vendors, pool members, signatories and profit scheme are real and are migrated.
+- The 2 clients, 2 investors and 4 people are migrated too, but marked "check", so you can archive any test entries.
 
 **Q2. Where do we try the new screens before cut-over?**
 

@@ -7,6 +7,7 @@ Your answers to the Phase 1 questions. On 28 Sep 2026 you replied **"defaults OK
 | Date | Phase | Decision |
 |---|---|---|
 | 28 Sep 2026 | Phase 0 (audit) | ✅ Approved: "check using sample data, and approve for next phase". The sample-data check is in AUDIT.md §8 |
+| 28 Sep 2026 | Data | ✅ The records deleted on 27 Sep were **test data**. Nothing is imported from the change log; the ledger starts clean, with real opening balances at 1 Jan 2026 |
 | 28 Sep 2026 | Phase 1 (questions and features) | ✅ "defaults OK": all suggested defaults and ★ feature picks accepted |
 
 ---
@@ -15,7 +16,7 @@ Your answers to the Phase 1 questions. On 28 Sep 2026 you replied **"defaults OK
 
 | # | Question | Suggested default | Answer |
 |---|---|---|---|
-| A1 | Most 2026 transactions were deleted on 27 Sep; the change log holds them. Rebuild opening balances from them, or re-enter them as documents? | Use them **only to work out opening balances** | ✅ |
+| A1 | Most 2026 transactions were deleted on 27 Sep; the change log holds them. Rebuild opening balances from them, or re-enter them as documents? | — | ✅ **Neither: it was test data.** It is not imported. (Supersedes the default.) |
 | A2 | Opening-balance / go-live date? | **1 January 2026** (the full 2026 year, so the first year-end has clean comparatives) | ✅ |
 | A3 | Add **Vitest** as a dev dependency for the Phase 3 tests? It is not a stack change | Yes | ✅ |
 | A4 | Where does posting logic live? | **Postgres functions**: one transaction per document, and debits = credits enforced by a deferred trigger. Calculators (split, payroll, GST) are server-side TypeScript, tested, and called by those functions' callers; nothing runs in the browser | ✅ |
@@ -84,7 +85,7 @@ Your answers to the Phase 1 questions. On 28 Sep 2026 you replied **"defaults OK
 |---|---|---|---|
 | S1 | Who uses the system, with which roles? Partners/investors log in for their own statements? | **admin, finance, manager, viewer** as today, plus a **payroll permission**. No partner login for now | ✅ |
 | S2 | Banks and their statement export formats? | **BML (CSV)** first; others once we have a sample file | ✅ |
-| S3 | Migrate data or start fresh? | **Fresh, with opening balances** (see A1/A2); reference data migrated | ✅ |
+| S3 | Migrate data or start fresh? | **Fresh, with opening balances** | ✅ Fresh, with real opening balances at 1 Jan 2026 entered or imported by you; reference data migrated (see question R1 in ARCHITECTURE §9) |
 | S4 | Document numbering and invoice design? | **Keep today's**: `SC-Q/{YY}/nn`, `SC-INV/{YY}/nn`, and the current template editor and design; add `SC-BILL`, `SC-PAY`, `SC-JE` | ✅ |
 
 ---
