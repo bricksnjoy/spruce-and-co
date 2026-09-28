@@ -233,3 +233,59 @@ Severity: **Critical** = money wrong or data loss possible now · **High** = sec
 | `next build` | OK, 53 routes. 1 warning: the middleware → proxy deprecation |
 | Tests | None exist |
 | `npm audit --omit=dev` | 2 moderate (uuid via exceljs) |
+
+## 8. Checked with sample data (28 Sep 2026)
+
+I ran sample projects through the **current** database logic (`project_pnl` and `project_profit_split` views, RLS). It all ran inside one transaction that was rolled back, and afterwards the live data was confirmed unchanged: 0 projects, 2 clients, 279 change-log rows, no test user.
+
+### Test 1 — the §5 worked example
+
+The setup: contract 800,000, and one bill of 277,777.78 + 8% GST 22,222.22 = 300,000. Financing was 400,000 from an external lender and 600,000 from the Capital Pool (Mujahid 300k, Muaz 200k, Mushahid 100k).
+
+| Share | Spec expects | Current app gives | |
+|---|---|---|---|
+| Project profit | 500,000 (per the spec's example) | 500,000 | Only because the bill **total including claimable GST** was subtracted (A-08). With the GST treated as input tax, profit would be 522,222.22 |
+| External lender, pool 20% | 40,000 | **0** | Lenders are left out of the pool (A-10) |
+| Mujahid, pool | 30,000 | **50,000** | Pool members take the lender's share |
+| Muaz, pool | 20,000 | **33,335** | Also rounded: the percentage is cut to 3 dp (6.667%) |
+| Mushahid, pool | 10,000 | **16,665** | |
+| Mujahid 25% / Muaz 10% / Mushahid 10% / Mariyam 5% | 125,000 / 50,000 / 50,000 / 25,000 | same | ✓ |
+| Company 30% | 150,000 | 150,000 | ✓ |
+| GST shown on the project | from settings | 64,000 (hard-coded 8% of contract) | A-09 |
+
+**Result: A-08, A-09 and A-10 are confirmed.** Whenever an external lender is involved, the current split overpays Capital Pool members and pays the lender nothing.
+
+### Test 2 — rounding
+
+The setup: profit 100,000.07, Capital Pool only, in thirds (33.333 / 33.333 / 33.334).
+
+- Each member is priced at 6.667% of profit, giving 6,667.00. The correct share is 6,666.67.
+- So members are overpaid 0.99 in total, and Company absorbs the difference: 29,999.03 instead of 30,000.02.
+- The total still adds up (100,000.07), but individual shares are wrong. **A-10 (3-dp rounding) is confirmed.**
+
+### Test 3 — a loss
+
+The setup: contract 100,000, costs 150,000, no financing.
+
+- Every fixed share goes **negative**: Company −25,000 (it absorbs the unused 20% pool), Mujahid −12,500, Muaz −5,000, Mushahid −5,000, Mariyam −2,500.
+- On completion these would be booked as negative amounts owed. The spec leaves loss behaviour to DECISIONS.md, so this is Phase 1 question P2.
+
+### Test 4 — what a `viewer` user can read
+
+A test viewer account (created and rolled back) could read:
+
+| Table | Rows readable |
+|---|---|
+| people | 4 |
+| capital pool members | 5 |
+| profit shares | 6 |
+| financing sources | 3 |
+| bills | 2 |
+| change log | 0 (correctly blocked) |
+
+**A-06 is confirmed:** payroll and partner data is readable by any signed-in user.
+
+### Not verifiable from this sandbox
+
+- **A-17 (1,000-row cap):** needs the REST API, which the sandbox cannot reach. It is standard Supabase behaviour and will be covered by a test in Phase 3.
+- **Console errors on live pages:** moves to Phase 5.
