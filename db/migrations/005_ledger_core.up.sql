@@ -4,6 +4,11 @@
 -- nothing else writes the journal. A deferred trigger refuses any commit in
 -- which a transaction's debits and credits differ.
 
+-- existing projects are Live; a code need only be unique within its book
+alter table public.projects add column if not exists book text not null default public.current_book() check (book in ('live', 'sandbox'));
+alter table public.projects drop constraint if exists projects_code_key;
+create unique index if not exists projects_book_code on public.projects (book, code);
+
 create type public.txn_type as enum (
   'estimate', 'invoice', 'credit_note', 'sales_receipt', 'customer_payment', 'deposit', 'customer_advance', 'advance_application',
   'purchase_order', 'bill', 'vendor_credit', 'bill_payment', 'expense',
@@ -61,11 +66,13 @@ create table public.transactions (
   recurring_id uuid,
   voided_at timestamptz,
   void_reason text,
+  book text not null default public.current_book() check (book in ('live', 'sandbox')),
   created_by uuid default auth.uid(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create unique index transactions_number on public.transactions (type, number) where number is not null;
+create unique index transactions_number on public.transactions (book, type, number) where number is not null;
+create index transactions_book on public.transactions (book, type, date);
 create index transactions_type_date on public.transactions (type, date);
 create index transactions_contact on public.transactions (contact_id);
 create index transactions_project on public.transactions (project_id);
@@ -114,10 +121,13 @@ create table public.journal_lines (
   cleared text not null default 'uncleared' check (cleared in ('uncleared', 'cleared', 'reconciled')),
   reconciliation_id uuid,
   memo text,
+  -- always the transaction's book (set by the posting function)
+  book text not null check (book in ('live', 'sandbox')),
   check (debit >= 0 and credit >= 0 and (debit = 0 or credit = 0)),
   check (home_debit >= 0 and home_credit >= 0 and (home_debit = 0 or home_credit = 0))
 );
 create index journal_lines_txn on public.journal_lines (transaction_id);
+create index journal_lines_book_account on public.journal_lines (book, account_id, date);
 create index journal_lines_account_date on public.journal_lines (account_id, date);
 create index journal_lines_project on public.journal_lines (project_id, account_id) where project_id is not null;
 create index journal_lines_contact on public.journal_lines (contact_id, account_id) where contact_id is not null;
@@ -130,6 +140,7 @@ create table public.applications (
   from_transaction_id uuid not null references public.transactions,
   to_transaction_id uuid not null references public.transactions,
   amount numeric(18,2) not null check (amount > 0),
+  book text not null default public.current_book() check (book in ('live', 'sandbox')),
   created_at timestamptz not null default now(),
   unique (from_transaction_id, to_transaction_id)
 );
@@ -174,10 +185,10 @@ begin
   end if;
   h := round(abs(v) * t.fx_rate, 2);
   insert into public.journal_lines (transaction_id, line_no, date, account_id, debit, credit, home_debit, home_credit,
-    currency, fx_rate, contact_id, project_id, employee_id, tax_period_id, component, memo)
+    currency, fx_rate, contact_id, project_id, employee_id, tax_period_id, component, memo, book)
   values (t.id, (select coalesce(max(line_no), 0) + 1 from public.journal_lines where transaction_id = t.id), t.date, p_account,
     greatest(v, 0), greatest(-v, 0), case when v > 0 then h else 0 end, case when v < 0 then h else 0 end,
-    t.currency, t.fx_rate, p_contact, p_project, p_employee, p_period, p_component, p_memo);
+    t.currency, t.fx_rate, p_contact, p_project, p_employee, p_period, p_component, p_memo, t.book);
 end $$;
 
 /**
@@ -458,9 +469,9 @@ begin
   if t.fx_rate = 1 then return; end if;
   select sum(home_debit) - sum(home_credit) into d from public.journal_lines where transaction_id = t.id;
   if coalesce(d, 0) <> 0 and abs(d) <= 1 then
-    insert into public.journal_lines (transaction_id, line_no, date, account_id, home_debit, home_credit, currency, fx_rate, memo)
+    insert into public.journal_lines (transaction_id, line_no, date, account_id, home_debit, home_credit, currency, fx_rate, memo, book)
     values (t.id, (select max(line_no) + 1 from public.journal_lines where transaction_id = t.id), t.date, public.acct('fx'),
-      greatest(-d, 0), greatest(d, 0), 'MVR', 1, 'Exchange rounding');
+      greatest(-d, 0), greatest(d, 0), 'MVR', 1, 'Exchange rounding', t.book);
   end if;
 end $$;
 
@@ -523,6 +534,7 @@ create constraint trigger journal_balanced after insert or update or delete on p
 create or replace function public.guard_closing_date() returns trigger language plpgsql as $$
 declare cd date := (select closing_date from public.settings where id);
 begin
+  if tg_op = 'DELETE' and public._purging() and old.book = 'sandbox' then return old; end if;
   if cd is null then return coalesce(new, old); end if;
   if tg_table_name = 'transactions' and tg_op = 'UPDATE' and old.date <= cd
      and (to_jsonb(new) - array['sent_at', 'updated_at']) = (to_jsonb(old) - array['sent_at', 'updated_at']) then
@@ -543,6 +555,7 @@ create trigger journal_lines_closing before insert or update or delete on public
 create or replace function public.guard_lines_closing() returns trigger language plpgsql as $$
 declare cd date := (select closing_date from public.settings where id); d date;
 begin
+  if tg_op = 'DELETE' and public._purging() then return old; end if;
   if cd is null then return coalesce(new, old); end if;
   select date into d from public.transactions where id = coalesce(new.transaction_id, old.transaction_id);
   if d <= cd then
@@ -556,6 +569,7 @@ create trigger transaction_lines_closing before insert or update or delete on pu
 /** Posted documents are voided, never deleted (§1). Drafts, estimates and POs can go. */
 create or replace function public.guard_txn_delete() returns trigger language plpgsql as $$
 begin
+  if public._purging() and old.book = 'sandbox' then return old; end if;
   if exists (select 1 from public.journal_lines where transaction_id = old.id)
      or (not old.is_draft and old.type not in ('estimate', 'purchase_order')) then
     raise exception 'Posted documents cannot be deleted; void it instead' using errcode = 'P0001';
@@ -604,7 +618,7 @@ create constraint trigger applications_valid after insert or update on public.ap
 -- ── derived balances and statuses (never stored) ───────────────────────
 
 create or replace view public.document_balances_v as
-select t.id, t.type, t.number, t.date, t.due_date, t.contact_id, t.project_id,
+select t.id, t.book, t.type, t.number, t.date, t.due_date, t.contact_id, t.project_id,
   public.doc_total(t.id) as total,
   coalesce((select sum(a.amount) from public.applications a where a.to_transaction_id = t.id), 0) as applied,
   coalesce((select sum(a.amount) from public.applications a where a.from_transaction_id = t.id), 0) as applied_from,
@@ -625,6 +639,38 @@ create or replace function public.document_status(p_id uuid) returns text langua
     else 'open' end
   from public.document_balances_v b where b.id = p_id
 $$;
+
+-- ── the two books never mix ────────────────────────────────────────────
+
+/** Everything a document points at must be in the same book as the document. */
+create or replace function public.guard_book() returns trigger language plpgsql as $$
+declare bk text; bad text;
+begin
+  if tg_table_name = 'transactions' then
+    bk := new.book;
+    select 'contact' into bad from public.contacts where id = new.contact_id and book <> bk;
+    if bad is null then select 'project' into bad from public.projects where id = new.project_id and book <> bk; end if;
+    if bad is null then select 'employee' into bad from public.employees where id = new.employee_id and book <> bk; end if;
+    if bad is null then select 'account' into bad from public.accounts where id = new.bank_account_id and book is not null and book <> bk; end if;
+  elsif tg_table_name = 'transaction_lines' then
+    select book into bk from public.transactions where id = new.transaction_id;
+    select 'contact' into bad from public.contacts where id = new.contact_id and book <> bk;
+    if bad is null then select 'project' into bad from public.projects where id = new.project_id and book <> bk; end if;
+    if bad is null then select 'employee' into bad from public.employees where id = new.employee_id and book <> bk; end if;
+    if bad is null then select 'account' into bad from public.accounts where id = new.account_id and book is not null and book <> bk; end if;
+  elsif tg_table_name = 'applications' then
+    select book into bk from public.transactions where id = new.from_transaction_id;
+    select 'document' into bad from public.transactions where id = new.to_transaction_id and book <> bk;
+    new.book := bk;
+  end if;
+  if bad is not null then
+    raise exception 'That % belongs to the other book (Live and Test are never mixed)', bad using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+create trigger transactions_book before insert or update on public.transactions for each row execute function public.guard_book();
+create trigger transaction_lines_book before insert or update on public.transaction_lines for each row execute function public.guard_book();
+create trigger applications_book before insert or update on public.applications for each row execute function public.guard_book();
 
 create trigger transactions_audit after insert or update or delete on public.transactions for each row execute function public.log_change();
 create trigger transaction_lines_audit after insert or update or delete on public.transaction_lines for each row execute function public.log_change();

@@ -20,6 +20,7 @@ create table public.employees (
   passport_no text,
   needs_review boolean not null default false,
   active boolean not null default true,
+  book text not null default public.current_book() check (book in ('live', 'sandbox')),
   legacy_person_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

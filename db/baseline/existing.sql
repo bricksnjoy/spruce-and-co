@@ -232,14 +232,14 @@ create table public.audit_log (
   changed text[]
 );
 
--- the live role helpers (tests run as one privileged user, so these simply read profiles)
-create or replace function public.is_staff() returns boolean language sql stable as $$
+-- the live role helpers (security definer, as in production)
+create or replace function public.is_staff() returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and is_active) $$;
-create or replace function public.can_write() returns boolean language sql stable as $$
+create or replace function public.can_write() returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and is_active and role in ('admin','manager','finance')) $$;
-create or replace function public.is_admin() returns boolean language sql stable as $$
+create or replace function public.is_admin() returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and is_active and role = 'admin') $$;
-create or replace function public.can_see_payroll() returns boolean language sql stable as $$
+create or replace function public.can_see_payroll() returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and is_active and role in ('admin','finance')) $$;
 
 -- the live change-log trigger function, unchanged
@@ -273,3 +273,19 @@ insert into public.clients (name) values ('Sample Client A');
 insert into public.vendors (name, kind, tin) values ('Sample Supplier', 'supplier', '1000001GST501');
 insert into public.investors (name) values ('Sample Lender');
 insert into public.people (name, role, pool_member_id) select 'Mujahid', 'director', id from public.capital_pool_members where name = 'Mujahid';
+
+-- Supabase's API roles, with its default grants on everything in public
+do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
+do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
+grant usage on schema public, auth to anon, authenticated;
+grant all on all tables in schema public to anon, authenticated;
+grant execute on all functions in schema public, auth to anon, authenticated;
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant execute on functions to anon, authenticated;
+alter table public.projects enable row level security;
+create policy projects_read on public.projects for select using (public.is_staff());
+create policy projects_ins on public.projects for insert with check (public.can_write());
+create policy projects_upd on public.projects for update using (public.can_write());
+create policy projects_del on public.projects for delete using (public.is_admin());
+alter table public.profiles enable row level security;
+create policy profiles_read on public.profiles for select using (public.is_staff());

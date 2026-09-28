@@ -19,25 +19,26 @@ create table public.tax_periods (
   net numeric(18,2),
   settlement_transaction_id uuid references public.transactions,
   payment_transaction_id uuid references public.transactions,
+  book text not null default public.current_book() check (book in ('live', 'sandbox')),
   created_at timestamptz not null default now(),
-  unique (tax, start_date),
+  unique (book, tax, start_date),
   check (end_date >= start_date)
 );
 alter table public.journal_lines add constraint journal_lines_tax_period_fk foreign key (tax_period_id) references public.tax_periods;
 alter table public.transactions add constraint transactions_tax_period_fk foreign key (tax_period_id) references public.tax_periods;
 
 /** The return a GST line dated `p_date` belongs in: its own period, or the next open one if that is filed. */
-create or replace function public.gst_period_for(p_date date) returns uuid language plpgsql as $$
+create or replace function public.gst_period_for(p_date date, p_book text default public.current_book()) returns uuid language plpgsql as $$
 declare m int := (select gst_period_months from public.settings where id); dd int := (select gst_due_day from public.settings where id);
   d date := p_date; s date; e date; v public.tax_periods;
 begin
   loop
     s := make_date(extract(year from d)::int, ((extract(month from d)::int - 1) / m) * m + 1, 1);
     e := (s + make_interval(months => m) - interval '1 day')::date;
-    select * into v from public.tax_periods where tax = 'gst' and start_date = s;
+    select * into v from public.tax_periods where tax = 'gst' and start_date = s and book = p_book;
     if not found then
-      insert into public.tax_periods (start_date, end_date, due_date)
-      values (s, e, make_date(extract(year from e + 1)::int, extract(month from e + 1)::int, dd))
+      insert into public.tax_periods (start_date, end_date, due_date, book)
+      values (s, e, make_date(extract(year from e + 1)::int, extract(month from e + 1)::int, dd), p_book)
       returning * into v;
     end if;
     if v.status = 'open' then return v.id; end if;
@@ -65,7 +66,7 @@ begin
     select coalesce(sum(home_debit - home_credit), 0) into v_frozen from public.journal_lines
       where transaction_id = p_id and account_id = acc and tax_period_id is not null and public._line_frozen(tax_period_id);
     if not exists (select 1 from public.journal_lines where transaction_id = p_id and account_id = acc) then continue; end if;
-    v_period := public.gst_period_for(t.date);
+    v_period := public.gst_period_for(t.date, t.book);
     if v_frozen = 0 then
       update public.journal_lines set tax_period_id = v_period where transaction_id = p_id and account_id = acc and tax_period_id is null;
     else
@@ -73,10 +74,10 @@ begin
       d := v_new - v_frozen;
       if d <> 0 then
         insert into public.journal_lines (transaction_id, line_no, date, account_id, debit, credit, home_debit, home_credit,
-          contact_id, project_id, tax_period_id, memo)
+          contact_id, project_id, tax_period_id, memo, book)
         values (p_id, (select coalesce(max(line_no), 0) + 1 from public.journal_lines where transaction_id = p_id), t.date, acc,
           greatest(d, 0), greatest(-d, 0), greatest(d, 0), greatest(-d, 0), t.contact_id, t.project_id, v_period,
-          'Adjustment to a filed GST return');
+          'Adjustment to a filed GST return', t.book);
       end if;
     end if;
   end loop;
@@ -85,6 +86,7 @@ end $$;
 /** Filed GST lines never change. */
 create or replace function public.guard_filed_gst() returns trigger language plpgsql as $$
 begin
+  if tg_op = 'DELETE' and public._purging() and old.book = 'sandbox' then return old; end if;
   if public._line_frozen(old.tax_period_id) then
     raise exception 'That GST return is filed; its lines cannot change. Corrections go into the next open return.' using errcode = 'P0001';
   end if;
@@ -123,7 +125,7 @@ declare v public.tax_periods; tot record; v_txn uuid; cf numeric; used numeric :
 begin
   select * into v from public.tax_periods where id = p_period for update;
   if v.status <> 'open' then raise exception 'This return is already filed'; end if;
-  if exists (select 1 from public.tax_periods where tax = 'gst' and start_date < v.start_date and status = 'open'
+  if exists (select 1 from public.tax_periods where tax = 'gst' and book = v.book and start_date < v.start_date and status = 'open'
              and exists (select 1 from public.journal_lines where tax_period_id = tax_periods.id)) then
     raise exception 'File the earlier return first';
   end if;
@@ -135,8 +137,8 @@ begin
     update public.tax_periods set status = 'paid' where id = p_period;
     return null;
   end if;
-  insert into public.transactions (type, date, tax_period_id, memo)
-  values ('gst_settlement', v.end_date, p_period, 'GST return ' || to_char(v.start_date, 'Mon') || '–' || to_char(v.end_date, 'Mon YYYY'))
+  insert into public.transactions (type, date, tax_period_id, memo, book)
+  values ('gst_settlement', v.end_date, p_period, 'GST return ' || to_char(v.start_date, 'Mon') || '–' || to_char(v.end_date, 'Mon YYYY'), v.book)
   returning id into v_txn;
   n := n + 1;
   insert into public.transaction_lines (transaction_id, line_no, account_id, debit, credit)
@@ -178,8 +180,8 @@ begin
   amt := coalesce(p_amount, owed);
   if amt <= 0 then raise exception 'Nothing is owed on this return'; end if;
   if amt > owed then raise exception 'That is more than the % owed on this return', owed; end if;
-  insert into public.transactions (type, date, bank_account_id, total_amount, tax_period_id, memo)
-  values ('gst_payment', p_date, p_bank, amt, p_period, 'GST paid to MIRA') returning id into v_txn;
+  insert into public.transactions (type, date, bank_account_id, total_amount, tax_period_id, memo, book)
+  values ('gst_payment', p_date, p_bank, amt, p_period, 'GST paid to MIRA', v.book) returning id into v_txn;
   perform public.post_transaction(v_txn);
   update public.tax_periods set payment_transaction_id = v_txn,
     status = case when public.gst_payable(p_period) = 0 then 'paid' else 'filed' end where id = p_period;
@@ -187,7 +189,7 @@ begin
 end $$;
 
 create or replace view public.gst_periods_v as
-select p.id, p.start_date, p.end_date, p.due_date, p.status, p.return_reference, p.filed_at,
+select p.id, p.book, p.start_date, p.end_date, p.due_date, p.status, p.return_reference, p.filed_at,
   case when p.status = 'open' then t.output else p.output_total end as output,
   case when p.status = 'open' then t.input else p.input_total end as input,
   case when p.status = 'open' then t.net else p.net end as net,

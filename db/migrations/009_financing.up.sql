@@ -68,7 +68,7 @@ update public.projects set scheme_id = public.scheme_on(coalesce(start_date, cur
 
 /** Each financing source of a project: principal received and repaid, from the ledger. */
 create or replace view public.project_financing_v as
-select j.project_id, j.contact_id,
+select j.book, j.project_id, j.contact_id,
   case par.subtype when 'project_loans' then 'external' else 'capital_pool' end as source_type,
   sum(j.home_credit) as received,
   sum(j.home_debit) as repaid,
@@ -77,7 +77,7 @@ from public.journal_lines j
 join public.accounts a on a.id = j.account_id
 join public.accounts par on par.id = a.parent_id
 where par.subtype in ('project_loans', 'capital_pool_loans') and j.project_id is not null
-group by j.project_id, j.contact_id, par.subtype;
+group by j.book, j.project_id, j.contact_id, par.subtype;
 
 create table public.distributions (
   id uuid primary key default gen_random_uuid(),
@@ -88,6 +88,7 @@ create table public.distributions (
   status text not null default 'posted' check (status in ('posted')),
   journal_transaction_id uuid references public.transactions,
   adjusts_distribution_id uuid references public.distributions,
+  book text not null default public.current_book() check (book in ('live', 'sandbox')),
   created_by uuid default auth.uid(),
   created_at timestamptz not null default now()
 );
@@ -151,11 +152,11 @@ begin
   share_acct := public.acct(case when (select profit_share_debit from public.settings where id) = 'dividends' then 'dividends' else 'profit_share' end);
   -- an adjustment is dated with the entry that caused it, never before completion
   v_date := greatest((select completed_at::date from public.projects where id = d.project_id), p_date);
-  insert into public.transactions (type, date, number, project_id, distribution_id, adjusts_id, memo)
+  insert into public.transactions (type, date, number, project_id, distribution_id, adjusts_id, memo, book)
   values ('distribution', v_date, public.next_doc_number('distribution', v_date), d.project_id, p_dist,
     (select journal_transaction_id from public.distributions where id = d.adjusts_distribution_id),
     case d.reason when 'completion' then 'Profit split on completion' when 'bad_debt' then 'Profit split adjusted for a bad debt'
-      when 'late_entry' then 'Profit split adjusted for a late entry' else 'Profit split adjustment' end)
+      when 'late_entry' then 'Profit split adjusted for a late entry' else 'Profit split adjustment' end, d.book)
   returning id into v_txn;
   for l in select * from public.distribution_lines where distribution_id = p_dist and amount <> 0 order by component, amount desc loop
     n := n + 1;
@@ -180,8 +181,8 @@ begin
   if p.completed_at is not null then raise exception 'This project is already completed'; end if;
   update public.projects set completed_at = p_date, status = 'completed' where id = p_project;
   v_profit := public.project_profit(p_project);
-  insert into public.distributions (project_id, scheme_id, profit_amount, reason)
-  values (p_project, coalesce(p.scheme_id, public.scheme_on(coalesce(p.start_date, p_date))), v_profit, 'completion') returning id into v_dist;
+  insert into public.distributions (project_id, scheme_id, profit_amount, reason, book)
+  values (p_project, coalesce(p.scheme_id, public.scheme_on(coalesce(p.start_date, p_date))), v_profit, 'completion', p.book) returning id into v_dist;
   insert into public.distribution_lines (distribution_id, contact_id, component, amount)
   select v_dist, s.contact_id, s.component, s.amount from public.split_profit(p_project, v_profit) s;
   perform public._post_distribution(v_dist, p_date);
@@ -208,8 +209,8 @@ begin
              join public.distributions d on d.id = dl.distribution_id where d.project_id = p_project group by 1, 2) p
     on p.contact_id = t.contact_id and p.component = t.component;
   if not exists (select 1 from _split_delta where amount <> 0) then return null; end if;
-  insert into public.distributions (project_id, scheme_id, profit_amount, reason, adjusts_distribution_id)
-  values (p_project, base.scheme_id, v_profit, p_reason, base.id) returning id into v_dist;
+  insert into public.distributions (project_id, scheme_id, profit_amount, reason, adjusts_distribution_id, book)
+  values (p_project, base.scheme_id, v_profit, p_reason, base.id, base.book) returning id into v_dist;
   insert into public.distribution_lines (distribution_id, contact_id, component, amount)
   select v_dist, contact_id, component, amount from _split_delta where amount <> 0;
   perform public._post_distribution(v_dist, coalesce(p_date, public.today_mv()));
@@ -279,7 +280,7 @@ end $$;
 
 /** Each person's statement: principal, financing return and profit share per project, kept apart (§5). */
 create or replace view public.partner_statement_v as
-select j.contact_id, j.project_id,
+select j.book, j.contact_id, j.project_id,
   case par.subtype when 'financing_return_payable' then 'financing_return' when 'profit_share_payable' then 'profit_share' else 'principal' end as component,
   sum(j.home_credit) as accrued,
   sum(j.home_debit) as paid,
@@ -288,7 +289,7 @@ from public.journal_lines j
 join public.accounts a on a.id = j.account_id
 join public.accounts par on par.id = a.parent_id
 where par.subtype in ('project_loans', 'capital_pool_loans', 'financing_return_payable', 'profit_share_payable')
-group by j.contact_id, j.project_id, par.subtype;
+group by j.book, j.contact_id, j.project_id, par.subtype;
 
 create trigger profit_schemes_audit after insert or update or delete on public.profit_schemes for each row execute function public.log_change();
 create trigger scheme_allocations_audit after insert or update or delete on public.scheme_allocations for each row execute function public.log_change();

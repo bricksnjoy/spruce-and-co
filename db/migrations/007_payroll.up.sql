@@ -2,15 +2,17 @@
 
 create table public.payroll_runs (
   id uuid primary key default gen_random_uuid(),
-  period_month date not null unique check (extract(day from period_month) = 1),
+  period_month date not null check (extract(day from period_month) = 1),
   pay_date date not null,
   status text not null default 'draft' check (status in ('draft', 'review', 'approved', 'posted')),
   journal_transaction_id uuid references public.transactions,
   approved_by uuid,
   approved_at timestamptz,
   notes text,
+  book text not null default public.current_book() check (book in ('live', 'sandbox')),
   created_by uuid default auth.uid(),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (book, period_month)
 );
 
 create table public.payslips (
@@ -58,6 +60,7 @@ create table public.advance_recoveries (
 create or replace function public.guard_run_editable() returns trigger language plpgsql as $$
 declare st text; v_run uuid; v_slip uuid;
 begin
+  if tg_op = 'DELETE' and public._purging() then return old; end if;
   if tg_table_name = 'payslips' then
     v_run := case when tg_op = 'DELETE' then old.run_id else new.run_id end;
   else
@@ -177,7 +180,7 @@ declare v_run uuid; e record; v_slip uuid; v_month date := date_trunc('month', p
 begin
   month_end := (v_month + interval '1 month - 1 day')::date;
   insert into public.payroll_runs (period_month, pay_date) values (v_month, p_pay_date) returning id into v_run;
-  for e in select * from public.employees where active and (start_date is null or start_date <= month_end)
+  for e in select * from public.employees where active and book = public.current_book() and (start_date is null or start_date <= month_end)
            and (end_date is null or end_date >= v_month) order by name loop
     insert into public.payslips (run_id, employee_id) values (v_run, e.id) returning id into v_slip;
     insert into public.payslip_lines (payslip_id, pay_item_id, amount)

@@ -2,6 +2,22 @@
 -- Rates are never hard-coded: every GST, pension, withholding-tax and BPT rate
 -- lives in `rates` with the date it took effect.
 
+-- Two books share one database (decision Q2): Live and Test. Every record in
+-- the new books belongs to one; a user works in one at a time, and the
+-- database never mixes them.
+alter table public.profiles add column if not exists active_book text not null default 'live' check (active_book in ('live', 'sandbox'));
+
+/** The book the current user is working in: Live unless they switched to Test. */
+create or replace function public.current_book() returns text language sql stable as $$
+  select coalesce(nullif(current_setting('app.book', true), ''),
+    (select active_book from public.profiles where id = auth.uid()), 'live')
+$$;
+
+/** True only inside the admin's "reset the Test book" function. */
+create or replace function public._purging() returns boolean language sql stable as $$
+  select coalesce(current_setting('app.purging', true), '') = 'on'
+$$;
+
 create table public.settings (
   id boolean primary key default true check (id),
   closing_date date,
@@ -104,23 +120,27 @@ returns numeric language sql stable as $$
 $$;
 
 create table public.document_sequences (
-  type text primary key,
+  book text not null default 'live' check (book in ('live', 'sandbox')),
+  type text not null,
   prefix text not null,
   next_number int not null default 1 check (next_number > 0),
-  pad int not null default 3 check (pad between 1 and 8)
+  pad int not null default 3 check (pad between 1 and 8),
+  primary key (book, type)
 );
 insert into public.document_sequences (type, prefix) values
   ('estimate', 'SC-Q/{YY}/'), ('invoice', 'SC-INV/{YY}/'), ('credit_note', 'SC-CN/{YY}/'),
   ('sales_receipt', 'SC-SR/{YY}/'), ('customer_payment', 'SC-PAY/{YY}/'), ('bill', 'SC-BILL/{YY}/'),
   ('purchase_order', 'SC-PO/{YY}/'), ('bill_payment', 'SC-BP/{YY}/'), ('journal', 'SC-JE/{YY}/'),
   ('payout', 'SC-OUT/{YY}/'), ('payroll_run', 'SC-PR/{YY}/'), ('distribution', 'SC-DIST/{YY}/');
+-- the Test book numbers its own documents, so it never uses a real number
+insert into public.document_sequences (book, type, prefix) select 'sandbox', type, 'TEST-' || prefix from public.document_sequences;
 
 /** Take the next number for a document type; the row lock makes two users at once safe. */
 create or replace function public.next_doc_number(p_type text, p_date date)
 returns text language plpgsql as $$
 declare s public.document_sequences;
 begin
-  update public.document_sequences set next_number = next_number + 1 where type = p_type returning * into s;
+  update public.document_sequences set next_number = next_number + 1 where type = p_type and book = public.current_book() returning * into s;
   if not found then return null; end if;
   return replace(s.prefix, '{YY}', to_char(p_date, 'YY')) || lpad((s.next_number - 1)::text, s.pad, '0');
 end $$;

@@ -25,6 +25,7 @@ create table public.contacts (
   notes text,
   needs_review boolean not null default false,
   active boolean not null default true,
+  book text not null default public.current_book() check (book in ('live', 'sandbox')),
   legacy jsonb not null default '{}',
   created_by uuid default auth.uid(),
   created_at timestamptz not null default now(),
@@ -32,6 +33,7 @@ create table public.contacts (
 );
 create index contacts_kinds on public.contacts using gin (kinds);
 create index contacts_name on public.contacts (lower(name));
+create index contacts_book on public.contacts (book);
 alter table public.accounts add constraint accounts_contact_fk foreign key (contact_id) references public.contacts;
 
 insert into public.contacts (kinds, name, contact_person, email, phone, address, tin, notes, needs_review, active, legacy)

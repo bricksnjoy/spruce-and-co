@@ -8,7 +8,7 @@ drop function if exists public.guard_filed_gst();
 update public.journal_lines set tax_period_id = null where tax_period_id is not null;
 alter table public.transactions drop constraint if exists transactions_tax_period_fk;
 alter table public.journal_lines drop constraint if exists journal_lines_tax_period_fk;
-drop function if exists public.gst_period_for(date);
+drop function if exists public.gst_period_for(date, text);
 drop table if exists public.tax_periods;
 -- the ledger's hooks go back to doing nothing
 create or replace function public._line_frozen(p_period uuid) returns boolean language sql stable as $$ select false $$;

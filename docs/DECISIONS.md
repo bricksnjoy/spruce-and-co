@@ -7,6 +7,9 @@ Your answers to the Phase 1 questions. On 28 Sep 2026 you replied **"defaults OK
 | Date | Phase | Decision |
 |---|---|---|
 | 28 Sep 2026 | Phase 0 (audit) | ✅ Approved: "check using sample data, and approve for next phase". The sample-data check is in AUDIT.md §8 |
+| 28 Sep 2026 | Test database (Q2) | ✅ **(b) live database**, no paid dev copy, with the rule **"make sure they are not mixed"**: every record in the new books belongs to the **Live** or the **Test** book; the database only shows and accepts one book at a time, and test documents are numbered `TEST-…` (migration 013) |
+| 28 Sep 2026 | Browser tests (Q3) | ✅ yes: GitHub Actions. To keep test data out of the live database, CI runs its own throwaway Postgres/Supabase inside the runner, with no secrets and no cost |
+| 28 Sep 2026 | Phase 3 → 4 | ✅ "continue p4" |
 | 28 Sep 2026 | Phase 2 (architecture) | ✅ "continue with 3": plan approved; Phase 3 started. Test database (Q2) and browser-test CI (Q3) are decided at Phase 4 |
 | 28 Sep 2026 | Data | ✅ The records deleted on 27 Sep were **test data**. Nothing is imported from the change log; the ledger starts clean, with real opening balances at 1 Jan 2026 |
 | 28 Sep 2026 | Reference data (R1) | ✅ **Real:** the 4 people, 5 capital-pool members and 4 signatories. **Not confirmed:** 39 vendors, 2 clients, 2 investors. They will be migrated marked "check", so nothing is lost and you can archive test entries |

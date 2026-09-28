@@ -143,7 +143,7 @@ begin
 end $$;
 
 create or replace view public.project_value_v as
-select p.id, p.code, p.name, p.customer_id, p.status, p.completed_at, f.*
+select p.id, p.book, p.code, p.name, p.customer_id, p.status, p.completed_at, f.*
 from public.projects p cross join lateral public.project_figures(p.id) f;
 
 /** Active → Completed → Settled → Closed, derived (§6). */
@@ -169,7 +169,8 @@ create or replace function public.run_wip(p_period_end date) returns int languag
 declare p record; f public.project_figures_t; d numeric; v_id uuid; v_rev uuid; n int := 0; dr uuid; cr uuid;
 begin
   for p in select pr.id, pr.code from public.projects pr
-           where coalesce(pr.recognition_method, (select recognition_default from public.settings where id)) = 'poc'
+           where pr.book = public.current_book()
+             and coalesce(pr.recognition_method, (select recognition_default from public.settings where id)) = 'poc'
              and (pr.completed_at is null or pr.completed_at::date > p_period_end)
              and not exists (select 1 from public.transactions t where t.type = 'wip_adjustment' and t.project_id = pr.id
                              and t.date = p_period_end and t.reverses_id is null and t.voided_at is null) loop

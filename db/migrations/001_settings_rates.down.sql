@@ -1,4 +1,7 @@
 alter table public.profiles drop column if exists can_payroll;
+alter table public.profiles drop column if exists active_book;
+drop function if exists public._purging();
+drop function if exists public.current_book();
 drop function if exists public.next_doc_number(text, date);
 drop table if exists public.document_sequences;
 drop function if exists public.tax_rate(uuid, date);

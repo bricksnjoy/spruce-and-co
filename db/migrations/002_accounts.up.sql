@@ -16,6 +16,8 @@ create table public.accounts (
   budget_category text check (budget_category in ('materials', 'subcontractors', 'labour', 'equipment', 'freight', 'site', 'other')),
   is_system boolean not null default false,
   active boolean not null default true,
+  -- null: shared by both books (the chart); set for a person's own sub-account
+  book text check (book in ('live', 'sandbox')),
   description text,
   created_at timestamptz not null default now()
 );
@@ -105,16 +107,17 @@ end $$;
 /** A person's own sub-account under a parent (created the first time it is needed). */
 create or replace function public.sub_account(p_parent_subtype text, p_contact uuid)
 returns uuid language plpgsql as $$
-declare parent public.accounts; v uuid; nm text; n int;
+declare parent public.accounts; v uuid; nm text; bk text; n int;
 begin
   if p_contact is null then raise exception 'A % line needs a contact', p_parent_subtype; end if;
   select * into parent from public.accounts where id = public.acct(p_parent_subtype);
   select id into v from public.accounts where parent_id = parent.id and contact_id = p_contact;
   if v is not null then return v; end if;
-  execute 'select name from public.contacts where id = $1' into nm using p_contact;
+  execute 'select name, book from public.contacts where id = $1' into nm, bk using p_contact;
   select count(*) + 1 into n from public.accounts where parent_id = parent.id;
-  insert into public.accounts (code, name, type, parent_id, contact_id, currency, is_system)
-  values (parent.code || '-' || lpad(n::text, 2, '0'), parent.name || ' – ' || coalesce(nm, 'contact'), parent.type, parent.id, p_contact, parent.currency, true)
+  insert into public.accounts (code, name, type, parent_id, contact_id, currency, is_system, book)
+  values (parent.code || '-' || lpad(n::text, 2, '0') || case when bk = 'sandbox' then 'T' else '' end,
+    parent.name || ' – ' || coalesce(nm, 'contact'), parent.type, parent.id, p_contact, parent.currency, true, bk)
   returning id into v;
   return v;
 end $$;
@@ -122,6 +125,7 @@ end $$;
 /** System accounts keep their type and purpose; a sub-account shares its parent's type. */
 create or replace function public.guard_account() returns trigger language plpgsql as $$
 begin
+  if tg_op = 'DELETE' and public._purging() and old.book = 'sandbox' then return old; end if;
   if tg_op = 'DELETE' then
     if old.is_system then raise exception '% is a system account and cannot be deleted; make it inactive instead', old.name; end if;
     return old;
