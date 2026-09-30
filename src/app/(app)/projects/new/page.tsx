@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export default async function NewProjectPage() {
   const supabase = await createClient();
-  const [{ data: clients }, { data: code }] = await Promise.all([
-    supabase.from("clients").select("id, name").order("name"),
+  const [{ data: customers }, { data: code }] = await Promise.all([
+    supabase.from("contacts").select("id, name").contains("kinds", ["customer"]).eq("active", true).order("name"),
     supabase.rpc("next_project_code"),
   ]);
 
@@ -23,7 +23,7 @@ export default async function NewProjectPage() {
       <Card className="p-6">
         <ProjectForm
           mode="create"
-          clients={clients ?? []}
+          customers={customers ?? []}
           nextCode={(code as string | null) ?? undefined}
         />
       </Card>

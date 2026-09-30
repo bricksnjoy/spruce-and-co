@@ -84,7 +84,8 @@ Not verified here: clicking through the screens against the live database. This 
 | Review of copied contacts | "Confirm it is real" clears the flag; Archive is refused while the contact has an open balance; Restore | build, types |
 
 Migration 016 applied to Live. Tests: **84 passing**. `tsc`, `eslint` and `next build` are clean.
-Until cut-over the old Clients and Shops screens still write to the old tables; a client added there does not appear under Customers. Module 3 (Projects) moves project customers onto the new contacts.
+**Clients merged into Customers (migration 017):** the Clients screen is removed and `/clients` opens Customers. The project form picks a customer (or adds one). Every Live customer has a mirrored row in the old `clients` table, which quotations, invoices and the estimator still read; a client added by one of those older screens appears as a customer; a project's customer and old client field always agree. Checked by `customers-clients.test` (4 cases). On Live: 2 clients = 2 customers, none unmirrored. Tests: **88 passing**.
+The old Shops screen still writes to its own table until the Expenses module.
 
 ## Still open
 

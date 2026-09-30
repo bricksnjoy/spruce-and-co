@@ -14,9 +14,9 @@ export default async function EditProjectPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: project }, { data: clients }] = await Promise.all([
+  const [{ data: project }, { data: customers }] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).maybeSingle(),
-    supabase.from("clients").select("id, name").order("name"),
+    supabase.from("contacts").select("id, name").contains("kinds", ["customer"]).eq("active", true).order("name"),
   ]);
 
   if (!project) notFound();
@@ -32,12 +32,12 @@ export default async function EditProjectPage({
       <Card className="p-6">
         <ProjectForm
           mode="edit"
-          clients={clients ?? []}
+          customers={customers ?? []}
           values={{
             id: project.id,
             code: project.code,
             name: project.name,
-            client_id: project.client_id,
+            customer_id: project.customer_id,
             status: project.status,
             description: project.description,
             site_address: project.site_address,
