@@ -148,7 +148,9 @@ test("a project from customer to payouts, through the screens", async ({ page })
   for (const b of all) await b.click();
   await pick(page, "Paid from", /1010/);
   await page.getByRole("button", { name: /Approve and pay/ }).click();
-  await expect(page.getByText("Paid.")).toBeVisible();
+  // the payout shows in the history as paid (the Pay out card goes once nothing is owed)
+  const code = sql(`select code from projects where id = '${projectId}'`);
+  await expect(page.getByRole("row").filter({ hasText: `${code} · Profit share` }).getByText("paid", { exact: true })).toBeVisible();
   const owed = sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${mujahid}' and project_id = '${projectId}'`);
   expect(Number(owed)).toBe(0);
 
