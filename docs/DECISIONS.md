@@ -13,6 +13,7 @@ Your answers to the Phase 1 questions. On 28 Sep 2026 you replied **"defaults OK
 | 28 Sep 2026 | Phase 2 (architecture) | ✅ "continue with 3": plan approved; Phase 3 started. Test database (Q2) and browser-test CI (Q3) are decided at Phase 4 |
 | 28 Sep 2026 | Data | ✅ The records deleted on 27 Sep were **test data**. Nothing is imported from the change log; the ledger starts clean, with real opening balances at 1 Jan 2026 |
 | 28 Sep 2026 | Reference data (R1) | ✅ **Real:** the 4 people, 5 capital-pool members and 4 signatories. **Not confirmed:** 39 vendors, 2 clients, 2 investors. They will be migrated marked "check", so nothing is lost and you can archive test entries |
+| 30 Sep 2026 | Pension (Y3) | ✅ **0% employee and 0% employer from 1 Jan 2026**, entered by you in Settings → Taxes & rates: no pension is deducted or paid for now. When pension starts, add the new rates from the date they apply (the 7% rates from 2020 stay on record, replaced) |
 | 28 Sep 2026 | Phase 1 (questions and features) | ✅ "defaults OK": all suggested defaults and ★ feature picks accepted |
 
 ---
@@ -49,7 +50,7 @@ Your answers to the Phase 1 questions. On 28 Sep 2026 you replied **"defaults OK
 |---|---|---|---|
 | Y1 | Pay cycle and pay day? | **Monthly, paid on the last working day** | ✅ |
 | Y2 | How many staff: Maldivian vs expatriate, site vs admin? | Please tell me; it sizes the forms, not the design | 📝 headcount still needed; the design does not depend on it |
-| Y3 | Pension rates and who they apply to? | **Maldivian staff only: 7% employee + 7% employer**, entered as effective-dated settings. **Please confirm against the current MRPS rules** | ✅ 7% + 7% Maldivians · 📝 confirm the rates before the first payroll run |
+| Y3 | Pension rates and who they apply to? | **Maldivian staff only: 7% employee + 7% employer**, entered as effective-dated settings. **Please confirm against the current MRPS rules** | ✅ 0% + 0% from 1 Jan 2026 for now (30 Sep); to be updated if pension starts |
 | Y4 | Do we withhold income tax from salaries? Which brackets? | **Yes: employee withholding tax with MIRA's brackets entered as a dated table.** Please confirm the brackets and thresholds you use | ✅ withhold · 📝 brackets to be entered in Settings before the first payroll run |
 | Y5 | Which allowances? Overtime rules? | **Island/site, living, transport, phone**; overtime at an hourly rate × a multiplier set per employee | ✅ |
 | Y6 | Site labour to projects: timesheets or fixed %? | **Fixed % per employee per month** (timesheets as an optional feature) | ✅ |
