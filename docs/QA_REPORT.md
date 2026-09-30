@@ -211,6 +211,16 @@ The old Capital Pool, Investors, Project Financing, Internal Account and Profit 
 Migration 026 applied to Live (health 13/13; the new Live ledger has no postings yet, so 10 and 11 read 0 = 0). Tests: **143 passing**; `tsc`, `eslint`, `next build` clean.
 Report builders that read through the API (lists, aging, payroll) are type-checked but not run against a database here; the statement functions under them are tested. The old Overview, Ledger, Self-audit and Financial statements screens stay, marked "(old)", Live only.
 
+## Phase 4 · Module 11 — Dashboard (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Dashboard `/` | Cash and bank; what customers owe and what is owed to vendors, with overdue; profit this month (revenue) and year to date; cash by account with reconciliation due; GST this quarter to date, due date and any filed-but-unpaid; next payroll (payroll permission); payouts ready, blocked and awaiting approval; accounts not reconciled to last month end; active projects by value with billed and forecast profit | build, types |
+| Cash-flow forecast (feature) | 12 weeks: open invoices and bills by due date, salaries and payroll taxes owed, payroll repeating the last run, GST due, released payouts; chart of cash at each week end with a hover tooltip, and `/reports/cash-forecast` week by week (CSV, Excel, print) | `cash-forecast.test` |
+| Test book | The dashboard now reads the new ledger, so it works in the Test book too | `money.test` (book routes) |
+
+No migration. Tests: **146 passing**; `tsc`, `eslint`, `next build` clean. The old dashboard's "Upcoming tasks" box is not carried over; tasks stay on Tasks & Calendar.
+
 ## Still open
 
 | Item | Why | When |

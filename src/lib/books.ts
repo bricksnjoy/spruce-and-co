@@ -8,6 +8,7 @@ export type Book = "live" | "sandbox";
 
 /** Screens that follow the book you are in. Grows as each module is rebuilt. */
 export const BOOK_AWARE: string[] = [
+  "/",
   "/settings",
   "/accounting/chart",
   "/accounting/health",

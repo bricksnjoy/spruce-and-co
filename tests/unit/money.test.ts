@@ -47,7 +47,9 @@ describe("which screens work in the Test book", () => {
     expect(worksInTest("/projects/abc/legacy")).toBe(false);
     expect(worksInTest("/sales/customers/1")).toBe(true);
     expect(worksInTest("/quotations")).toBe(false);
-    expect(worksInTest("/")).toBe(false);
+    // the dashboard reads the new ledger; "/" must not open every route
+    expect(worksInTest("/")).toBe(true);
+    expect(worksInTest("/capital-pool")).toBe(false);
     expect(worksInTest("/projectsX")).toBe(false);
   });
 });

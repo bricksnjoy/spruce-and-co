@@ -7,6 +7,7 @@ import { BOOK_AWARE, worksInTest, type Book } from "@/lib/books";
 import { BookSwitch } from "./book-switch";
 
 const NAMES: Record<string, string> = {
+  "/": "Dashboard",
   "/settings": "Settings",
   "/accounting/chart": "Chart of accounts",
   "/accounting/health": "Health check",

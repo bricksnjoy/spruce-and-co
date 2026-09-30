@@ -4,6 +4,7 @@ import { date, titleize } from "@/lib/format";
 import { rangeLabel } from "@/lib/report-period";
 import { periodLabel } from "@/lib/gst";
 import { profitOf, type Col, type Row } from "@/lib/report-model";
+import { FLOW_LABEL, loadForecast } from "@/server/dashboard";
 import { BUCKETS, daysPast, glHref, names, tb, txnHref, type Params, type ReportDef } from "./common";
 
 const L = (v: number | string | null | undefined) => dbToLaari(v ?? 0);
@@ -502,6 +503,20 @@ export const lists: ReportDef[] = [
       for (const a of owe) { const v = bal.get(a.id) ?? 0n; if (v) rows.push({ cells: { label: a.name, amount: -v }, href: glHref(a.id, { from: "2000-01-01", to: p.today }) }); }
       rows.push({ cells: { label: "Expected position in 30 days", amount: rows.filter((r) => r.style !== "section" && r.style !== "indent" && r.style !== "subtotal" && typeof r.cells.amount === "bigint").reduce((t, r) => t + (r.cells.amount as bigint), cashTotal) }, style: "total" });
       return { title: "Cash Position", subtitle: `As at ${date(p.today)}`, columns: [text("label", ""), money("amount", "Amount")], rows };
+    },
+  },
+  {
+    key: "cash-forecast", title: "Cash-Flow Forecast (12 weeks)", group: "Banking and control", filters: [],
+    description: "Expected receipts against bills, payroll, GST and payouts, week by week, with the running cash balance",
+    async build(s, p) {
+      const fc = await loadForecast(s, p.today);
+      const kinds = Object.keys(FLOW_LABEL).filter((k) => fc.weeks.some((w) => w.byKind[k]));
+      const rows: Row[] = [{ cells: { label: "Cash now", closing: fc.cash }, style: "muted" }];
+      for (const w of fc.weeks) rows.push({ cells: { label: `${date(w.start)} – ${date(w.end)}`, ...Object.fromEntries(kinds.map((k) => [k, w.byKind[k] ?? 0n])),
+        net: w.net, closing: w.closing }, style: w.closing < 0n ? "muted" : undefined });
+      rows.push(sumRow(rows.slice(1), [...kinds, "net"]));
+      return { title: "Cash-Flow Forecast", subtitle: `12 weeks from ${date(p.today)}`, columns: [text("label", "Week"), ...kinds.map((k) => money(k, FLOW_LABEL[k])),
+        money("net", "Net"), money("closing", "Cash at week end")], rows, notes: fc.notes };
     },
   },
   {
