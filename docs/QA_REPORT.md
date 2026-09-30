@@ -194,6 +194,23 @@ The old Tax and GST Input Schedule screens stay in the menu, marked "(old)", Liv
 Migration 025 applied to Live (no payouts existed; health 13/13). Tests: **127 passing**; `tsc`, `eslint`, `next build` clean.
 The old Capital Pool, Investors, Project Financing, Internal Account and Profit Share screens stay in the menu, marked "(old)", Live only, until cut-over. Their records have not been copied into the new ledger: financing is recorded afresh per project (see Still open).
 
+## Phase 4 · Module 10 — Reports & Statements (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Reports `/reports` | Every report by group, with saved views; year-end pack for the auditor (print/PDF and Excel) | build, types |
+| Every report `/reports/[key]` | Date presets (month, quarter, financial year, year to date, last year, custom), comparison with the previous period or the same period last year, filters (project, customer/vendor, account), drill-down from each figure to the general ledger and on to the document; CSV, Excel and print/PDF; save a view | `report-period.test`, `report-model.test` |
+| Financial statements | Profit or loss (total, by month, by quarter, by project; % of revenue); financial position (as at a date, prior-year comparison, profit brought forward apart from this year's); cash flows (indirect, with a direct summary); changes in equity; trial balance (opening, movement, closing) | `reports.test`, `report-model.test` |
+| Notes schedules | Loans, related-party balances, payroll costs, business profit tax (from the rate brackets), GST control, receivables aging, payables | `reports.test` (ledger figures) |
+| Projects | Value summary, WIP / over-under billing, cost by category, labour by project, variations register | build, types |
+| Sales / Expenses | AR and AP aging (summary, detail), customer and vendor balances, collections, sales by customer/project, expenses by category/vendor/project | build, types |
+| Payroll (payroll permission only) | Summary by month, by employee, pension and withholding-tax schedules, staff advances | build, types |
+| Tax / Partners / Control | GST control reconciliation and filing history; financing summary, payouts pending/blocked; cash position, general ledger, journal, audit log | build, types |
+| Health checks 10 and 11 | Now test the cash-flow statement against the cash accounts, and the equity statement against net assets | `reports.test` (every test ends with the health check) |
+
+Migration 026 applied to Live (health 13/13; the new Live ledger has no postings yet, so 10 and 11 read 0 = 0). Tests: **143 passing**; `tsc`, `eslint`, `next build` clean.
+Report builders that read through the API (lists, aging, payroll) are type-checked but not run against a database here; the statement functions under them are tested. The old Overview, Ledger, Self-audit and Financial statements screens stay, marked "(old)", Live only.
+
 ## Still open
 
 | Item | Why | When |
@@ -202,6 +219,8 @@ The old Capital Pool, Investors, Project Financing, Internal Account and Profit 
 | Save/void RPCs called by the screens | Written per module | Phase 4 |
 | End-to-end browser tests | Need a reachable Supabase (Q3) | Phase 4–5 |
 | Withholding-tax brackets, pension-rate confirmation, GST due day | Your figures (📝) | Before the first real payroll / GST filing |
-| Assumptions I1–I11 | Your confirmation | Any time |
+| Assumptions I1–I13 | Your confirmation | Any time |
+| Cash-basis toggle on reports | The statements are accrual (IFRS for SMEs, F1); a cash-basis view needs your rule for part-paid invoices and bills | Ask |
+| Aging as at a past date | Aging is as at today | Phase 5 if wanted |
 | Old financing records (capital-pool entries, investors, project financing sources) into the new ledger | Needs your check of each figure; nothing is copied without it | Phase 5 cut-over |
 | Estimates in the new books (convert a quotation to a new-ledger invoice); e-mail invoices and overdue reminders (feature H) | Quotations have their own templates and signatures; kept as they are until switch-over | Phase 5 cut-over |

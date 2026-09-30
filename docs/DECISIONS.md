@@ -150,4 +150,6 @@ The spec and your answers did not cover these. Each is built as a setting or a s
 | I8 | An adjustment to a split (bad debt, late entry) is **dated with the entry that caused it** | distributions | — |
 | I9 | Retention is **off** (B1), so the engine does not post retention yet; it is added when you switch it on | — | — |
 | I10 | **Every payout needs an admin's approval** (feature: approval workflows). A payout an admin records is approved as it is saved; anyone else's waits. A changed payout needs approving again | payout approval | tell me if a limit should apply, like bills |
+| I12 | In the cash-flow statement, paying partners' and lenders' **financing returns and profit shares is a financing activity** (IFRS for SMEs allows either) | cash flow | tell me if they should be operating |
+| I13 | Liabilities are shown **together** on the balance sheet (loan terms are not recorded, so no current / non-current split); fixed assets are the only non-current assets | balance sheet | give me the loan terms |
 | I11 | A new profit-share scheme version applies to every project that **starts on or after its date and has not been split yet**; it cannot start before a project already split | scheme versions | — |
