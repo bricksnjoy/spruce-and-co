@@ -20,6 +20,7 @@ export interface ProjectFormValues {
   start_date?: string | null;
   duration_days?: number | null;
   progress_pct?: number;
+  recognition_method?: string | null;
 }
 
 const input =
@@ -163,6 +164,16 @@ export function ProjectForm({
           <input id="progress_pct" name="progress_pct" type="number" min="0" max="100"
             defaultValue={values.progress_pct ?? 0} className={input} />
         </div>
+      </div>
+
+      <div className="sm:w-1/2">
+        <label htmlFor="recognition_method" className={label}>Revenue is recognised</label>
+        <select id="recognition_method" name="recognition_method" defaultValue={values.recognition_method ?? ""} className={input}>
+          <option value="">Company default (Settings → Accounting)</option>
+          <option value="billing">As it is billed</option>
+          <option value="poc">By percentage of completion</option>
+        </select>
+        <p className="mt-1 text-xs text-[var(--muted)]">Percentage of completion posts WIP at each period end from cost to date.</p>
       </div>
 
       <div>

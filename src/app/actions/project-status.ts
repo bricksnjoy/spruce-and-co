@@ -8,7 +8,7 @@ import { today } from "@/lib/format";
 export type StatusResult = { error?: string; ok?: boolean };
 
 const refresh = (projectId: string) => {
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   revalidatePath("/projects");
   revalidatePath("/internal");
   revalidatePath("/pnl");
@@ -279,7 +279,7 @@ export async function setShareDisposition(_prev: unknown, fd: FormData): Promise
   if (error) return { error: error.message };
 
 
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   revalidatePath("/internal");
   return { ok: true };
 }

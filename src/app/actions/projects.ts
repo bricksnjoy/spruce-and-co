@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isLocked, LOCKED } from "@/lib/project-lock";
+import { moneyToDb, percentToDb } from "@/lib/money";
 
 export type Result = { error?: string; ok?: boolean };
 
@@ -12,10 +13,13 @@ const text = (fd: FormData, k: string) => {
   return v === "" ? null : v;
 };
 
-const number = (fd: FormData, k: string) => {
-  const raw = String(fd.get(k) ?? "").replace(/[^0-9.-]/g, "");
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+/** An amount as the database's exact decimal string (never a float); blank is 0. */
+const amount = (fd: FormData, k: string) => moneyToDb(String(fd.get(k) ?? "").replace(/[^0-9.,-]/g, "")) ?? "0.00";
+const percent = (fd: FormData, k: string) => percentToDb(String(fd.get(k) ?? "")) ?? "0";
+/** Blank means "use the company default" (Settings → Accounting). */
+const recognition = (fd: FormData) => {
+  const v = text(fd, "recognition_method");
+  return v === "billing" || v === "poc" ? v : null;
 };
 
 const int = (fd: FormData, k: string) => {
@@ -94,12 +98,13 @@ export async function createProject(_prev: unknown, fd: FormData): Promise<Resul
       status: text(fd, "status") ?? "in_progress",
       description: text(fd, "description"),
       site_address: text(fd, "site_address"),
-      contract_value: number(fd, "contract_value"),
-      gst_amount: number(fd, "gst_amount"),
+      contract_value: amount(fd, "contract_value"),
+      gst_amount: amount(fd, "gst_amount"),
       start_date: start,
       duration_days: days,
       end_date: endDate(start, days),
-      progress_pct: number(fd, "progress_pct"),
+      progress_pct: percent(fd, "progress_pct"),
+      recognition_method: recognition(fd),
     })
     .select("id")
     .single();
@@ -139,12 +144,13 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
       status: text(fd, "status") ?? "in_progress",
       description: text(fd, "description"),
       site_address: text(fd, "site_address"),
-      contract_value: number(fd, "contract_value"),
-      gst_amount: number(fd, "gst_amount"),
+      contract_value: amount(fd, "contract_value"),
+      gst_amount: amount(fd, "gst_amount"),
       start_date: start,
       duration_days: days,
       end_date: endDate(start, days),
-      progress_pct: number(fd, "progress_pct"),
+      progress_pct: percent(fd, "progress_pct"),
+      recognition_method: recognition(fd),
     })
     .eq("id", id);
 
@@ -153,7 +159,7 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
     return { error: error.message };
   }
 
-  revalidatePath(`/projects/${id}`);
+  revalidatePath(`/projects/${id}`, "layout");
   revalidatePath("/projects");
   revalidatePath("/pnl");
   revalidatePath("/");

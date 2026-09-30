@@ -240,7 +240,7 @@ export async function saveBills(_prev: unknown, fd: FormData): Promise<SaveResul
   const { error } = await supabase.from("bills").insert(rows);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   revalidatePath("/pnl");
   revalidatePath("/projects");
   revalidatePath("/gst");

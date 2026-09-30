@@ -37,3 +37,28 @@ describe("money typed into forms", () => {
     expect(rows.map((r) => r.running)).toEqual([10010n, 9990n]);
   });
 });
+
+import { worksInTest } from "@/lib/books";
+describe("which screens work in the Test book", () => {
+  it("allows the rebuilt screens and keeps the old ones Live only", () => {
+    expect(worksInTest("/projects")).toBe(true);
+    expect(worksInTest("/projects/abc")).toBe(true);
+    expect(worksInTest("/projects/abc/legacy")).toBe(false);
+    expect(worksInTest("/sales/customers/1")).toBe(true);
+    expect(worksInTest("/quotations")).toBe(false);
+    expect(worksInTest("/")).toBe(false);
+    expect(worksInTest("/projectsX")).toBe(false);
+  });
+});
+
+import { percentOf } from "@/lib/money";
+describe("a percentage of an amount", () => {
+  it("rounds to the laari, half away from zero", () => {
+    expect(percentOf(12000000n, "25")).toBe(3000000n);
+    expect(percentOf(100n, "33.3333")).toBe(33n);
+    expect(percentOf(1n, "50")).toBe(1n);          // 0.5 laari rounds up
+    expect(percentOf(-1n, "50")).toBe(-1n);
+    expect(percentOf(999n, "8")).toBe(80n);        // 79.92
+    expect(percentOf(5n, "abc")).toBe(0n);
+  });
+});

@@ -10,7 +10,7 @@ const fmt = (n: number) =>
   new Intl.NumberFormat("en-MV", { style: "currency", currency: "MVR" }).format(n);
 
 const refresh = (projectId: string, investorId: string) => {
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   revalidatePath(`/investors/${investorId}`);
   revalidatePath("/investors");
   revalidatePath("/internal");

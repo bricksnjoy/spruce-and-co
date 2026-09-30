@@ -1,392 +1,197 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
-import {
-  Card, CardHeader, PageHeader, Stat, Badge, Table, Th, Td, Empty,
-} from "@/components/ui";
-import { extractionAvailable } from "@/lib/extract-bill";
-import { money, num, pct } from "@/lib/format";
-import type { ProjectPnl } from "@/lib/types";
-import { StatusBar } from "./status-bar";
-import { VariationsPanel } from "./variations-panel";
-import { BillsPanel } from "./bills-panel";
-import { InvestmentsPanel, type InvestmentRow } from "./investments-panel";
-import { ProfitShareCard, type ShareLine } from "./profit-share-card";
-import { ProjectViews } from "./project-views";
+import { notFound, redirect } from "next/navigation";
+import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
+import { canWrite, getSession, type Session } from "@/server/session";
+import { date, money, pct, titleize, today } from "@/lib/format";
+import { dbToLaari, laariToNumber } from "@/lib/money";
+import { docStatus, type DocBalance } from "@/lib/doc-status";
+import { STAGE_LABEL, type ProjectFigures } from "@/lib/project-figures";
+import { BudgetEditor, type BudgetLine } from "./budget-editor";
+import { VariationRows, NewVariation, type VariationRow } from "./variation-forms";
+import { BillingPlan, type Stage } from "./billing-plan";
 import { ArchiveButton } from "./archive-button";
-import { QuotationsPanel, type ProjectDoc } from "./quotations-panel";
-import { VIEW_COOKIE, type ProjectView } from "@/lib/project-view";
 
 export const dynamic = "force-dynamic";
-// bill reading waits on Google, and retries when it is busy
-export const maxDuration = 60;
 
-export default async function ProjectDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
+const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
+const TABS: [string, string][] = [["overview", "Overview"], ["value", "Value & budget"], ["variations", "Variations"], ["billing", "Billing plan"], ["transactions", "Transactions"]];
+
+export default async function ProjectPage({ params, searchParams }: {
+  params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }>;
 }) {
-  const { id } = await params;
-  const supabase = await createClient();
-
-  const { data: pnlRow } = await supabase
-    .from("project_pnl")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (!pnlRow) notFound();
-  const p = pnlRow as ProjectPnl;
-
-  const [
-    { data: project },
-    { data: budget },
-    { data: bills },
-    { data: splits },
-    { data: variations },
-    { data: categories },
-    { data: company },
-    { data: financingSources },
-    { data: directory },
-    { data: poolSummary },
-    { data: dispositions },
-    { data: investorBalances },
-    { data: projectQuotes },
-    { data: projectInvoices },
-  ] = await Promise.all([
-    supabase.from("projects").select("*, clients(name)").eq("id", id).single(),
-    supabase.from("budget_lines").select("*, cost_categories(name)").eq("project_id", id),
-    supabase.from("bills")
-      .select("*, vendors(name, tin), cost_categories(name)")
-      .eq("project_id", id)
-      .order("issue_date", { ascending: false }),
-    supabase
-      .from("project_profit_split")
-      .select("*")
-      .eq("project_id", id)
-      .order("sort_order"),
-    supabase.from("variations").select("*").eq("project_id", id).order("raised_date"),
-    supabase.from("cost_categories").select("id, name").order("sort_order"),
-    supabase.from("company").select("taxable_activity_no, gst_registered").eq("id", true).maybeSingle(),
-    supabase
-      .from("project_financing_sources")
-      .select("id, name, source_type, investor_id, amount, funded_on")
-      .eq("project_id", id)
-      .in("source_type", ["investor", "capital_pool"])
-      .order("funded_on", { ascending: false }),
-    supabase.from("investors").select("id, name").order("name"),
-    // company retained profit accrued, and all company capital already put into
-    // projects — the difference is what is free to reinvest
-    supabase.from("finance_summary").select("pool_total, pool_deployed").maybeSingle(),
-    supabase
-      .from("internal_account_entries")
-      .select("share_name, disposition")
-      .eq("project_id", id)
-      .eq("entry_type", "accrual"),
-    supabase
-      .from("investor_balances")
-      .select("investor_id, paid_at")
-      .eq("project_id", id),
-    supabase
-      .from("quotations")
-      .select("id, number, issue_date, status, title")
-      .eq("project_id", id)
-      .order("seq", { ascending: false }),
-    supabase
-      .from("invoices")
-      .select("id, number, issue_date, status, title, quotation_id")
-      .eq("project_id", id)
-      .order("seq"),
-  ]);
-
-  // what each quotation and invoice comes to, with tax
-  const [{ data: qTotals }, { data: iTotals }] = await Promise.all([
-    projectQuotes?.length
-      ? supabase.from("quotation_totals").select("quotation_id, total").in("quotation_id", projectQuotes.map((q) => q.id))
-      : Promise.resolve({ data: [] as { quotation_id: string; total: number }[] }),
-    projectInvoices?.length
-      ? supabase.from("invoice_totals").select("invoice_id, total").in("invoice_id", projectInvoices.map((i) => i.id))
-      : Promise.resolve({ data: [] as { invoice_id: string; total: number }[] }),
-  ]);
-  const qTotal = new Map((qTotals ?? []).map((t) => [t.quotation_id, num(t.total)]));
-  const iTotal = new Map((iTotals ?? []).map((t) => [t.invoice_id, num(t.total)]));
-  const projectDocs: ProjectDoc[] = [
-    ...(projectQuotes ?? []).map((q) => ({
-      id: q.id, kind: "quotation" as const, number: q.number, issue_date: q.issue_date,
-      status: q.status, title: q.title, total: qTotal.get(q.id) ?? 0, parent: null,
-    })),
-    ...(projectInvoices ?? []).map((i) => ({
-      id: i.id, kind: "invoice" as const, number: i.number, issue_date: i.issue_date,
-      status: i.status, title: i.title, total: iTotal.get(i.id) ?? 0, parent: i.quotation_id,
-    })),
-  ];
-
-  const paidAt = Object.fromEntries(
-    (investorBalances ?? []).map((b) => [b.investor_id as string, (b.paid_at as string | null) ?? null]),
-  );
-
-  const investmentRows: InvestmentRow[] = (financingSources ?? []).map((s) => ({
-    id: s.id,
-    name: s.name,
-    source_type: s.source_type as InvestmentRow["source_type"],
-    investor_id: (s.investor_id as string | null) ?? null,
-    amount: num(s.amount),
-    funded_on: s.funded_on ?? null,
-  }));
-  // what the capital pool holds, less what is already reinvested elsewhere
-  const availableCapital =
-    Math.round((num(poolSummary?.pool_total) - num(poolSummary?.pool_deployed)) * 100) / 100;
-
-  // sign the stored bill photos so they can be shown without making the
-  // bucket public
-  const paths = (bills ?? []).map((b) => b.attachment_path).filter(Boolean) as string[];
-  const signed = paths.length
-    ? (await supabase.storage.from("bills").createSignedUrls(paths, 60 * 60)).data ?? []
-    : [];
-  const urlByPath = new Map(
-    signed.filter((s) => s.signedUrl).map((s) => [s.path as string, s.signedUrl]),
-  );
-
-  const billRows = (bills ?? []).map((b) => ({
-    id: b.id,
-    bill_no: b.bill_no,
-    shop: (b.vendors as unknown as { name: string } | null)?.name ?? b.description ?? null,
-    vendor_id: b.vendor_id ?? null,
-    supplier_tin: (b.vendors as unknown as { tin: string | null } | null)?.tin ?? null,
-    description: b.description,
-    category_id: b.category_id ?? "",
-    category: (b.cost_categories as unknown as { name: string } | null)?.name ?? null,
-    issue_date: b.issue_date,
-    subtotal: num(b.subtotal),
-    tax_amount: num(b.tax_amount),
-    total: num(b.total),
-    gst_rate: num(b.gst_rate),
-    taxable_activity_no: b.taxable_activity_no,
-    expense_class: b.expense_class ?? "revenue",
-    photo_url: b.attachment_path ? urlByPath.get(b.attachment_path) ?? null : null,
-  }));
-
-  const variationRows = (variations ?? []).map((v) => ({
-    id: v.id,
-    ref: v.ref,
-    description: v.description,
-    cost_impact: num(v.cost_impact),
-    time_impact_days: num(v.time_impact_days),
-    raised_date: v.raised_date,
-  }));
-
-  const dispByShare = new Map<string, "withdraw" | "retain">();
-  for (const d of dispositions ?? []) {
-    dispByShare.set(d.share_name as string, (d.disposition as "withdraw" | "retain") ?? "withdraw");
-  }
-  const completed = Boolean(project.completed_at);
-  // finished and paid for: the profit is shared out and the pool credited, so
-  // nothing about the project may change underneath those figures
-  const locked = completed && Boolean(project.payment_received_at);
-  const shares: ShareLine[] = (splits ?? []).map((s) => ({
-    share_name: s.share_name,
-    share_kind: s.share_kind,
-    pct: num(s.pct),
-    share_amount: num(s.share_amount),
-    parent_share: (s.parent_share as string | null) ?? null,
-    disposition: completed ? dispByShare.get(s.share_name) ?? "withdraw" : null,
-  }));
-
-  // budget vs actual, by cost category
-  const byCat = new Map<string, { budget: number; actual: number }>();
-  for (const b of budget ?? []) {
-    const cat = (b.cost_categories as unknown as { name: string } | null)?.name ?? "Uncategorised";
-    const row = byCat.get(cat) ?? { budget: 0, actual: 0 };
-    row.budget += num(b.budget_amount);
-    byCat.set(cat, row);
-  }
-  for (const b of bills ?? []) {
-    if (["void", "draft"].includes(b.status)) continue;
-    const cat = (b.cost_categories as unknown as { name: string } | null)?.name ?? "Uncategorised";
-    const row = byCat.get(cat) ?? { budget: 0, actual: 0 };
-    row.actual += num(b.total);
-    byCat.set(cat, row);
-  }
-  const costRows = [...byCat.entries()].sort((a, b) => b[1].actual - a[1].actual);
-
-  const client = project?.clients as unknown as { name: string } | null;
-  const revised = num(p.value) + num(p.variation);
-  const initialView: ProjectView =
-    (await cookies()).get(VIEW_COOKIE)?.value === "boxes" ? "boxes" : "classic";
+  const s = await getSession();
+  if (!s) redirect("/login");
+  const [{ id }, { tab }] = await Promise.all([params, searchParams]);
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const { data: f } = await s.supabase.from("project_list_v").select("*").eq("id", id).maybeSingle();
+  if (!f) notFound();
+  const p = f as ProjectFigures;
+  const active = TABS.some(([k]) => k === tab) ? tab! : "overview";
+  const writer = canWrite(s.role);
 
   return (
-    <div>
-      <div className="mb-2">
-        <Link href="/projects" className="text-xs text-[var(--muted)] hover:underline">
-          ← Projects
-        </Link>
+    <div className="max-w-6xl space-y-5">
+      <div>
+        <Link href="/projects" className="text-xs text-[var(--muted)] hover:underline">← Projects</Link>
       </div>
-      <PageHeader
-        title={p.project_name}
-        subtitle={`${p.code}${client?.name ? ` · ${client.name}` : ""}`}
+      <PageHeader title={p.name}
+        subtitle={`${p.code}${p.customer_name ? ` · ${p.customer_name}` : ""} · ${STAGE_LABEL[p.stage] ?? p.stage}`}
         action={
-          <div className="flex items-center gap-3">
-            {project.archived_at && <Badge value="archived" />}
-            <Badge value={p.status} />
-            {!locked && (
-              <Link
-                href={`/projects/${id}/edit`}
-                className="rounded-lg border border-[var(--border)] bg-[var(--field)] px-3.5 py-2 text-sm font-medium transition-colors hover:bg-[var(--hover)]"
-              >
-                Edit project
-              </Link>
-            )}
-            <ArchiveButton id={id} archived={Boolean(project.archived_at)} />
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {p.customer_id && <Link href={`/sales/customers/${p.customer_id}`} className="font-medium text-[var(--brand)] hover:underline">Customer</Link>}
+            {s.book === "live" && <Link href={`/projects/${id}/legacy`} className="font-medium text-[var(--brand)] hover:underline">Old view</Link>}
+            {writer && <Link href={`/projects/${id}/edit`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Edit</Link>}
+            {writer && <ArchiveButton id={id} archived={Boolean(p.archived_at)} />}
           </div>
-        }
-      />
+        } />
 
-      <StatusBar
-        projectId={id}
-        completedAt={project.completed_at ?? null}
-        paymentReceivedAt={project.payment_received_at ?? null}
-        paymentAmount={project.payment_received_amount ?? null}
-        expected={num(p.value) + num(p.variation)}
-      />
-
-      {locked && (
-        <p className="mb-6 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--hover)] px-4 py-3 text-sm">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-            strokeWidth="1.6" aria-hidden="true" className="shrink-0 text-[var(--muted)]">
-            <rect x="3" y="7" width="10" height="7" rx="1.5" />
-            <path d="M5.5 7V5a2.5 2.5 0 015 0v2" />
-          </svg>
-          <span>
-            <span className="font-medium">Locked.</span>{" "}
-            <span className="text-[var(--muted)]">
-              This project is completed and paid — its profit has been shared out, so bills,
-              variations and investments can no longer be changed. Undo the payment above to reopen it.
-            </span>
-          </span>
-        </p>
-      )}
-
-      <div className={`grid gap-4 sm:grid-cols-2 ${
-        company?.gst_registered ? "xl:grid-cols-5" : "xl:grid-cols-4"
-      }`}>
-        <Stat label="Project value" value={money(p.value)} />
-        <Stat
-          label="Variation"
-          value={num(p.variation) ? money(p.variation) : "—"}
-          hint={`Revised ${money(revised)}`}
-        />
-        {/* nothing is collected for MIRA until the company is registered */}
-        {company?.gst_registered && (
-          <Stat label="GST" value={money(p.gst)} hint="Collected for MIRA" />
-        )}
-        <Stat label="EXP" value={money(p.exp)} tone="bad" hint={`${bills?.length ?? 0} bills`} />
-        <Stat
-          label="Profit"
-          value={money(p.profit)}
-          tone={num(p.profit) >= 0 ? "good" : "bad"}
-          hint={revised > 0 ? pct((num(p.profit) / revised) * 100, 1) : undefined}
-        />
+      <div className="flex gap-1 overflow-x-auto border-b border-[var(--border)]">
+        {TABS.map(([k, l]) => (
+          <Link key={k} href={`/projects/${id}?tab=${k}`}
+            className={`-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium ${active === k ? "border-[var(--brand)] text-[var(--brand)]" : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
+        ))}
       </div>
 
-      <ProjectViews
-        initialView={initialView}
-        sections={{
-          cost: {
-            title: "Cost breakdown",
-            summary: money(p.exp),
-            node: (
-        <Card>
-          <CardHeader title="Cost breakdown" subtitle="Budget against actual, by category" />
-          {costRows.length === 0 ? (
-            <Empty message="No costs recorded." />
-          ) : (
-            <Table>
-              <thead>
-                <tr><Th>Category</Th><Th right>Budget</Th><Th right>Actual</Th><Th right>Variance</Th></tr>
-              </thead>
-              <tbody>
-                {costRows.map(([cat, r]) => {
-                  const v = r.budget - r.actual;
-                  return (
-                    <tr key={cat}>
-                      <Td>{cat}</Td>
-                      <Td right>{r.budget ? money(r.budget) : "—"}</Td>
-                      <Td right>{money(r.actual)}</Td>
-                      <Td right className={r.budget ? (v >= 0 ? "text-emerald-700" : "text-red-700") : "text-[var(--muted)]"}>
-                        {r.budget ? money(v) : "—"}
-                      </Td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          )}
-        </Card>
-        ),
-          },
-          profit: {
-            title: "Profit share",
-            summary: money(p.profit),
-            node: (
-        <ProfitShareCard projectId={id} shares={shares} completed={completed} locked={locked} />
-        ),
-          },
-          investments: {
-            title: "Investments",
-            summary: investmentRows.length
-              ? `${money(investmentRows.reduce((s, r) => s + r.amount, 0))} · ${investmentRows.length}`
-              : "None yet",
-            node: (
-          <InvestmentsPanel
-            locked={locked}
-            paidAt={paidAt}
-            projectId={id}
-            rows={investmentRows}
-            directory={directory ?? []}
-            availableCapital={availableCapital}
-          />
-        ),
-          },
-          bills: {
-            title: "Bills",
-            summary: `${billRows.length} bill${billRows.length === 1 ? "" : "s"}`,
-            node: (
-          <BillsPanel
-            locked={locked}
-            projectId={id}
-            rows={billRows}
-            categories={categories ?? []}
-            defaultActivityNo={
-              // the company's own number, falling back to whatever the last
-              // bill was filed under until it has been set
-              company?.taxable_activity_no ??
-              billRows.find((b) => b.taxable_activity_no)?.taxable_activity_no ??
-              null
-            }
-            autoReadOn={extractionAvailable()}
-            gstRegistered={company?.gst_registered ?? false}
-          />
-        ),
-          },
-          variations: {
-            title: "Variations",
-            summary: variationRows.length
-              ? `${money(num(p.variation))} · ${variationRows.length}`
-              : "None",
-            node: (
-          <VariationsPanel projectId={id} rows={variationRows} locked={locked} />
-        ),
-          },
-          quotations: {
-            title: "Quotations",
-            summary: projectQuotes?.length
-              ? `${projectQuotes.length} · ${projectQuotes.some((q) => q.status === "won") ? "won" : projectQuotes[0].status}`
-              : "None yet",
-            node: <QuotationsPanel projectId={id} docs={projectDocs} />,
-          },
-        }}
-      />
+      {active === "overview" && <Overview p={p} />}
+      {active === "value" && <Value s={s} p={p} writer={writer} />}
+      {active === "variations" && <Variations s={s} p={p} writer={writer} />}
+      {active === "billing" && <Billing s={s} p={p} writer={writer} />}
+      {active === "transactions" && <Transactions s={s} id={id} />}
     </div>
+  );
+}
+
+function Figure({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "bad" | "good" }) {
+  return (
+    <Card className="px-5 py-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{label}</p>
+      <p className={`mt-2 text-xl font-semibold tabular-nums ${tone === "bad" ? "text-red-700" : tone === "good" ? "text-emerald-700" : ""}`}>{value}</p>
+      {hint && <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>}
+    </Card>
+  );
+}
+
+function Overview({ p }: { p: ProjectFigures }) {
+  const oub = dbToLaari(p.over_under_billing);
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Figure label="Contract value" value={m(p.revised)} hint={`${m(p.original)} original · ${m(p.variations)} variations`} />
+        <Figure label="Billed" value={m(p.billed)} hint={`${pct(Number(p.billed_pct), 1)} · ${m(p.remaining_to_bill)} left to bill`} />
+        <Figure label="Collected" value={m(p.collected)} hint={`Client owes ${m(p.client_balance)}${dbToLaari(p.retention_held) ? ` · retention ${m(p.retention_held)}` : ""}`} />
+        <Figure label="Cost to date" value={m(p.cost_to_date)} hint={`Budget ${m(p.revised_budget)}`} />
+        <Figure label="Forecast final cost" value={m(p.forecast_final_cost)} hint={`${m(p.forecast_to_complete)} still to spend`} />
+        <Figure label="Forecast profit" value={m(p.forecast_profit)} hint={`Margin ${pct(Number(p.margin_pct), 1)}`} tone={dbToLaari(p.forecast_profit) < 0n ? "bad" : undefined} />
+        <Figure label="Complete" value={pct(Number(p.pct_complete), 1)} hint={`Cost to date ÷ forecast final cost · earned ${m(p.earned)}`} />
+        <Figure label={oub >= 0n ? "Billed ahead of work" : "Work ahead of billing"} value={m(laariToNumber(oub < 0n ? -oub : oub))}
+          hint={oub >= 0n ? "Over-billing (a liability until earned)" : "Under-billing (earned, not yet invoiced)"} />
+      </div>
+      <Card className="px-5 py-4 text-sm">
+        <p><span className="text-[var(--muted)]">Actual profit so far</span> <strong className="tabular-nums">{m(p.actual_profit)}</strong>
+          <span className="text-xs text-[var(--muted)]"> — revenue less direct job costs{dbToLaari(p.bad_debts) ? ` and ${m(p.bad_debts)} written off` : ""}</span></p>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Revenue is recognised {p.recognition_method === "poc" ? "by percentage of completion" : p.recognition_method === "billing" ? "as it is billed" : "by the company default"}.
+          {p.start_date ? ` Started ${date(p.start_date)}.` : ""}{p.end_date ? ` Due to finish ${date(p.end_date)}.` : ""}
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+async function Value({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
+  const { data } = await s.supabase.from("budget_lines")
+    .select("id, description, budget_category, budget_amount, revised_amount, forecast_to_complete").eq("project_id", p.id).order("created_at");
+  const costs = [...(p.costs ?? [])].sort((a, b) => a.category.localeCompare(b.category));
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardHeader title="Budget against actual" subtitle="Actual cost from the ledger; forecast to complete is your estimate, or what is left of the budget" />
+        {costs.length === 0 ? <Empty message="No budget or costs yet." /> : (
+          <Table>
+            <thead><tr><Th>Category</Th><Th right>Budget</Th><Th right>Revised</Th><Th right>Actual</Th><Th right>To complete</Th><Th right>Forecast final</Th><Th right>Variance</Th></tr></thead>
+            <tbody>
+              {costs.map((c) => {
+                const final = dbToLaari(c.actual) + dbToLaari(c.forecast_to_complete);
+                const variance = dbToLaari(c.revised) - final;
+                return (
+                  <tr key={c.category}>
+                    <Td>{titleize(c.category)}</Td>
+                    <Td right>{m(c.budget)}</Td><Td right>{m(c.revised)}</Td><Td right>{m(c.actual)}</Td>
+                    <Td right>{m(c.forecast_to_complete)}</Td><Td right>{money(laariToNumber(final))}</Td>
+                    <Td right className={variance < 0n ? "text-red-700" : ""}>{money(laariToNumber(variance))}</Td>
+                  </tr>
+                );
+              })}
+              <tr className="font-semibold">
+                <Td>Total</Td><Td right>{m(p.budget)}</Td><Td right>{m(p.revised_budget)}</Td><Td right>{m(p.cost_to_date)}</Td>
+                <Td right>{m(p.forecast_to_complete)}</Td><Td right>{m(p.forecast_final_cost)}</Td>
+                <Td right>{money(laariToNumber(dbToLaari(p.revised_budget) - dbToLaari(p.forecast_final_cost)))}</Td>
+              </tr>
+            </tbody>
+          </Table>
+        )}
+      </Card>
+      <BudgetEditor projectId={p.id} lines={(data ?? []) as BudgetLine[]} canEdit={writer} />
+    </div>
+  );
+}
+
+async function Variations({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
+  const { data } = await s.supabase.from("variations")
+    .select("id, number, ref, title, description, status, amount, raised_date, approved_date, time_impact_days, client_reference")
+    .eq("project_id", p.id).order("number");
+  const rows = (data ?? []) as VariationRow[];
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Figure label="Original contract" value={m(p.original)} />
+        <Figure label="Approved variations" value={m(p.variations)} />
+        <Figure label="Revised contract" value={m(p.revised)} />
+      </div>
+      {writer && <NewVariation projectId={p.id} />}
+      <Card>
+        <CardHeader title="Variations register" subtitle="Only approved variations change the contract value" />
+        {rows.length === 0 ? <Empty message="No variations raised." /> : <VariationRows projectId={p.id} rows={rows} canEdit={writer} />}
+      </Card>
+    </div>
+  );
+}
+
+async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
+  const { data } = await s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order");
+  return <BillingPlan projectId={p.id} revised={String(p.revised)} stages={(data ?? []) as Stage[]} canEdit={writer} />;
+}
+
+async function Transactions({ s, id }: { s: Session; id: string }) {
+  // documents headed to the project, and any whose lines post to it
+  const [{ data: byHeader }, { data: byLine }] = await Promise.all([
+    s.supabase.from("transactions").select("id").eq("project_id", id),
+    s.supabase.from("journal_lines").select("transaction_id").eq("project_id", id),
+  ]);
+  const ids = [...new Set([...(byHeader ?? []).map((r) => r.id), ...(byLine ?? []).map((r) => r.transaction_id)])];
+  const { data } = ids.length
+    ? await s.supabase.from("document_balances_v").select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at, contact_id").in("id", ids).order("date", { ascending: false })
+    : { data: [] };
+  const t = today();
+  const rows = (data ?? []) as (DocBalance & { id: string; number: string | null; date: string })[];
+  return (
+    <Card>
+      {rows.length === 0 ? <Empty message="Nothing has been posted to this project yet." /> : (
+        <Table>
+          <thead><tr><Th>Date</Th><Th>Type</Th><Th>No.</Th><Th right>Total</Th><Th right>Status</Th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className={r.voided_at ? "text-[var(--muted)] line-through" : ""}>
+                <Td className="whitespace-nowrap">{date(r.date)}</Td>
+                <Td>{titleize(r.type)}</Td>
+                <Td className="font-mono text-xs">{r.number ?? "—"}</Td>
+                <Td right>{m(r.total)}</Td>
+                <Td right><Badge value={docStatus(r, t)} /></Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </Card>
   );
 }

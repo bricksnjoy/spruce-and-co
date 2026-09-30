@@ -87,6 +87,21 @@ Migration 016 applied to Live. Tests: **84 passing**. `tsc`, `eslint` and `next 
 **Clients merged into Customers (migration 017):** the Clients screen is removed and `/clients` opens Customers. The project form picks a customer (or adds one). Every Live customer has a mirrored row in the old `clients` table, which quotations, invoices and the estimator still read; a client added by one of those older screens appears as a customer; a project's customer and old client field always agree. Checked by `customers-clients.test` (4 cases). On Live: 2 clients = 2 customers, none unmirrored. Tests: **88 passing**.
 The old Shops screen still writes to its own table until the Expenses module.
 
+## Phase 4 · Module 3 — Projects & Project Value (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Project list `/projects` | Works in Live and Test; per project: stage, contract value (with approved variations), billed and %, collected, cost, forecast profit, margin, client balance; totals; archived view | `projects.test` (list view ties to the ledger) |
+| Project page tabs | Overview (value, billing, collection, cost, forecast, % complete, over/under billing, actual profit) · Value & budget (budget vs actual vs forecast by category, variance) · Variations · Billing plan · Transactions | `project-value.test`, `projects.test` |
+| Budget lines | Add, edit, delete by job-cost category with revised budget and forecast to complete (blank = what is left of the budget) | `project-value.test` |
+| Variations register | Raise (VO-01…), approve with a date, reject, withdraw, reopen; only approved ones move the contract value | `projects.test` |
+| Billing plan | Stages by percent or fixed amount, worked out in laari; warns when the plan is over or under the contract; invoiced stages cannot be removed | `money.test` (percentOf) |
+| Recognition | Per project: as billed, percentage of completion, or the company default; "Post WIP" at a period end for POC projects (auto-reversed next day) | `project-value.test` (run_wip) |
+| Book safety | A project's variations, budget lines and billing stages follow its book (migration 018) | `projects.test` |
+| Old view | The earlier project page (bill uploads, investments, old profit-share card, quotations) moved to `/projects/[id]/legacy`, Live only, until Sales, Expenses and Financing replace those parts | `money.test` (Live-only route rule) |
+
+Project amounts on the form are now saved as exact decimals (no floats). Migration 018 applied to Live. Tests: **93 passing**; `tsc`, `eslint`, `next build` clean.
+
 ## Still open
 
 | Item | Why | When |

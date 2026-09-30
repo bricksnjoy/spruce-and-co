@@ -19,7 +19,7 @@ const number = (fd: FormData, k: string) => {
 
 const refresh = (projectId: string) => {
   revalidatePath("/financing");
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
 };
 
 /**

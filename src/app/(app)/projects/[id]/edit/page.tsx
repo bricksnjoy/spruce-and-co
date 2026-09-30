@@ -46,6 +46,7 @@ export default async function EditProjectPage({
             start_date: project.start_date,
             duration_days: project.duration_days,
             progress_pct: Number(project.progress_pct),
+            recognition_method: project.recognition_method,
           }}
         />
       </Card>

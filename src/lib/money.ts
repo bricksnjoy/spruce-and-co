@@ -58,3 +58,16 @@ export function withRunning<T extends { home_debit: number | string; home_credit
     return { ...l, running };
   });
 }
+
+/** `pct` per cent of an amount in laari, rounded half away from zero; pct is a decimal string (up to 4 places). */
+export function percentOf(laari: bigint, pct: string | number): bigint {
+  const s = String(pct);
+  if (!/^-?\d+(\.\d{1,4})?$/.test(s)) return 0n;
+  const [w, f = ""] = s.replace("-", "").split(".");
+  const scaled = BigInt(w) * 10000n + BigInt((f + "0000").slice(0, 4));   // pct × 10⁴
+  const num = laari * scaled * (s.startsWith("-") ? -1n : 1n);
+  const den = 100n * 10000n;
+  const q = num / den, r = num % den;
+  const half = (r < 0n ? -r : r) * 2n >= den;
+  return half ? q + (num < 0n ? -1n : 1n) : q;
+}

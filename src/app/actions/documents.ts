@@ -29,7 +29,7 @@ const fmt = (n: number) =>
 function refresh(projectId?: string | null) {
   revalidatePath("/quotations", "layout");
   revalidatePath("/invoices", "layout");
-  if (projectId) revalidatePath(`/projects/${projectId}`);
+  if (projectId) revalidatePath(`/projects/${projectId}`, "layout");
 }
 
 async function signedIn(supabase: Supabase) {
