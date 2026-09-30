@@ -7,6 +7,9 @@ import { initials } from "@/lib/format";
 import { Badge } from "@/components/ui";
 import { Logo, Wordmark } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
+import { BookSwitch } from "@/components/book-switch";
+import { BookGuard } from "@/components/book-guard";
+import type { Book } from "@/lib/books";
 
 export default async function AppLayout({
   children,
@@ -22,15 +25,17 @@ export default async function AppLayout({
   const [{ data: profile }, { data: company }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name, email, role, job_title")
+      .select("full_name, email, role, job_title, active_book")
       .eq("id", user.id)
       .single(),
     supabase.from("company").select("gst_registered").eq("id", true).maybeSingle(),
   ]);
 
   const name = profile?.full_name || user.email || "User";
+  const book = (profile?.active_book ?? "live") as Book;
   const groups = visibleFor(profile?.role, {
     gstRegistered: company?.gst_registered ?? false,
+    book,
   });
   const quickActions = quickActionsFor(profile?.role);
 
@@ -60,6 +65,7 @@ export default async function AppLayout({
             <Logo size={28} />
           </div>
           <div className="ml-auto flex items-center gap-3">
+            <BookSwitch book={book} />
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium leading-tight">{name}</p>
               <p className="text-xs text-[var(--muted)]">
@@ -80,7 +86,12 @@ export default async function AppLayout({
             </form>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        {book === "sandbox" && (
+          <div role="status" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900 sm:px-6">
+            <strong>Test book.</strong> Nothing here is real or reaches the Live books; document numbers start with TEST-.
+          </div>
+        )}
+        <main className="flex-1 p-4 sm:p-6"><BookGuard book={book}>{children}</BookGuard></main>
       </div>
     </div>
   );

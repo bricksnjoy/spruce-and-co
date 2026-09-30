@@ -1,4 +1,5 @@
 import type { UserRole } from "./types";
+import { worksInTest, type Book } from "./books";
 
 export interface NavItem {
   href: string;
@@ -75,13 +76,19 @@ export const NAV: NavGroup[] = [
       { href: "/accounting/equipment", label: "Equipment register", roles: MONEY },
       { href: "/accounting/year-end", label: "Year end", roles: MONEY },
       { href: "/gst", label: "GST Input Schedule", roles: MONEY },
+      { href: "/accounting/chart", label: "Chart of accounts", roles: MONEY },
+      { href: "/accounting/health", label: "Health check", roles: MONEY },
     ],
   },
   {
     group: "Admin",
     defaultOpen: true,
     items: [
-      { href: "/settings", label: "Company", roles: MONEY },
+      { href: "/settings/company", label: "Company", roles: MONEY },
+      { href: "/settings/accounting", label: "Accounting settings", roles: MONEY },
+      { href: "/settings/taxes", label: "Taxes & rates", roles: MONEY },
+      { href: "/settings/numbering", label: "Numbering", roles: MONEY },
+      { href: "/settings/currencies", label: "Currencies", roles: MONEY },
       { href: "/profit-share", label: "Profit Share", roles: MONEY },
     ],
   },
@@ -101,7 +108,7 @@ const GST_ONLY = new Set(["/gst"]);
 
 export function visibleFor(
   role: UserRole | undefined,
-  opts: { gstRegistered?: boolean } = {},
+  opts: { gstRegistered?: boolean; book?: Book } = {},
 ): NavGroup[] {
   const r = role ?? "viewer";
   return NAV.map((g) => ({
@@ -109,7 +116,9 @@ export function visibleFor(
     items: g.items.filter(
       (i) =>
         (!i.roles || i.roles.includes(r)) &&
-        (opts.gstRegistered !== false || !GST_ONLY.has(i.href)),
+        (opts.gstRegistered !== false || !GST_ONLY.has(i.href)) &&
+        // in the Test book only the screens that keep the books apart are shown
+        (opts.book !== "sandbox" || worksInTest(i.href)),
     ),
   })).filter((g) => g.items.length > 0);
 }

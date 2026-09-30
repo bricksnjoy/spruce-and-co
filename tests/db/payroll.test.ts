@@ -90,7 +90,8 @@ describe("payroll (§7)", () => {
   });
 
   it("refuses to run payroll without withholding-tax brackets", async () => {
-    await db.query(`delete from rates where kind = 'wht'`);
+    // as if the brackets had never been entered (the rate guard would rightly refuse removing ones in force)
+    await db.exec(`alter table rates disable trigger rates_guard; delete from rates where kind = 'wht'; alter table rates enable trigger rates_guard;`);
     await expect(db.query(`select create_payroll_run('2026-03-01', '2026-03-31')`)).rejects.toThrow(/withholding-tax brackets/);
   });
 

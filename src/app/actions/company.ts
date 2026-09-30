@@ -53,8 +53,10 @@ export async function saveCompany(_prev: unknown, fd: FormData): Promise<Company
     .eq("id", true);
 
   if (error) return { error: error.message };
+  // the new ledger's settings keep the same flag; only an admin may change them, so this is best-effort
+  await supabase.from("settings").update({ gst_registered: fd.get("gst_registered") === "on" }).eq("id", true);
 
-  revalidatePath("/settings");
+  revalidatePath("/settings/company");
   // the activity number rides on every new bill, and the GST sheet carries
   // the company header
   revalidatePath("/gst");

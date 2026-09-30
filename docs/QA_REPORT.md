@@ -57,6 +57,22 @@ Migrations 001–009, 012, 013 and the new 014 (hardening) were applied in order
 | Smoke test, rolled back | a Test-book invoice numbered `TEST-SC-INV/26/001`: Dr AR 1,080 / Cr Revenue 1,000 / Cr GST 80 (8%) in its return period; Live untouched; nothing kept |
 | Supabase security advisor | the 67 "mutable search_path" warnings on the new functions are fixed by 014. Left as designed: the `rpc_*` functions are callable by signed-in users (that is their job; each checks role and book). Left from before, not part of this rebuild: `pg_trgm` in `public`, older helper functions callable by `anon`, leaked-password protection off |
 
+## Phase 4 · Module 1 — Settings & Chart of Accounts (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Live / Test | Switch in the top bar; amber banner in Test; screens still on the old tables are hidden in Test (sidebar and direct links); admin "Reset the Test book" (type RESET) | `security.test` (books never mix, reset leaves Live untouched) |
+| Settings | Tabs: Company · Accounting (closing date, opening-balance date, financial year, revenue recognition, profit-share charge, bill approval limit, GST period and due day, no-pay divisor) · Taxes & rates · Numbering · Currencies | `settings.test` |
+| Rates | Dated history per rate; a rate in force can't be edited or removed; new rates from a date; bracket editor for withholding tax and BPT, checked for gaps and overlaps; warning while withholding-tax brackets are missing | `settings.test` (5 cases) |
+| Numbering | Per book; admin only; refuses a number already issued; Test numbers must start `TEST-` | `settings.test` |
+| Chart of accounts | Grouped by type with balances for the current book, sub-accounts nested and rolled up; add account (bank accounts, fixed assets, job-cost categories); edit name, code (non-system), description; switching off refused while it has a balance | build, types |
+| Account register | Every line with a running balance, oldest first; note when payroll lines are hidden from the viewer | `money.test` (running balance in laari) |
+| Health check | `/accounting/health` runs the 13 checks on the current book | `health_check` after every DB test |
+| Money on screen | Amounts parsed and summed as whole laari (`src/lib/money.ts`), never as floats | `money.test` (incl. property test) |
+
+Migration 015 (balances RPC, numbering RPC, rate guard) is applied to Live. Tests: **78 passing** (was 68). `tsc`, `eslint` and `next build` are clean.
+Not verified here: clicking through the screens against the live database. This sandbox cannot reach Supabase; the Playwright suite in CI (Q3) will cover it.
+
 ## Still open
 
 | Item | Why | When |

@@ -33,7 +33,7 @@ export default async function GstPage() {
               GST, so the schedule will have its history the day it is needed.
             </p>
             <p>
-              <Link href="/settings" className="font-medium text-[var(--brand)] hover:underline">
+              <Link href="/settings/company" className="font-medium text-[var(--brand)] hover:underline">
                 Mark the company registered
               </Link>{" "}
               once MIRA issues the taxable activity number, and this page fills itself in.
