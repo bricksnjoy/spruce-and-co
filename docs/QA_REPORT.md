@@ -135,6 +135,21 @@ Estimates stay on the existing Quotations screens (Live only) for now; convertin
 
 Migration 021 applied to Live. Tests: **105 passing**; `tsc`, `eslint`, `next build` clean.
 
+## Phase 4 · Module 6 — Payroll (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Access | Payroll screens show only for admin, finance or someone given payroll permission; the database enforces the same | `security.test` |
+| Payroll runs `/payroll` | Start a month's run (every active employee gets a payslip with salary, standing allowances, project split and advance recovery); list with net and paid; warning while withholding-tax brackets are missing | `payroll.test` |
+| Run page | Per payslip: lines, add overtime (hours × rate), no-pay days (basic ÷ divisor), bonus, allowance or deduction; pension and withholding tax worked out; this month's project split; add a new hire or take someone off; draft ↔ review; admin approves and posts; pay net salaries from a bank; print payslips | `payroll.test`, `payroll-screens.test` |
+| Employees `/payroll/employees` | Details (site/admin, nationality, salary, pension and tax flags, bank, permit with expiry, phone, email, left date); standing monthly items; cost split from a month on (must total 100%); salary advances with monthly recovery; payslip history | `payroll.test` |
+| Pension & tax | What is held back (pension, withholding tax, other deductions) and recording its payment over | `payroll.test` |
+| Payslip PDF `/print/payslips/[run]` | One A4 page per person (or one with `?slip=`): earnings, deductions, company pension, net, bank account | build, types |
+| People & Salaries retired | `/people` opens Employees, `/salaries` opens Payroll; every Live employee is mirrored in the old people list the Message Center reads (migration 022) | `payroll-screens.test` |
+
+Migration 022 applied to Live. Tests: **107 passing**; `tsc`, `eslint`, `next build` clean.
+The 4 employees copied from People still need salary, nationality and bank details before the first run (they are marked "Needs details").
+
 ## Still open
 
 | Item | Why | When |

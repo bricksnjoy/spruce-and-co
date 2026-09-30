@@ -13,6 +13,7 @@ const NAMES: Record<string, string> = {
   "/sales": "Sales",
   "/expenses": "Expenses",
   "/projects": "Projects",
+  "/payroll": "Payroll",
 };
 
 /**

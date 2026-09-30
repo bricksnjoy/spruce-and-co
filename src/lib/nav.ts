@@ -57,8 +57,8 @@ export const NAV: NavGroup[] = [
     group: "People",
     defaultOpen: true,
     items: [
-      { href: "/people", label: "People", roles: ALL },
-      { href: "/salaries", label: "Salaries", roles: MONEY },
+      { href: "/payroll", label: "Payroll", roles: MONEY },
+      { href: "/payroll/employees", label: "Employees", roles: MONEY },
     ],
   },
   {
