@@ -150,11 +150,26 @@ Migration 021 applied to Live. Tests: **105 passing**; `tsc`, `eslint`, `next bu
 Migration 022 applied to Live. Tests: **107 passing**; `tsc`, `eslint`, `next build` clean.
 The 4 employees copied from People still need salary, nationality and bank details before the first run (they are marked "Needs details").
 
+## Phase 4 · Module 7 — Banking (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Banking `/banking` | Each bank, cash and card account with its balance in the books, lines waiting for review and the date it was last reconciled; import a statement; transfer between your own accounts | `banking.test`, build |
+| Statement import | CSV read on the server; each line is fingerprinted so importing the same file twice adds nothing; lines that plainly fit an entry already in the books (same amount, within 10 days) are matched automatically | `banking.test` |
+| Review lines | Match to an entry, add as a new expense (money out) or journal (money in), exclude, or undo; a bank rule fills in the Add form | `banking.test`, `money.test` (rule choice) |
+| Bank rules `/banking/rules` | Description contains / money in or out / amount range → account, name, project; priority; turn on or off; delete. Rules are shared by the Live and Test books | `money.test`, build |
+| Register | Every entry through the account with a running balance and its cleared / reconciled mark | build, types |
+| Reconcile | Enter the statement date and ending balance, tick what the statement shows; the difference must be 0 to finish; cancel or undo the latest; ticking is allowed in a closed or GST-filed period, amounts are not | `banking.test` |
+| Reconciliation report `/print/reconciliations/[id]` | Statement balance, cleared items, items still outstanding at that date, balance in the books | build, types |
+
+Migration 023 applied to Live. Tests: **114 passing**; `tsc`, `eslint`, `next build` clean.
+The old Bank reconciliation screen stays in the menu, marked "(old)", Live only, until cut-over.
+
 ## Still open
 
 | Item | Why | When |
 |---|---|---|
-| Banking (010), assets / recurring / purchase orders (011) | Their modules come later in Phase 4 | Phase 4 |
+| Assets / recurring transactions (011) | Their modules come later in Phase 4 | Phase 4 |
 | Save/void RPCs called by the screens | Written per module | Phase 4 |
 | End-to-end browser tests | Need a reachable Supabase (Q3) | Phase 4–5 |
 | Withholding-tax brackets, pension-rate confirmation, GST due day | Your figures (📝) | Before the first real payroll / GST filing |

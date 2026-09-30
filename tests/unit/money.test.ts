@@ -73,3 +73,17 @@ describe("quantity × rate", () => {
     expect(qtyTimesRate("x", "1")).toBeNull();
   });
 });
+
+import { ruleFor, type BankRule } from "@/lib/bank-rules";
+describe("bank rules on screen", () => {
+  const r = (x: Partial<BankRule>): BankRule => ({ id: x.name ?? "r", name: "r", priority: 100, contains: null, direction: "any", min_amount: null, max_amount: null,
+    account_id: "a", contact_id: null, project_id: null, active: true, created_at: "2026-01-01", ...x });
+  it("picks the first fitting rule by priority, like the database", () => {
+    const rules = [r({ name: "Phone", contains: "dhiraagu", direction: "out" }), r({ name: "Any out", direction: "out", priority: 200 }),
+      r({ name: "Big in", direction: "in", min_amount: 1000 }), r({ name: "Off", active: false, priority: 1 })];
+    expect(ruleFor(rules, { description: "DHIRAAGU BILL", amount: "-450.00" })?.name).toBe("Phone");
+    expect(ruleFor(rules, { description: "FEE", amount: -5 })?.name).toBe("Any out");
+    expect(ruleFor(rules, { description: "TRF", amount: "999.99" })).toBeUndefined();
+    expect(ruleFor(rules, { description: "TRF", amount: "1000.00" })?.name).toBe("Big in");
+  });
+});
