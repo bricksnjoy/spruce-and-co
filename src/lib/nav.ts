@@ -29,7 +29,6 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/", label: "Dashboard", roles: ALL },
       { href: "/projects", label: "Projects", roles: ALL },
-      { href: "/shops", label: "Shops", roles: ALL },
       { href: "/tasks", label: "Tasks & Calendar", roles: ALL },
       { href: "/messages", label: "Message Center", roles: MONEY },
       { href: "/pnl", label: "Project P&L", roles: MONEY },
@@ -50,6 +49,7 @@ export const NAV: NavGroup[] = [
     group: "Expenses",
     defaultOpen: true,
     items: [
+      { href: "/expenses", label: "Bills & expenses", roles: MONEY },
       { href: "/expenses/vendors", label: "Vendors", roles: MONEY },
     ],
   },

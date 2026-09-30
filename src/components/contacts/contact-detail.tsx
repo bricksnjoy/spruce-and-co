@@ -36,6 +36,10 @@ export async function ContactDetail({ s, side, id, tab, from, to }: {
               <Link href={`/sales/new?type=invoice&customer=${id}`} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 font-medium text-white hover:bg-[var(--brand-hover)]">New invoice</Link>
               <Link href={`/sales/payments/new?customer=${id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Receive payment</Link>
             </>}
+            {side.kind === "vendor" && writer && c.active && <>
+              <Link href={`/expenses/new?type=bill&vendor=${id}`} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 font-medium text-white hover:bg-[var(--brand-hover)]">New bill</Link>
+              <Link href={`/expenses/pay`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Pay bills</Link>
+            </>}
             <Link href={side.base} className="font-medium text-[var(--brand)] hover:underline">← {side.title}</Link>
           </div>
         } />

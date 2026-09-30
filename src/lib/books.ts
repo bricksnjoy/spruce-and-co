@@ -12,7 +12,7 @@ export const BOOK_AWARE: string[] = [
   "/accounting/chart",
   "/accounting/health",
   "/sales",
-  "/expenses/vendors",
+  "/expenses",
   "/projects",
 ];
 

@@ -40,6 +40,7 @@ export default async function ProjectPage({ params, searchParams }: {
           <div className="flex flex-wrap items-center gap-3 text-sm">
             {p.customer_id && <Link href={`/sales/customers/${p.customer_id}`} className="font-medium text-[var(--brand)] hover:underline">Customer</Link>}
             {s.book === "live" && <Link href={`/projects/${id}/legacy`} className="font-medium text-[var(--brand)] hover:underline">Old view</Link>}
+            {writer && <Link href={`/expenses/new?type=bill&project=${id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">New bill</Link>}
             {writer && p.customer_id && <Link href={`/sales/new?type=invoice&project=${id}`} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 font-medium text-white hover:bg-[var(--brand-hover)]">New invoice</Link>}
             {writer && <Link href={`/projects/${id}/edit`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Edit</Link>}
             {writer && <ArchiveButton id={id} archived={Boolean(p.archived_at)} />}
@@ -100,16 +101,35 @@ function Overview({ p }: { p: ProjectFigures }) {
 }
 
 async function Value({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
-  const { data } = await s.supabase.from("budget_lines")
-    .select("id, description, budget_category, budget_amount, revised_amount, forecast_to_complete").eq("project_id", p.id).order("created_at");
+  const [{ data }, { data: committedRows }] = await Promise.all([
+    s.supabase.from("budget_lines").select("id, description, budget_category, budget_amount, revised_amount, forecast_to_complete").eq("project_id", p.id).order("created_at"),
+    s.supabase.from("committed_cost_v").select("budget_category, committed").eq("project_id", p.id),
+  ]);
+  const committed = new Map<string, bigint>((committedRows ?? []).map((r) => [r.budget_category, dbToLaari(r.committed)]));
   const costs = [...(p.costs ?? [])].sort((a, b) => a.category.localeCompare(b.category));
+  for (const cat of committed.keys()) if (!costs.some((c) => c.category === cat)) costs.push({ category: cat, actual: 0, budget: 0, revised: 0, forecast_to_complete: 0 });
+  // budget alerts: a category past 80% or 100% of its revised budget, counting open orders
+  const alerts = costs.map((c) => {
+    const used = dbToLaari(c.actual) + (committed.get(c.category) ?? 0n);
+    const rev = dbToLaari(c.revised);
+    return { cat: c.category, used, rev, level: rev > 0n ? (used * 100n >= rev * 100n ? 100 : used * 100n >= rev * 80n ? 80 : 0) : used > 0n ? 100 : 0 };
+  }).filter((a) => a.level > 0);
   return (
     <div className="space-y-5">
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((a) => (
+            <p key={a.cat} className={`rounded-lg px-4 py-2 text-sm ${a.level === 100 ? "border border-red-200 bg-red-50 text-red-800" : "border border-amber-300 bg-amber-50 text-amber-900"}`}>
+              {titleize(a.cat)}: {money(laariToNumber(a.used))} spent or ordered {a.rev > 0n ? `of a ${money(laariToNumber(a.rev))} budget (${a.level === 100 ? "over budget" : "past 80%"})` : "with no budget set"}.
+            </p>
+          ))}
+        </div>
+      )}
       <Card>
-        <CardHeader title="Budget against actual" subtitle="Actual cost from the ledger; forecast to complete is your estimate, or what is left of the budget" />
+        <CardHeader title="Budget against actual" subtitle="Actual cost from the ledger; committed is open purchase orders; forecast to complete is your estimate, or what is left of the budget" />
         {costs.length === 0 ? <Empty message="No budget or costs yet." /> : (
           <Table>
-            <thead><tr><Th>Category</Th><Th right>Budget</Th><Th right>Revised</Th><Th right>Actual</Th><Th right>To complete</Th><Th right>Forecast final</Th><Th right>Variance</Th></tr></thead>
+            <thead><tr><Th>Category</Th><Th right>Budget</Th><Th right>Revised</Th><Th right>Actual</Th><Th right>Committed</Th><Th right>To complete</Th><Th right>Forecast final</Th><Th right>Variance</Th></tr></thead>
             <tbody>
               {costs.map((c) => {
                 const final = dbToLaari(c.actual) + dbToLaari(c.forecast_to_complete);
@@ -118,6 +138,7 @@ async function Value({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
                   <tr key={c.category}>
                     <Td>{titleize(c.category)}</Td>
                     <Td right>{m(c.budget)}</Td><Td right>{m(c.revised)}</Td><Td right>{m(c.actual)}</Td>
+                    <Td right>{committed.get(c.category) ? money(laariToNumber(committed.get(c.category)!)) : ""}</Td>
                     <Td right>{m(c.forecast_to_complete)}</Td><Td right>{money(laariToNumber(final))}</Td>
                     <Td right className={variance < 0n ? "text-red-700" : ""}>{money(laariToNumber(variance))}</Td>
                   </tr>
@@ -125,6 +146,7 @@ async function Value({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
               })}
               <tr className="font-semibold">
                 <Td>Total</Td><Td right>{m(p.budget)}</Td><Td right>{m(p.revised_budget)}</Td><Td right>{m(p.cost_to_date)}</Td>
+                <Td right>{money(laariToNumber([...committed.values()].reduce((a, v) => a + v, 0n)))}</Td>
                 <Td right>{m(p.forecast_to_complete)}</Td><Td right>{m(p.forecast_final_cost)}</Td>
                 <Td right>{money(laariToNumber(dbToLaari(p.revised_budget) - dbToLaari(p.forecast_final_cost)))}</Td>
               </tr>

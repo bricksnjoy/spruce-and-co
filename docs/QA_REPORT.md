@@ -119,6 +119,22 @@ Project amounts on the form are now saved as exact decimals (no floats). Migrati
 Migrations 019 and 020 applied to Live. Tests: **100 passing**; `tsc`, `eslint`, `next build` clean.
 Estimates stay on the existing Quotations screens (Live only) for now; converting a quotation into a new-ledger invoice and e-mailing invoices with reminders are listed under Still open.
 
+## Phase 4 · Module 5 — Expenses (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Expenses hub `/expenses` | Money bar: Unpaid bills · Overdue · Paid in the last 30 days · Awaiting approval; every bill, expense, payment, vendor credit and purchase order with vendor, project, balance and status | `expenses.test` |
+| Bill, expense, vendor credit, purchase order | One form: vendor (terms set the due date), project, lines by account (job costs, overheads, assets) with quantity × rate or amount, the supplier's own GST figure (or one tap for the current rate), "claim it back" per line, tax-invoice evidence (TIN, number, date, customs); GST not claimed is added to cost; MVR or USD | `posting.test`, `gst.test` |
+| Receipt scanning | "Read the photo" fills vendor (matched by TIN, then name), TIN, invoice number, date, amount and GST, using the server reader when set up, otherwise on the device; the photo is kept with the document | build, types |
+| Approval workflow | A bill over the limit in Settings is saved as a draft and sent to an admin (an admin's own bill is approved as saved); it posts only on approval and only up to the approved amount; the database refuses otherwise | `expenses.test` |
+| Pay bills | Tick bills across vendors; one payment per vendor, applied to its bills, all or nothing; warns when a vendor's licence or insurance has expired | `expenses.test` |
+| Vendor credits | Applied to the vendor's open bills from the credit's page | `expenses.test` |
+| Purchase orders | Open orders count as committed cost on the project, by category; "Turn into a bill" copies the lines into a draft bill and closes the order; close or reopen | `expenses.test` |
+| Budget alerts | Project Value tab flags a category past 80% or 100% of its revised budget, counting open orders | build, types |
+| Shops → Vendors | The Shops screen is removed; `/shops` opens Vendors; every Live vendor is mirrored in the old vendors table for the older screens, and a shop added there becomes a vendor (39 on Live, all in step) | `expenses.test` |
+
+Migration 021 applied to Live. Tests: **105 passing**; `tsc`, `eslint`, `next build` clean.
+
 ## Still open
 
 | Item | Why | When |
