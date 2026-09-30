@@ -11,6 +11,8 @@ export const BOOK_AWARE: string[] = [
   "/settings",
   "/accounting/chart",
   "/accounting/health",
+  "/sales/customers",
+  "/expenses/vendors",
 ];
 
 export function worksInTest(pathname: string) {

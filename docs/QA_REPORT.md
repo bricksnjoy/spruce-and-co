@@ -73,6 +73,19 @@ Migrations 001–009, 012, 013 and the new 014 (hardening) were applied in order
 Migration 015 (balances RPC, numbering RPC, rate guard) is applied to Live. Tests: **78 passing** (was 68). `tsc`, `eslint` and `next build` are clean.
 Not verified here: clicking through the screens against the live database. This sandbox cannot reach Supabase; the Playwright suite in CI (Q3) will cover it.
 
+## Phase 4 · Module 2 — Contacts (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Customers `/sales/customers` · Vendors `/expenses/vendors` | One contact list, two views; totals owed and overdue; Active / Needs review / Archived; search; "also a vendor" marker for contacts on both sides | `contacts.test` |
+| Balances | `contact_balances_v` (016): owed = the contact's AR or AP lines; overdue = unpaid part of invoices or bills past due; drafts and voids ignored; per book | `contacts.test` (3 cases) |
+| Detail tabs | Transactions (status derived), Projects (customers), Statement (date range, balance brought forward, running balance, print), Details (edit) | `contacts.test`, `doc-status.test` (screen status = database status, 200 random cases) |
+| Add / edit | Customer, vendor, lender; TIN required when GST-registered; duplicate name or TIN refused unless confirmed; what was typed is kept when a save is refused | build, types |
+| Review of copied contacts | "Confirm it is real" clears the flag; Archive is refused while the contact has an open balance; Restore | build, types |
+
+Migration 016 applied to Live. Tests: **84 passing**. `tsc`, `eslint` and `next build` are clean.
+Until cut-over the old Clients and Shops screens still write to the old tables; a client added there does not appear under Customers. Module 3 (Projects) moves project customers onto the new contacts.
+
 ## Still open
 
 | Item | Why | When |
