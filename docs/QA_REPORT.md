@@ -43,12 +43,24 @@ A one-off stress run of **150 more random sequences** (seed 7) also passed.
 | 10 | Cash flow = change in cash | follows from 2 and 3 for now; checked directly once the cash-flow report is built (Phase 4, Reports) |
 | 11 | Equity statement = balance-sheet equity | follows from 3 for now; checked directly once the equity report is built (Phase 4, Reports) |
 
+## Applied to the live database (30 Sep 2026)
+
+Migrations 001–009, 012, 013 and the new 014 (hardening) were applied in order to Supabase project `uiemghogknbvxuqstwio`, after the `backup_20260928` snapshot. Nothing was dropped or deleted; the old tables are unchanged apart from added columns.
+
+| Check | Result |
+|---|---|
+| Health Check, Live book | all 13 pass (the ledger is empty) |
+| Chart of accounts | 61 system accounts + 8 partner sub-accounts (Capital Pool Loan and Profit Share Payable for each of the 4 partners) |
+| Contacts copied | 2 customers, 39 vendors, 2 lenders (all marked *needs review*), 4 partners |
+| Employees copied | 4 (marked *needs review*: salary, nationality and bank details were never recorded) |
+| Profit scheme | 20 financing pool / 30 company / 25 Mujahid / 10 Muaz / 10 Mushahid / 5 Mariyam Zahir, linked by id |
+| Smoke test, rolled back | a Test-book invoice numbered `TEST-SC-INV/26/001`: Dr AR 1,080 / Cr Revenue 1,000 / Cr GST 80 (8%) in its return period; Live untouched; nothing kept |
+| Supabase security advisor | the 67 "mutable search_path" warnings on the new functions are fixed by 014. Left as designed: the `rpc_*` functions are callable by signed-in users (that is their job; each checks role and book). Left from before, not part of this rebuild: `pg_trgm` in `public`, older helper functions callable by `anon`, leaked-password protection off |
+
 ## Still open
 
 | Item | Why | When |
 |---|---|---|
-| Migrations applied to Supabase | Not yet: waiting for the test-database decision (Q2) | Phase 4, module 1 |
-| Row-level security for the new tables (migration 013), payroll permission | Built with the screens that use it | Phase 4 |
 | Banking (010), assets / recurring / purchase orders (011) | Their modules come later in Phase 4 | Phase 4 |
 | Save/void RPCs called by the screens | Written per module | Phase 4 |
 | End-to-end browser tests | Need a reachable Supabase (Q3) | Phase 4–5 |
