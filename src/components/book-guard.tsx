@@ -19,6 +19,8 @@ const NAMES: Record<string, string> = {
   "/taxes": "Taxes",
   "/partners": "Partners & financing",
   "/reports": "Reports",
+  "/search": "Search",
+  "/accounting/journal": "Journal entries",
 };
 
 /**

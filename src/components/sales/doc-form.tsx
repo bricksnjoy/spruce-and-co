@@ -5,29 +5,12 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui";
 import { input, label, primary, small } from "@/components/form-styles";
 import { saveSalesDoc, type Result } from "@/app/actions/sales";
-import { money, today } from "@/lib/format";
+import { addDays, money } from "@/lib/format";
 import { laariToNumber, percentOf, qtyTimesRate, toLaari } from "@/lib/money";
 import type { SalesFormData } from "@/server/sales-data";
 
-export type DocType = "invoice" | "credit_note" | "sales_receipt";
-export type LineValue = { description: string; qty: string; rate: string; amount: string; tax_code_id: string; project_id: string; account_id: string };
-export type DocValues = {
-  id?: string; type: DocType; date: string; due_date: string; contact_id: string; project_id: string;
-  currency: string; fx_rate: string; memo: string; reference: string; bank_account_id: string; is_draft: boolean; lines: LineValue[];
-};
-
-export const TITLES: Record<DocType, string> = { invoice: "Invoice", credit_note: "Credit note", sales_receipt: "Sales receipt" };
-const addDays = (d: string, n: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
-
-export function blankDoc(type: DocType, data: SalesFormData, customerId = "", projectId = ""): DocValues {
-  const t = today();
-  const c = data.customers.find((x) => x.id === customerId);
-  return {
-    type, date: t, due_date: addDays(t, c?.terms_days ?? 0), contact_id: customerId, project_id: projectId, currency: "MVR", fx_rate: "1",
-    memo: "", reference: "", bank_account_id: "", is_draft: false,
-    lines: [{ description: "", qty: "", rate: "", amount: "", tax_code_id: data.defaultTaxCode ?? "", project_id: "", account_id: "" }],
-  };
-}
+import { TITLES, type DocType, type DocValues, type LineValue } from "@/lib/sales-doc";
+export type { DocType, DocValues, LineValue };
 
 /** Invoice, credit note or sales receipt. The database posts it and works out GST; this shows the running total. */
 export function DocForm({ data, values }: { data: SalesFormData; values: DocValues }) {

@@ -92,6 +92,7 @@ export const NAV: NavGroup[] = [
       { href: "/accounting/year-end", label: "Year end", roles: MONEY },
       { href: "/gst", label: "GST Input Schedule (old)", roles: MONEY },
       { href: "/accounting/chart", label: "Chart of accounts", roles: MONEY },
+      { href: "/accounting/journal", label: "Journal entries", roles: MONEY },
       { href: "/accounting/health", label: "Health check", roles: MONEY },
     ],
   },

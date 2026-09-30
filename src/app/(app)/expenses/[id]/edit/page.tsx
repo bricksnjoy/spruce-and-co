@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
 import { expenseFormData } from "@/server/expense-data";
-import { ExpenseForm, TITLES, type ExpenseType } from "@/components/expenses/expense-form";
+import { ExpenseForm } from "@/components/expenses/expense-form";
+import { TITLES, type ExpenseType } from "@/lib/expense-doc";
 
 export const dynamic = "force-dynamic";
 const s2 = (v: unknown) => (v == null ? "" : String(v));

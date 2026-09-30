@@ -10,6 +10,7 @@ import { MobileNav } from "@/components/mobile-nav";
 import { BookSwitch } from "@/components/book-switch";
 import { BookGuard } from "@/components/book-guard";
 import type { Book } from "@/lib/books";
+import { NewMenu } from "@/components/new-menu";
 
 export default async function AppLayout({
   children,
@@ -25,7 +26,7 @@ export default async function AppLayout({
   const [{ data: profile }, { data: company }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name, email, role, job_title, active_book")
+      .select("full_name, email, role, job_title, active_book, can_payroll")
       .eq("id", user.id)
       .single(),
     supabase.from("company").select("gst_registered").eq("id", true).maybeSingle(),
@@ -63,6 +64,14 @@ export default async function AppLayout({
               <Sidebar groups={groups} quickActions={quickActions} />
             </MobileNav>
             <Logo size={28} />
+          </div>
+          <div className="flex min-w-0 items-center gap-3">
+            <NewMenu canWrite={["admin", "manager", "finance"].includes(profile?.role ?? "")}
+              canPayroll={profile?.role === "admin" || profile?.role === "finance" || Boolean(profile?.can_payroll)} live={book === "live"} />
+            <form action="/search" method="get" role="search" className="hidden sm:block">
+              <input name="q" type="search" placeholder="Search number, name or amount" aria-label="Search"
+                className="w-64 rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-1.5 text-sm outline-none focus:border-[var(--brand)]" />
+            </form>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <BookSwitch book={book} />

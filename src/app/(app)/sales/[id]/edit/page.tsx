@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
 import { salesFormData } from "@/server/sales-data";
-import { DocForm, TITLES, type DocType } from "@/components/sales/doc-form";
+import { DocForm } from "@/components/sales/doc-form";
+import { TITLES, type DocType } from "@/lib/sales-doc";
 
 export const dynamic = "force-dynamic";
 const s2 = (v: unknown) => (v == null ? "" : String(v));

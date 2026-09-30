@@ -242,6 +242,15 @@ create or replace function public.is_admin() returns boolean language sql stable
 create or replace function public.can_see_payroll() returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and is_active and role in ('admin','finance')) $$;
 
+-- the live project-code suggestion, unchanged
+create or replace function public.next_project_code() returns text language sql stable set search_path = public, pg_temp as $$
+  select 'SC-' || lpad(
+    (coalesce(max(nullif(regexp_replace(code, '\D', '', 'g'), '')::int), 0) + 1)::text,
+    3, '0')
+  from projects
+  where code ~ '^SC-\d+$'
+$$;
+
 -- the live change-log trigger function, unchanged
 create or replace function public.log_change() returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
 declare o jsonb; n jsonb; ch text[];

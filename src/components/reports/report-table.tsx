@@ -12,7 +12,8 @@ export function cellText(c: Col, v: Cell): string {
     return v < 0n ? `(${s})` : s;
   }
   if (c.kind === "pct") return typeof v === "number" ? `${v.toFixed(1)}%` : String(v);
-  if (c.kind === "date") return date(String(v));
+  // a label (like "Total") can sit in a date column; only real dates are formatted
+  if (c.kind === "date") return /^\d{4}-\d{2}-\d{2}/.test(String(v)) ? date(String(v).slice(0, 10)) : String(v);
   return String(v);
 }
 

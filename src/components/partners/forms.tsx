@@ -29,26 +29,33 @@ function BankSelect({ id, banks }: { id: string; banks: Bank[] }) {
 /** Money received for a project: an external loan or a Capital Pool contribution. */
 export function FinancingForm({ projectId, lenders, partners, banks }: { projectId: string; lenders: Opt[]; partners: Opt[]; banks: Bank[] }) {
   const [state, action, pending] = useActionState(recordFinancing, null as Result | null);
+  // the choices are held here so a refresh after saving never clears them; the amount and reference start afresh after each save
   const [type, setType] = useState<"capital_contribution" | "loan_receipt">("capital_contribution");
+  const [contact, setContact] = useState("");
+  const [bank, setBank] = useState("");
   const who = type === "loan_receipt" ? lenders : partners;
   return (
-    <form key={state?.id ?? "f"} onSubmit={submit(action)} className="grid gap-3 px-5 py-4 sm:grid-cols-3">
+    <form onSubmit={submit(action)} className="grid gap-3 px-5 py-4 sm:grid-cols-3">
       <input type="hidden" name="project_id" value={projectId} />
       <div><label htmlFor="fin-type" className={label}>From</label>
-        <select id="fin-type" name="type" value={type} onChange={(e) => setType(e.target.value as typeof type)} className={input}>
+        <select id="fin-type" name="type" value={type} onChange={(e) => { setType(e.target.value as typeof type); setContact(""); }} className={input}>
           <option value="capital_contribution">Capital Pool member</option>
           <option value="loan_receipt">External lender</option>
         </select></div>
       <div><label htmlFor="fin-who" className={label}>{type === "loan_receipt" ? "Lender" : "Member"}</label>
-        <select id="fin-who" name="contact_id" required defaultValue="" key={type} className={input}>
+        <select id="fin-who" name="contact_id" required value={contact} onChange={(e) => setContact(e.target.value)} className={input}>
           <option value="">Choose…</option>
           {who.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {who.length === 0 && <p className="mt-1 text-xs text-[var(--muted)]">Add a contact marked as {type === "loan_receipt" ? "lender" : "partner"} first.</p>}</div>
-      <div><label htmlFor="fin-bank" className={label}>Paid into</label><BankSelect id="fin-bank" banks={banks} /></div>
+      <div><label htmlFor="fin-bank" className={label}>Paid into</label>
+        <select id="fin-bank" name="bank_id" required value={bank} onChange={(e) => setBank(e.target.value)} className={input}>
+          <option value="">Choose…</option>
+          {banks.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
+        </select></div>
       <div><label htmlFor="fin-date" className={label}>Date received</label><input id="fin-date" name="date" type="date" required defaultValue={today()} className={input} /></div>
-      <div><label htmlFor="fin-amt" className={label}>Amount (MVR)</label><input id="fin-amt" name="amount" inputMode="decimal" required className={`${input} tabular-nums`} /></div>
-      <div><label htmlFor="fin-ref" className={label}>Reference</label><input id="fin-ref" name="reference" className={input} /></div>
+      <div key={`a-${state?.id ?? ""}`}><label htmlFor="fin-amt" className={label}>Amount (MVR)</label><input id="fin-amt" name="amount" inputMode="decimal" required className={`${input} tabular-nums`} /></div>
+      <div key={`r-${state?.id ?? ""}`}><label htmlFor="fin-ref" className={label}>Reference</label><input id="fin-ref" name="reference" className={input} /></div>
       <div className="flex items-center gap-3 sm:col-span-3">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : "Record financing"}</button>
         {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
