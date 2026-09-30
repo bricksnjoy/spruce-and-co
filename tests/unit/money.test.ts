@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { dbToLaari, laariToDb, moneyToDb, percentToDb, toLaari, withRunning } from "@/lib/money";
+import { periodFor, periodLabel, scheduleCsv } from "@/lib/gst";
 
 describe("money typed into forms", () => {
   it("reads amounts as whole laari, never as floats", () => {
@@ -85,5 +86,23 @@ describe("bank rules on screen", () => {
     expect(ruleFor(rules, { description: "FEE", amount: -5 })?.name).toBe("Any out");
     expect(ruleFor(rules, { description: "TRF", amount: "999.99" })).toBeUndefined();
     expect(ruleFor(rules, { description: "TRF", amount: "1000.00" })?.name).toBe("Big in");
+  });
+});
+
+
+describe("GST periods (lib/gst)", () => {
+  it("matches the database's quarters and due dates", () => {
+    expect(periodFor("2026-02-15", 3, 28)).toEqual({ start: "2026-01-01", end: "2026-03-31", due: "2026-04-28" });
+    expect(periodFor("2026-11-30", 3, 28)).toEqual({ start: "2026-10-01", end: "2026-12-31", due: "2027-01-28" });
+    expect(periodFor("2028-02-10", 1, 20)).toEqual({ start: "2028-02-01", end: "2028-02-29", due: "2028-03-20" });
+  });
+  it("labels quarters and months", () => {
+    expect(periodLabel("2026-04-01", "2026-06-30")).toBe("Q2 2026");
+    expect(periodLabel("2026-02-01", "2026-02-28")).toBe("Feb 2026");
+  });
+  it("writes a schedule as CSV, quoting where needed", () => {
+    const csv = scheduleCsv([{ side: "input", transaction_id: "x", date: "2026-02-10", type: "bill", number: null, contact_name: "Shop, Ltd",
+      tin: "100", tax_invoice_no: "TI-1", tax_invoice_date: "2026-02-10", customs_ref: null, taxable: "2000.00", gst: "160.00", late: true, correction: false }], "input");
+    expect(csv.split("\r\n")[1]).toBe('2026-02-10,bill,,"Shop, Ltd",100,TI-1,2026-02-10,,2000.00,160.00,"Dated in an earlier, filed period"');
   });
 });

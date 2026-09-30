@@ -165,6 +165,21 @@ The 4 employees copied from People still need salary, nationality and bank detai
 Migration 023 applied to Live. Tests: **114 passing**; `tsc`, `eslint`, `next build` clean.
 The old Bank reconciliation screen stays in the menu, marked "(old)", Live only, until cut-over.
 
+## Phase 4 · Module 8 — Taxes (GST) (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Taxes `/taxes` | The current quarter's GST to date and its due date, filed-but-unpaid returns, credit carried forward, every return with status, output, input, net, still owed and due date (overdue in red); pension and withholding tax owed, with a link to record the payment | build, types, `money.test` (periods) |
+| Return `/taxes/gst/[id]` | Worksheet (output, input, net or credit, with amounts that came from earlier periods called out); supplies dated in the period by tax code (standard, zero-rated, exempt) for the MIRA form; output schedule per invoice; input schedule per supplier tax invoice with TIN or customs declaration | `taxes.test` |
+| Schedules CSV | Output and input schedule downloads | `money.test` (CSV) |
+| File | Confirm and file; the return is locked, the settlement posts, and the schedule is kept exactly as filed. Returns are filed in order; filing before the period ends warns | `gst.test`, `taxes.test` |
+| Late documents | A document dated in a filed quarter, or a change to one, lands in the next open return and is flagged (decision G4) | `gst.test`, `taxes.test` |
+| Pay MIRA | From a bank or cash account, whole or part; the return turns Paid when nothing is owed | `gst.test` |
+| Due day | Changing the due day in Settings moves the due date of every return not yet filed | `taxes.test` |
+
+Migration 024 applied to Live (no returns existed yet; health 13/13). Tests: **121 passing**; `tsc`, `eslint`, `next build` clean.
+The old Tax and GST Input Schedule screens stay in the menu, marked "(old)", Live only, until cut-over.
+
 ## Still open
 
 | Item | Why | When |
