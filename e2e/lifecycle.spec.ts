@@ -137,7 +137,7 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await page.getByRole("button", { name: "Save payment" }).click();
   await page.waitForURL((u) => !u.pathname.endsWith("/new"));
   await page.goto(`/projects/${projectId}?tab=payouts`);
-  await expect(page.getByText("Payouts are released")).toBeVisible();
+  await expect(page.getByText(/^Payouts are released/)).toBeVisible();
 
   // 10. pay out all three components to Mujahid
   const mujahid = sql(`select id from contacts where name = 'Mujahid' and book = 'live' limit 1`);

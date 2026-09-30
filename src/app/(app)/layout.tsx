@@ -11,6 +11,7 @@ import { BookSwitch } from "@/components/book-switch";
 import { BookGuard } from "@/components/book-guard";
 import type { Book } from "@/lib/books";
 import { NewMenu } from "@/components/new-menu";
+import { PageHelp } from "@/components/page-help";
 
 export default async function AppLayout({
   children,
@@ -100,7 +101,7 @@ export default async function AppLayout({
             <strong>Test book.</strong> Nothing here is real or reaches the Live books; document numbers start with TEST-.
           </div>
         )}
-        <main className="flex-1 p-4 sm:p-6"><BookGuard book={book}>{children}</BookGuard></main>
+        <main className="flex-1 p-4 sm:p-6"><BookGuard book={book}><PageHelp />{children}</BookGuard></main>
       </div>
     </div>
   );

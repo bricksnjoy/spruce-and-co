@@ -22,6 +22,7 @@ export const BOOK_AWARE: string[] = [
   "/reports",
   "/search",
   "/accounting/journal",
+  "/help",
 ];
 
 /** Parts of a book-aware area that still read the old tables. */

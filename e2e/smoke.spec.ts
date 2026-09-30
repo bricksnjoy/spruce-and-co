@@ -7,7 +7,7 @@ const ROUTES = [
   "/expenses", "/expenses/vendors", "/expenses/new?type=bill", "/expenses/pay", "/payroll", "/payroll/employees", "/payroll/remittances",
   "/banking", "/banking/rules", "/taxes", "/partners", "/partners/distributions", "/reports", "/accounting/chart", "/accounting/health",
   "/accounting/journal", "/accounting/journal/new", "/accounting/journal/new?type=opening_balance", "/search?q=INV",
-  "/settings/company", "/settings/accounting", "/settings/taxes", "/settings/numbering", "/settings/currencies", "/settings/profit-share",
+  "/settings/company", "/settings/accounting", "/settings/taxes", "/settings/numbering", "/settings/currencies", "/settings/profit-share", "/help",
 ];
 
 test("every rebuilt screen opens without errors", async ({ page }) => {
@@ -54,4 +54,14 @@ test("the viewer cannot see payroll or change the books", async ({ page }) => {
   await expect(page.locator("main")).toContainText(/payroll permission|staff who work with the books/);
   await page.goto("/");
   await expect(page.getByRole("button", { name: "+ New" })).toHaveCount(0);
+});
+
+test("each page explains itself, and the menu has no old screens", async ({ page }) => {
+  await signIn(page, "admin");
+  await page.goto("/sales");
+  await page.getByText("How to use this page").click();
+  await expect(page.getByText(/Use the tabs: All, Invoices, Unpaid, Overdue, Deposits/)).toBeVisible();
+  await expect(page.locator("aside")).not.toContainText("(old)");
+  await page.goto("/help");
+  await expect(page.getByRole("heading", { name: "Receive payment" })).toBeVisible();
 });

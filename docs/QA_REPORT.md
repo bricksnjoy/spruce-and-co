@@ -43,7 +43,7 @@ Kept up to date as the rebuild goes. The latest run is at the top.
 | Report figures drill down to the source document and back | ✅ figure → general ledger → document; back link on every report |
 | Chains link both ways | ✅ customer ↔ projects ↔ invoices ↔ payments ↔ deposits ↔ bank; vendor ↔ bills ↔ payments ↔ bank; employee ↔ payslips ↔ run ↔ labour ↔ project; invoices/bills ↔ GST return ↔ settlement ↔ payment; project ↔ value ↔ financing ↔ distribution ↔ payables ↔ payouts ↔ statements. **Estimates** are still the old quotation screens (see Still open) |
 | Editing or voiding updates everything downstream | ✅ posting is regenerated from the source; split adjustments, GST next-return adjustments and statements follow (engine tests) |
-| No dead routes, buttons or placeholder pages | ✅ route guard over 200+ links; the "(old)" screens remain, Live only, until switch-over |
+| No dead routes, buttons or placeholder pages | ✅ route guard over 200+ links; the old screens are off the menu (listed on the Help page, Live only) until switch-over |
 | Permissions the same in UI and database | ✅ payroll enforced in RLS and every rpc; UI hides what the database refuses (security tests, viewer browser test) |
 
 ### 10-minute walkthrough (do it in the **Test** book)

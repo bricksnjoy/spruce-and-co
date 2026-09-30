@@ -32,6 +32,7 @@ export const NAV: NavGroup[] = [
       { href: "/tasks", label: "Tasks & Calendar", roles: ALL },
       { href: "/messages", label: "Message Center", roles: MONEY },
       { href: "/pnl", label: "Project P&L", roles: MONEY },
+      { href: "/help", label: "Help", roles: ALL },
     ],
   },
   {
@@ -41,7 +42,6 @@ export const NAV: NavGroup[] = [
       { href: "/sales", label: "Sales & invoices", roles: MONEY },
       { href: "/sales/customers", label: "Customers", roles: MONEY },
       { href: "/quotations", label: "Quotations", roles: MONEY },
-      { href: "/invoices", label: "Invoices (old)", roles: MONEY },
       { href: "/estimator", label: "Cabinet Estimator", roles: MONEY },
     ],
   },
@@ -67,10 +67,6 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/partners", label: "Partners & financing", roles: MONEY },
       { href: "/partners/distributions", label: "Distribution history", roles: MONEY },
-      { href: "/capital-pool", label: "Capital Pool (old)", roles: MONEY },
-      { href: "/investors", label: "Investors (old)", roles: MONEY },
-      { href: "/financing", label: "Project Financing (old)", roles: MONEY },
-      { href: "/internal", label: "Internal Account (old)", roles: MONEY },
     ],
   },
   {
@@ -80,17 +76,10 @@ export const NAV: NavGroup[] = [
       { href: "/reports", label: "Reports", roles: MONEY },
       { href: "/reports/profit-loss", label: "Profit or loss", roles: MONEY },
       { href: "/reports/balance-sheet", label: "Balance sheet", roles: MONEY },
-      { href: "/accounting", label: "Overview (old)", roles: MONEY },
-      { href: "/accounting/ledger", label: "Ledger (old)", roles: MONEY },
-      { href: "/accounting/audit", label: "Self-audit (old)", roles: MONEY },
-      { href: "/accounting/statements", label: "Financial statements (old)", roles: MONEY },
       { href: "/banking", label: "Banking", roles: MONEY },
-      { href: "/accounting/bank", label: "Bank reconciliation (old)", roles: MONEY },
       { href: "/taxes", label: "Taxes (GST)", roles: MONEY },
-      { href: "/accounting/tax", label: "Tax (old)", roles: MONEY },
       { href: "/accounting/equipment", label: "Equipment register", roles: MONEY },
       { href: "/accounting/year-end", label: "Year end", roles: MONEY },
-      { href: "/gst", label: "GST Input Schedule (old)", roles: MONEY },
       { href: "/accounting/chart", label: "Chart of accounts", roles: MONEY },
       { href: "/accounting/journal", label: "Journal entries", roles: MONEY },
       { href: "/accounting/health", label: "Health check", roles: MONEY },
@@ -106,9 +95,29 @@ export const NAV: NavGroup[] = [
       { href: "/settings/numbering", label: "Numbering", roles: MONEY },
       { href: "/settings/currencies", label: "Currencies", roles: MONEY },
       { href: "/settings/profit-share", label: "Profit-share schemes", roles: MONEY },
-      { href: "/profit-share", label: "Profit Share (old)", roles: MONEY },
     ],
   },
+];
+
+/**
+ * The old screens, taken off the menu now that the rebuilt ones replace them.
+ * The pages and their records stay (Live only) so old figures can be checked
+ * before the switch-over; the Help page lists them.
+ */
+export const OLD_SCREENS: { href: string; label: string; replacedBy: [string, string] }[] = [
+  { href: "/invoices", label: "Invoices (old)", replacedBy: ["/sales", "Sales & invoices"] },
+  { href: "/capital-pool", label: "Capital Pool (old)", replacedBy: ["/partners", "Partners & financing"] },
+  { href: "/investors", label: "Investors (old)", replacedBy: ["/partners", "Partners & financing"] },
+  { href: "/financing", label: "Project Financing (old)", replacedBy: ["/partners", "Partners & financing"] },
+  { href: "/internal", label: "Internal Account (old)", replacedBy: ["/partners", "Partners & financing"] },
+  { href: "/accounting", label: "Accounting overview (old)", replacedBy: ["/", "Dashboard"] },
+  { href: "/accounting/ledger", label: "Ledger (old)", replacedBy: ["/reports/general-ledger", "General Ledger report"] },
+  { href: "/accounting/audit", label: "Self-audit (old)", replacedBy: ["/accounting/health", "Health check"] },
+  { href: "/accounting/statements", label: "Financial statements (old)", replacedBy: ["/reports", "Reports"] },
+  { href: "/accounting/bank", label: "Bank reconciliation (old)", replacedBy: ["/banking", "Banking"] },
+  { href: "/accounting/tax", label: "Tax (old)", replacedBy: ["/taxes", "Taxes (GST)"] },
+  { href: "/gst", label: "GST Input Schedule (old)", replacedBy: ["/taxes", "Taxes (GST)"] },
+  { href: "/profit-share", label: "Profit Share (old)", replacedBy: ["/settings/profit-share", "Profit-share schemes"] },
 ];
 
 /** Shortcuts pinned above the navigation. Only routes present in NAV show. */
