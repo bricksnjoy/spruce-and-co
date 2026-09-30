@@ -10,11 +10,13 @@ import { BudgetEditor, type BudgetLine } from "./budget-editor";
 import { VariationRows, NewVariation, type VariationRow } from "./variation-forms";
 import { BillingPlan, type Stage } from "./billing-plan";
 import { ArchiveButton } from "./archive-button";
+import { CompleteForm, FinancingForm } from "@/components/partners/forms";
+import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
 
 export const dynamic = "force-dynamic";
 
 const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
-const TABS: [string, string][] = [["overview", "Overview"], ["value", "Value & budget"], ["variations", "Variations"], ["billing", "Billing plan"], ["transactions", "Transactions"]];
+const TABS: [string, string][] = [["overview", "Overview"], ["value", "Value & budget"], ["variations", "Variations"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
 
 export default async function ProjectPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }>;
@@ -58,6 +60,9 @@ export default async function ProjectPage({ params, searchParams }: {
       {active === "value" && <Value s={s} p={p} writer={writer} />}
       {active === "variations" && <Variations s={s} p={p} writer={writer} />}
       {active === "billing" && <Billing s={s} p={p} writer={writer} />}
+      {active === "financing" && <Financing s={s} p={p} writer={writer} />}
+      {active === "split" && <Split s={s} p={p} writer={writer} />}
+      {active === "payouts" && <Payouts s={s} p={p} />}
       {active === "transactions" && <Transactions s={s} id={id} />}
     </div>
   );
@@ -216,5 +221,200 @@ async function Transactions({ s, id }: { s: Session; id: string }) {
         </Table>
       )}
     </Card>
+  );
+}
+
+async function Financing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
+  const [{ data: sources }, { data: contacts }, { data: banks }, { data: txns }] = await Promise.all([
+    s.supabase.from("project_financing_v").select("contact_id, source_type, received, repaid, outstanding").eq("project_id", p.id),
+    s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
+    s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
+    s.supabase.from("transactions").select("id, date, number, type, contact_id, total_amount, reference, voided_at")
+      .eq("project_id", p.id).in("type", ["loan_receipt", "capital_contribution"]).order("date"),
+  ]);
+  const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
+  const rows = (sources ?? []).filter((r) => dbToLaari(r.received) !== 0n).sort((a, b) => Number(dbToLaari(b.received) - dbToLaari(a.received)));
+  const total = rows.reduce((t, r) => t + dbToLaari(r.received), 0n);
+  const ratio = (v: number | string) => total > 0n ? Number((dbToLaari(v) * 1000000n) / total) / 10000 : 0;
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardHeader title="Financing sources" subtitle="The contribution ratio (amount ÷ total financing) divides the financing pool's share of profit (§5, P4)" />
+        {rows.length === 0 ? <Empty message="No financing recorded. Without financing the pool's share stays with the company (I3)." /> : (
+          <Table>
+            <thead><tr><Th>Source</Th><Th>Type</Th><Th right>Received</Th><Th right>Ratio</Th><Th right>Repaid</Th><Th right>Outstanding</Th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.contact_id}>
+                  <Td><Link href={`/partners/${r.contact_id}`} className="text-[var(--brand)] hover:underline">{names.get(r.contact_id) ?? "—"}</Link></Td>
+                  <Td>{r.source_type === "external" ? "External lender" : "Capital Pool"}</Td>
+                  <Td right>{m(r.received)}</Td><Td right>{pct(ratio(r.received), 2)}</Td><Td right>{m(r.repaid)}</Td><Td right>{m(r.outstanding)}</Td>
+                </tr>
+              ))}
+              <tr className="font-semibold"><Td>Total</Td><Td> </Td><Td right>{money(laariToNumber(total))}</Td><Td right>100%</Td>
+                <Td right>{m(rows.reduce((t, r) => t + Number(r.repaid), 0))}</Td><Td right>{m(rows.reduce((t, r) => t + Number(r.outstanding), 0))}</Td></tr>
+            </tbody>
+          </Table>
+        )}
+      </Card>
+      {writer && !p.completed_at && (
+        <Card>
+          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full." />
+          <FinancingForm projectId={p.id} banks={banks ?? []}
+            lenders={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("lender"))}
+            partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))} />
+        </Card>
+      )}
+      {(txns ?? []).length > 0 && (
+        <Card>
+          <CardHeader title="Receipts" />
+          <Table>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>From</Th><Th>Reference</Th><Th right>Amount</Th></tr></thead>
+            <tbody>
+              {(txns ?? []).map((t) => (
+                <tr key={t.id} className={t.voided_at ? "text-[var(--muted)] line-through" : ""}>
+                  <Td className="whitespace-nowrap">{date(t.date)}</Td><Td className="font-mono text-xs">{t.number}</Td>
+                  <Td>{names.get(t.contact_id!) ?? "—"}</Td><Td>{t.reference ?? ""}</Td><Td right>{m(t.total_amount)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
+  if (!p.completed_at) {
+    const [{ data: profit }, { data: preview }, { data: proj }] = await Promise.all([
+      s.supabase.rpc("project_profit", { p_project: p.id }),
+      s.supabase.rpc("preview_split", { p_project: p.id }),
+      s.supabase.from("projects").select("profit_schemes(name, effective_from)").eq("id", p.id).maybeSingle(),
+    ]);
+    const lines = (preview ?? []) as { contact_id: string; name: string; component: string; amount: string; principal: string }[];
+    const shared = lines.reduce((t, l) => t + dbToLaari(l.amount), 0n);
+    const profitL = dbToLaari(profit as string | number | null);
+    const scheme = (proj?.profit_schemes ?? null) as unknown as { name: string; effective_from: string } | null;
+    const people = [...new Set(lines.map((l) => l.contact_id))];
+    return (
+      <div className="space-y-5">
+        <Card>
+          <CardHeader title="Split preview" subtitle={`If completed now, on the profit to date${scheme ? ` · ${scheme.name} (from ${date(scheme.effective_from)})` : ""}`} />
+          {profitL <= 0n ? <Empty message={`Profit to date is ${money(laariToNumber(profitL))}: nothing is shared on a loss or zero profit, and principal is still repaid in full (P2).`} /> : (
+            <Table>
+              <thead><tr><Th>Party</Th><Th right>Principal back</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total</Th></tr></thead>
+              <tbody>
+                {people.map((cid) => {
+                  const get = (c: string) => lines.filter((l) => l.contact_id === cid && l.component === c).reduce((t, l) => t + dbToLaari(l.amount), 0n);
+                  const principal = dbToLaari(lines.find((l) => l.contact_id === cid)?.principal);
+                  return (
+                    <tr key={cid}>
+                      <Td>{lines.find((l) => l.contact_id === cid)?.name}</Td>
+                      <Td right>{principal ? money(laariToNumber(principal)) : "–"}</Td>
+                      <Td right>{get("financing_return") ? money(laariToNumber(get("financing_return"))) : "–"}</Td>
+                      <Td right>{get("profit_share") ? money(laariToNumber(get("profit_share"))) : "–"}</Td>
+                      <Td right className="font-medium">{money(laariToNumber(principal + get("financing_return") + get("profit_share")))}</Td>
+                    </tr>
+                  );
+                })}
+                <tr><Td>Company keeps</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL - shared))}</Td><Td right> </Td></tr>
+                <tr className="font-semibold"><Td>Project profit</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL))}</Td><Td right> </Td></tr>
+              </tbody>
+            </Table>
+          )}
+        </Card>
+        {writer && (
+          <Card>
+            <CardHeader title="Complete the project" subtitle="Posts Dr Finance Cost and Dr Profit Share against each person's payables. Payouts wait until the client owes nothing." />
+            <CompleteForm projectId={p.id} profit={money(laariToNumber(profitL))} />
+          </Card>
+        )}
+      </div>
+    );
+  }
+  const [{ data: dists }, { data: flag }, { data: contacts }] = await Promise.all([
+    s.supabase.from("distributions").select("id, created_at, reason, profit_amount, distribution_lines(contact_id, component, amount)").eq("project_id", p.id).order("created_at"),
+    s.supabase.from("projects").select("review_flag").eq("id", p.id).maybeSingle(),
+    s.supabase.from("contacts").select("id, name"),
+  ]);
+  const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
+  const all = (dists ?? []).flatMap((d) => (d.distribution_lines ?? []) as { contact_id: string; component: string; amount: string }[]);
+  const people = [...new Set(all.map((l) => l.contact_id))].sort((a, b) => (names.get(a) ?? "").localeCompare(names.get(b) ?? ""));
+  const net = (cid: string, c: string) => all.filter((l) => l.contact_id === cid && l.component === c).reduce((t, l) => t + dbToLaari(l.amount), 0n);
+  const latest = (dists ?? []).at(-1);
+  const REASON: Record<string, string> = { completion: "On completion", bad_debt: "Bad debt", late_entry: "Late entry", manual: "Adjustment" };
+  return (
+    <div className="space-y-5">
+      {flag?.review_flag && <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">For review: {flag.review_flag}.</p>}
+      <Card>
+        <CardHeader title="Profit split" subtitle={`Completed ${date(p.completed_at)} · current profit ${m(latest?.profit_amount)} · net of every adjustment`} />
+        {people.length === 0 ? <Empty message="Nothing shared: the project made no profit." /> : (
+          <Table>
+            <thead><tr><Th>Person</Th><Th right>Financing return</Th><Th right>Profit share</Th></tr></thead>
+            <tbody>
+              {people.map((cid) => (
+                <tr key={cid}>
+                  <Td><Link href={`/partners/${cid}`} className="text-[var(--brand)] hover:underline">{names.get(cid) ?? "—"}</Link></Td>
+                  <Td right>{money(laariToNumber(net(cid, "financing_return")))}</Td><Td right>{money(laariToNumber(net(cid, "profit_share")))}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+      <Card>
+        <CardHeader title="Entries" subtitle="The original split is never edited; each change is its own entry" />
+        <Table>
+          <thead><tr><Th>Posted</Th><Th>Why</Th><Th right>Profit</Th><Th right>Shared</Th></tr></thead>
+          <tbody>
+            {(dists ?? []).map((d) => (
+              <tr key={d.id}>
+                <Td>{date(d.created_at)}</Td><Td>{REASON[d.reason] ?? d.reason}</Td><Td right>{m(d.profit_amount)}</Td>
+                <Td right>{money(laariToNumber(((d.distribution_lines ?? []) as { amount: string }[]).reduce((t, l) => t + dbToLaari(l.amount), 0n)))}</Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card>
+    </div>
+  );
+}
+
+async function Payouts({ s, p }: { s: Session; p: ProjectFigures }) {
+  const [{ data: status }, { data: statement }, { data: contacts }] = await Promise.all([
+    s.supabase.rpc("payout_status", { p_project: p.id }).maybeSingle(),
+    s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding").eq("project_id", p.id),
+    s.supabase.from("contacts").select("id, name"),
+  ]);
+  const st = status as { blocked: boolean; reason: string | null; client_owes: number } | null;
+  const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
+  const rows = (statement ?? []) as StatementRow[];
+  const people = [...new Set(rows.map((r) => r.contact_id))].sort((a, b) => (names.get(a) ?? "").localeCompare(names.get(b) ?? ""));
+  const get = (cid: string, c: string) => rows.find((r) => r.contact_id === cid && r.component === c);
+  return (
+    <div className="space-y-5">
+      {st?.blocked ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-900">Payouts are blocked: {st.reason}.
+          {dbToLaari(st.client_owes) > 0n && p.customer_id && <> <Link href={`/sales/customers/${p.customer_id}`} className="font-medium underline">See what the client owes</Link>.</>}</p>
+      ) : <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900">Payouts are released: the project is completed and the client owes nothing.</p>}
+      <Card>
+        <CardHeader title="Owed on this project" subtitle="Pay from each person's statement" />
+        {people.length === 0 ? <Empty message="Nothing owed on this project." /> : (
+          <Table>
+            <thead><tr><Th>Person</Th>{COMPONENTS.map((c) => <Th key={c} right>{COMPONENT_LABEL[c]} (paid / owed)</Th>)}<Th right> </Th></tr></thead>
+            <tbody>
+              {people.map((cid) => (
+                <tr key={cid}>
+                  <Td>{names.get(cid) ?? "—"}</Td>
+                  {COMPONENTS.map((c) => { const r = get(cid, c); return <Td key={c} right>{r ? `${m(r.paid)} / ${m(r.outstanding)}` : "–"}</Td>; })}
+                  <Td right><Link href={`/partners/${cid}`} className="text-sm font-medium text-[var(--brand)] hover:underline">Statement</Link></Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+    </div>
   );
 }

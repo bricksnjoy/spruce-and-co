@@ -37,6 +37,8 @@ export interface DocSpec {
   customsRef?: string;
   draft?: boolean;
   taxPeriod?: string;
+  /** payouts are approved by default here; false leaves one unapproved */
+  approved?: boolean;
   lines?: LineSpec[];
   apply?: { to: string; amount: number }[];
 }
@@ -71,6 +73,9 @@ export async function doc(db: PGlite, d: DocSpec): Promise<string> {
     }
     for (const a of d.apply ?? []) {
       await tx.query(`insert into applications (from_transaction_id, to_transaction_id, amount) values ($1, $2, $3)`, [id, a.to, a.amount]);
+    }
+    if (d.type === "payout" && d.approved !== false) {
+      await tx.query(`update transactions set approval_status = 'approved', approved_snapshot = _payout_lines(id) where id = $1`, [id]);
     }
     await tx.query(`select post_transaction($1)`, [id]);
     return id;

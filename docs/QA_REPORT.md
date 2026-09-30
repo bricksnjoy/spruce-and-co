@@ -180,6 +180,20 @@ The old Bank reconciliation screen stays in the menu, marked "(old)", Live only,
 Migration 024 applied to Live (no returns existed yet; health 13/13). Tests: **121 passing**; `tsc`, `eslint`, `next build` clean.
 The old Tax and GST Input Schedule screens stay in the menu, marked "(old)", Live only, until cut-over.
 
+## Phase 4 · Module 9 — Financing & Profit Share (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Partners & financing `/partners` | Principal outstanding, returns and shares owed, ready to pay, blocked; payouts awaiting approval (approve / turn down); each person's outstanding principal, financing return and profit share kept apart; each project's financing, amounts owed, split profit and payout status with the reason when blocked | `financing-screens.test` (view) |
+| Partner statement `/partners/[id]` | Per project and component: accrued, paid, outstanding; pay-out form (blocked lines show why); payout history | `financing-screens.test`, `financing.test` |
+| Payout approval | A payout posts only once an admin approves it, for exactly the lines approved; an admin's own payout is approved as saved; the release rule (completed + client owes 0, never more than owed) still applies | `financing-screens.test` |
+| Project tabs | **Financing** (sources, contribution ratio, record a Capital Pool contribution or lender loan, receipts); **Profit split** (preview before completion with principal back, pool share, fixed share and what the company keeps; complete and post; afterwards the net split and every adjustment entry, review flag); **Payouts** (release status, what each person is owed) | `financing.test` (worked example, bad debt, late entry) |
+| Distribution history `/partners/distributions` | Every split and adjustment as posted, never edited | `financing.test` |
+| Profit-share schemes `/settings/profit-share` | Versions by start date, each totalling 100%; add (admin) prefilled from the current one; remove a version no split used | `financing-screens.test` |
+
+Migration 025 applied to Live (no payouts existed; health 13/13). Tests: **127 passing**; `tsc`, `eslint`, `next build` clean.
+The old Capital Pool, Investors, Project Financing, Internal Account and Profit Share screens stay in the menu, marked "(old)", Live only, until cut-over. Their records have not been copied into the new ledger: financing is recorded afresh per project (see Still open).
+
 ## Still open
 
 | Item | Why | When |
@@ -188,5 +202,6 @@ The old Tax and GST Input Schedule screens stay in the menu, marked "(old)", Liv
 | Save/void RPCs called by the screens | Written per module | Phase 4 |
 | End-to-end browser tests | Need a reachable Supabase (Q3) | Phase 4–5 |
 | Withholding-tax brackets, pension-rate confirmation, GST due day | Your figures (📝) | Before the first real payroll / GST filing |
-| Assumptions I1–I9 | Your confirmation | Any time |
+| Assumptions I1–I11 | Your confirmation | Any time |
+| Old financing records (capital-pool entries, investors, project financing sources) into the new ledger | Needs your check of each figure; nothing is copied without it | Phase 5 cut-over |
 | Estimates in the new books (convert a quotation to a new-ledger invoice); e-mail invoices and overdue reminders (feature H) | Quotations have their own templates and signatures; kept as they are until switch-over | Phase 5 cut-over |

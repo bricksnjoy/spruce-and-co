@@ -17,6 +17,7 @@ export const BOOK_AWARE: string[] = [
   "/payroll",
   "/banking",
   "/taxes",
+  "/partners",
 ];
 
 /** Parts of a book-aware area that still read the old tables. */

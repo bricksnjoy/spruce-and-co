@@ -65,10 +65,12 @@ export const NAV: NavGroup[] = [
     group: "Finance",
     defaultOpen: true,
     items: [
-      { href: "/capital-pool", label: "Capital Pool", roles: MONEY },
-      { href: "/investors", label: "Investors", roles: MONEY },
-      { href: "/financing", label: "Project Financing", roles: MONEY },
-      { href: "/internal", label: "Internal Account", roles: MONEY },
+      { href: "/partners", label: "Partners & financing", roles: MONEY },
+      { href: "/partners/distributions", label: "Distribution history", roles: MONEY },
+      { href: "/capital-pool", label: "Capital Pool (old)", roles: MONEY },
+      { href: "/investors", label: "Investors (old)", roles: MONEY },
+      { href: "/financing", label: "Project Financing (old)", roles: MONEY },
+      { href: "/internal", label: "Internal Account (old)", roles: MONEY },
     ],
   },
   {
@@ -99,7 +101,8 @@ export const NAV: NavGroup[] = [
       { href: "/settings/taxes", label: "Taxes & rates", roles: MONEY },
       { href: "/settings/numbering", label: "Numbering", roles: MONEY },
       { href: "/settings/currencies", label: "Currencies", roles: MONEY },
-      { href: "/profit-share", label: "Profit Share", roles: MONEY },
+      { href: "/settings/profit-share", label: "Profit-share schemes", roles: MONEY },
+      { href: "/profit-share", label: "Profit Share (old)", roles: MONEY },
     ],
   },
 ];

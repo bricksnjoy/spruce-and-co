@@ -6,6 +6,7 @@ const TABS: [string, string][] = [
   ["/settings/taxes", "Taxes & rates"],
   ["/settings/numbering", "Numbering"],
   ["/settings/currencies", "Currencies"],
+  ["/settings/profit-share", "Profit share"],
 ];
 
 /** The settings pages, as tabs. */
