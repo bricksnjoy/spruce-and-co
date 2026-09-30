@@ -4,6 +4,10 @@ import { startTransition, useActionState, useState, useTransition } from "react"
 import { Card, CardHeader, Empty, Table, Th, Td } from "@/components/ui";
 import { input, small } from "@/components/form-styles";
 import { deleteBillingStage, saveBillingStage, type Result } from "@/app/actions/project-value";
+import { invoiceStage } from "@/app/actions/sales";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { today } from "@/lib/format";
 import { money } from "@/lib/format";
 import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 
@@ -18,6 +22,11 @@ export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId
   const [error, setError] = useState<string | null>(null);
   const [state, action, saving] = useActionState(saveBillingStage, null as Result | null);
   const [basis, setBasis] = useState<"percent" | "amount">("percent");
+  const router = useRouter();
+  const invoice = (stageId: string) => start(async () => {
+    const r = await invoiceStage(stageId, today());
+    if (r.error) setError(r.error); else if (r.id) router.push(`/sales/${r.id}/edit`);
+  });
 
   return (
     <Card>
@@ -37,7 +46,9 @@ export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId
                 <Td className="text-xs text-[var(--muted)]">{st.due_event ?? ""}</Td>
                 <Td right>{st.basis === "percent" ? `${Number(st.value)}%` : "Fixed"}</Td>
                 <Td right>{money(laariToNumber(amountOf(st)))}</Td>
-                <Td right>{st.invoice_id ? "Yes" : <span className="text-[var(--muted)]">Not yet</span>}</Td>
+                <Td right>{st.invoice_id ? <Link href={`/sales/${st.invoice_id}`} className="font-medium text-[var(--brand)] hover:underline">View invoice</Link>
+                  : canEdit ? <button type="button" disabled={pending} onClick={() => invoice(st.id)} className="text-xs font-medium text-[var(--brand)] hover:underline">Create invoice</button>
+                  : <span className="text-[var(--muted)]">Not yet</span>}</Td>
                 {canEdit && (
                   <Td right>
                     {!st.invoice_id && (

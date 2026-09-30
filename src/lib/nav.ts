@@ -39,9 +39,10 @@ export const NAV: NavGroup[] = [
     group: "Sales",
     defaultOpen: true,
     items: [
+      { href: "/sales", label: "Sales & invoices", roles: MONEY },
       { href: "/sales/customers", label: "Customers", roles: MONEY },
       { href: "/quotations", label: "Quotations", roles: MONEY },
-      { href: "/invoices", label: "Invoices", roles: MONEY },
+      { href: "/invoices", label: "Invoices (old)", roles: MONEY },
       { href: "/estimator", label: "Cabinet Estimator", roles: MONEY },
     ],
   },

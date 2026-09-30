@@ -102,6 +102,23 @@ The old Shops screen still writes to its own table until the Expenses module.
 
 Project amounts on the form are now saved as exact decimals (no floats). Migration 018 applied to Live. Tests: **93 passing**; `tsc`, `eslint`, `next build` clean.
 
+## Phase 4 · Module 4 — Sales (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Sales hub `/sales` | Money bar: Unpaid · Overdue · Paid in the last 30 days · Not yet banked; every sales document with customer, project, balance and derived status; filters | `sales.test` (list and "paid since") |
+| Invoices, credit notes, sales receipts | One form: customer (terms set the due date; none = due on receipt), project, lines by quantity × rate or amount, GST code per line, income account, MVR or USD with rate, draft; running total in laari; edit re-posts; void with a reason | `posting.test`, `money.test` (quantity × rate) |
+| Document page | Lines with GST, totals, payments applied, where the money went, void notice; Print / PDF; Receive payment; Mark sent; Edit; Void | build, types |
+| Tax invoice PDF `/print/sales/[id]` | Supplier name, TIN and GST registration; customer and their TIN; number, date, due date; each line with its GST; subtotal, GST, total, paid, balance; bank details; "VOID" when voided; titled INVOICE when not GST-registered | build, types |
+| Receive payment | One payment across a customer's open invoices, oldest first, each editable; over-applying refused; the rest stays as credit; to a bank or Undeposited Funds | `sales.test` |
+| Bank deposit | Tick receipts waiting in Undeposited Funds; the deposit records which ones, so none is banked twice; voiding it frees them; a banked receipt can't be voided | `sales.test` (2 cases) |
+| Client advances (B2) | Receive an advance; balances held per customer; apply to invoices; the database refuses using more than was paid (migration 020) | `sales.test` |
+| Progress billing | "Create invoice" on a billing stage makes the invoice for its share of the revised contract (GST by registration; customer's terms); voiding it frees the stage | `sales.test` (2 cases) |
+| Customer statement PDF `/print/statement/[id]` | From the Statement tab, for any dates | `contacts.test` |
+
+Migrations 019 and 020 applied to Live. Tests: **100 passing**; `tsc`, `eslint`, `next build` clean.
+Estimates stay on the existing Quotations screens (Live only) for now; converting a quotation into a new-ledger invoice and e-mailing invoices with reminders are listed under Still open.
+
 ## Still open
 
 | Item | Why | When |
@@ -111,3 +128,4 @@ Project amounts on the form are now saved as exact decimals (no floats). Migrati
 | End-to-end browser tests | Need a reachable Supabase (Q3) | Phase 4–5 |
 | Withholding-tax brackets, pension-rate confirmation, GST due day | Your figures (📝) | Before the first real payroll / GST filing |
 | Assumptions I1–I9 | Your confirmation | Any time |
+| Estimates in the new books (convert a quotation to a new-ledger invoice); e-mail invoices and overdue reminders (feature H) | Quotations have their own templates and signatures; kept as they are until switch-over | Phase 5 cut-over |

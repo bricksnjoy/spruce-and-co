@@ -30,7 +30,15 @@ export async function ContactDetail({ s, side, id, tab, from, to }: {
     <div className="max-w-6xl space-y-5">
       <PageHeader title={c.name}
         subtitle={[c.contact_person, c.phone, c.email].filter(Boolean).join(" · ") || titleize(side.kind)}
-        action={<Link href={side.base} className="text-sm font-medium text-[var(--brand)] hover:underline">← {side.title}</Link>} />
+        action={
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {side.kind === "customer" && writer && c.active && <>
+              <Link href={`/sales/new?type=invoice&customer=${id}`} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 font-medium text-white hover:bg-[var(--brand-hover)]">New invoice</Link>
+              <Link href={`/sales/payments/new?customer=${id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Receive payment</Link>
+            </>}
+            <Link href={side.base} className="font-medium text-[var(--brand)] hover:underline">← {side.title}</Link>
+          </div>
+        } />
 
       {(c.needs_review || !c.active) && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -152,7 +160,9 @@ async function Statement({ s, side, c, from, to }: { s: Session; side: Side; c: 
         <div><label htmlFor="st-to" className="mb-1 block text-xs font-medium">To</label>
           <input id="st-to" name="to" type="date" defaultValue={end} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm" /></div>
         <button type="submit" className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--brand-soft)]">Show</button>
-        <PrintButton />
+        {side.kind === "customer"
+          ? <Link href={`/print/statement/${c.id}?from=${start}&to=${end}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--brand-soft)]">Print / PDF</Link>
+          : <PrintButton />}
       </form>
       <Card>
         <CardHeader title={`Statement · ${c.name}`}

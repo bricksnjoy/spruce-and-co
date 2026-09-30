@@ -10,7 +10,7 @@ const NAMES: Record<string, string> = {
   "/settings": "Settings",
   "/accounting/chart": "Chart of accounts",
   "/accounting/health": "Health check",
-  "/sales/customers": "Customers",
+  "/sales": "Sales",
   "/expenses/vendors": "Vendors",
   "/projects": "Projects",
 };

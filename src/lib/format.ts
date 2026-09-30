@@ -53,3 +53,10 @@ export function initials(name: string | null | undefined) {
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+/** A YYYY-MM-DD date moved by a number of days. */
+export function addDays(d: string, n: number) {
+  const x = new Date(`${d}T00:00:00Z`);
+  x.setUTCDate(x.getUTCDate() + n);
+  return x.toISOString().slice(0, 10);
+}

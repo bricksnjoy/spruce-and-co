@@ -62,3 +62,14 @@ describe("a percentage of an amount", () => {
     expect(percentOf(5n, "abc")).toBe(0n);
   });
 });
+
+import { qtyTimesRate } from "@/lib/money";
+describe("quantity × rate", () => {
+  it("matches the database's round(qty * rate, 2)", () => {
+    expect(qtyTimesRate("3", "12.50")).toBe(3750n);
+    expect(qtyTimesRate("2.5", "0.333")).toBe(83n);        // 0.8325 → 0.83
+    expect(qtyTimesRate("1.5", "0.0033")).toBe(0n);        // 0.00495 → 0.00
+    expect(qtyTimesRate("1", "0.005")).toBe(1n);           // 0.005 → 0.01 (half away from zero)
+    expect(qtyTimesRate("x", "1")).toBeNull();
+  });
+});

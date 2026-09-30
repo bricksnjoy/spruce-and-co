@@ -71,3 +71,17 @@ export function percentOf(laari: bigint, pct: string | number): bigint {
   const half = (r < 0n ? -r : r) * 2n >= den;
   return half ? q + (num < 0n ? -1n : 1n) : q;
 }
+
+/** Quantity × rate (each up to 4 decimals) in laari, rounded half away from zero, as the database does; null if not numbers. */
+export function qtyTimesRate(qty: string, rate: string): bigint | null {
+  const re = /^-?\d+(\.\d{1,4})?$/;
+  if (!re.test(qty) || !re.test(rate)) return null;
+  const scaled = (s: string) => {
+    const [w, f = ""] = s.replace("-", "").split(".");
+    return (BigInt(w) * 10000n + BigInt((f + "0000").slice(0, 4))) * (s.startsWith("-") ? -1n : 1n);
+  };
+  const num = scaled(qty) * scaled(rate);          // × 10⁸ rufiyaa
+  const den = 1000000n;                             // → laari
+  const q = num / den, r = num % den;
+  return (r < 0n ? -r : r) * 2n >= den ? q + (num < 0n ? -1n : 1n) : q;
+}

@@ -40,6 +40,7 @@ export default async function ProjectPage({ params, searchParams }: {
           <div className="flex flex-wrap items-center gap-3 text-sm">
             {p.customer_id && <Link href={`/sales/customers/${p.customer_id}`} className="font-medium text-[var(--brand)] hover:underline">Customer</Link>}
             {s.book === "live" && <Link href={`/projects/${id}/legacy`} className="font-medium text-[var(--brand)] hover:underline">Old view</Link>}
+            {writer && p.customer_id && <Link href={`/sales/new?type=invoice&project=${id}`} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 font-medium text-white hover:bg-[var(--brand-hover)]">New invoice</Link>}
             {writer && <Link href={`/projects/${id}/edit`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Edit</Link>}
             {writer && <ArchiveButton id={id} archived={Boolean(p.archived_at)} />}
           </div>
