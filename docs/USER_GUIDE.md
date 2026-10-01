@@ -58,14 +58,15 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Overview: contract value, billed, collected, cost to date, forecast profit, % complete and over/under-billing.
 2. Value & budget: set budget lines by category; see budget against actual and committed (open purchase orders). Amber/red warnings mean a category is past 80% or 100%.
-3. Variations: raise a variation; only approved ones change the contract value.
-4. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
-5. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing.
-6. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
-7. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
-8. Transactions: every document posted to the project.
+3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download template", fill one row per bill line (rows with the same vendor and supplier invoice no. make one bill), "Upload filled sheet", check the rows (problems show in red), then "Save". "Download bills (Excel)" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.
+4. Variations: raise a variation; only approved ones change the contract value.
+5. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
+6. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing.
+7. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
+8. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
+9. Transactions: every document posted to the project.
 
-> Buttons at the top: New invoice, New bill, Edit, Archive. "Old view" shows the project as the old screens saw it (Live only).
+> Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive. "Old view" shows the project as the old screens saw it (Live only).
 > Anything posted to a completed project later (a cost, a bad debt) adjusts the split with its own entry and flags the project for review.
 
 ### Edit project

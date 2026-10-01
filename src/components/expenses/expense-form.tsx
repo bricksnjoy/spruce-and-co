@@ -15,7 +15,11 @@ import { TITLES, blankLine, type ExpenseLine, type ExpenseType, type ExpenseValu
 export type { ExpenseLine, ExpenseType, ExpenseValues };
 
 /** Bill, expense, vendor credit or purchase order: the supplier's own GST figure, with the evidence to claim it. */
-export function ExpenseForm({ data, values }: { data: ExpenseFormData; values: ExpenseValues }) {
+export function ExpenseForm({ data, values, onSaved }: {
+  data: ExpenseFormData; values: ExpenseValues;
+  /** when given (e.g. in a pop-up), called after saving instead of opening the saved document */
+  onSaved?: (id: string, note?: string) => void;
+}) {
   const router = useRouter();
   const [state, action, pending] = useActionState(saveExpenseDoc, null as Result | null);
   const [v, setV] = useState(values);
@@ -24,8 +28,10 @@ export function ExpenseForm({ data, values }: { data: ExpenseFormData; values: E
   const set = <K extends keyof ExpenseValues>(k: K, x: ExpenseValues[K]) => setV((o) => ({ ...o, [k]: x }));
   const setLine = (i: number, patch: Partial<ExpenseLine>) => setV((o) => ({ ...o, lines: o.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
   useEffect(() => {
-    if (state?.ok && state.id) router.push(`/expenses/${state.id}${state.note ? `?note=${encodeURIComponent(state.note)}` : ""}`);
-  }, [state, router]);
+    if (!state?.ok || !state.id) return;
+    if (onSaved) onSaved(state.id, state.note);
+    else router.push(`/expenses/${state.id}${state.note ? `?note=${encodeURIComponent(state.note)}` : ""}`);
+  }, [state, router, onSaved]);
 
   const vendor = data.vendors.find((x) => x.id === v.contact_id);
   const lineAmount = (l: ExpenseLine) => (l.qty !== "" && l.rate !== "" ? qtyTimesRate(l.qty, l.rate) : toLaari(l.amount)) ?? 0n;

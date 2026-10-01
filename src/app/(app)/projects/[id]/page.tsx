@@ -12,18 +12,21 @@ import { BillingPlan, type Stage } from "./billing-plan";
 import { ArchiveButton } from "./archive-button";
 import { CompleteForm, FinancingForm } from "@/components/partners/forms";
 import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
+import { ProjectBills } from "@/components/projects/project-bills";
+import { expenseFormData } from "@/server/expense-data";
+import { blankExpense } from "@/lib/expense-doc";
 
 export const dynamic = "force-dynamic";
 
 const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
-const TABS: [string, string][] = [["overview", "Overview"], ["value", "Value & budget"], ["variations", "Variations"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
+const TABS: [string, string][] = [["overview", "Overview"], ["value", "Value & budget"], ["bills", "Bills"], ["variations", "Variations"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
 
 export default async function ProjectPage({ params, searchParams }: {
-  params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }>;
+  params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; new?: string }>;
 }) {
   const s = await getSession();
   if (!s) redirect("/login");
-  const [{ id }, { tab }] = await Promise.all([params, searchParams]);
+  const [{ id }, { tab, new: openNew }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { data: f } = await s.supabase.from("project_list_v").select("*").eq("id", id).maybeSingle();
   if (!f) notFound();
@@ -42,7 +45,7 @@ export default async function ProjectPage({ params, searchParams }: {
           <div className="flex flex-wrap items-center gap-3 text-sm">
             {p.customer_id && <Link href={`/sales/customers/${p.customer_id}`} className="font-medium text-[var(--brand)] hover:underline">Customer</Link>}
             {s.book === "live" && <Link href={`/projects/${id}/legacy`} className="font-medium text-[var(--brand)] hover:underline">Old view</Link>}
-            {writer && <Link href={`/expenses/new?type=bill&project=${id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">New bill</Link>}
+            {writer && <Link href={`/projects/${id}?tab=bills&new=bill`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">New bill</Link>}
             {writer && p.customer_id && <Link href={`/sales/new?type=invoice&project=${id}`} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 font-medium text-white hover:bg-[var(--brand-hover)]">New invoice</Link>}
             {writer && <Link href={`/projects/${id}/edit`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Edit</Link>}
             {writer && <ArchiveButton id={id} archived={Boolean(p.archived_at)} />}
@@ -63,6 +66,7 @@ export default async function ProjectPage({ params, searchParams }: {
       {active === "financing" && <Financing s={s} p={p} writer={writer} />}
       {active === "split" && <Split s={s} p={p} writer={writer} />}
       {active === "payouts" && <Payouts s={s} p={p} />}
+      {active === "bills" && <Bills s={s} p={p} writer={writer} openNew={openNew === "bill"} />}
       {active === "transactions" && <Transactions s={s} id={id} />}
     </div>
   );
@@ -409,6 +413,56 @@ async function Payouts({ s, p }: { s: Session; p: ProjectFigures }) {
                   <Td>{names.get(cid) ?? "—"}</Td>
                   {COMPONENTS.map((c) => { const r = get(cid, c); return <Td key={c} right>{r ? `${m(r.paid)} / ${m(r.outstanding)}` : "–"}</Td>; })}
                   <Td right><Link href={`/partners/${cid}`} className="text-sm font-medium text-[var(--brand)] hover:underline">Statement</Link></Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures; writer: boolean; openNew: boolean }) {
+  // bills headed to the project, and bills with a line charged to it
+  const [{ data: byHead }, { data: byLine }] = await Promise.all([
+    s.supabase.from("transactions").select("id").eq("project_id", p.id).in("type", ["bill", "vendor_credit"]),
+    s.supabase.from("transaction_lines").select("transaction_id, transactions!inner(type)").eq("project_id", p.id).in("transactions.type", ["bill", "vendor_credit"]),
+  ]);
+  const ids = [...new Set([...(byHead ?? []).map((r) => r.id), ...(byLine ?? []).map((r) => r.transaction_id)])];
+  const [{ data }, form] = await Promise.all([
+    ids.length ? s.supabase.from("document_balances_v").select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at, contact_id").in("id", ids).order("date", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    writer ? expenseFormData(s) : Promise.resolve(null),
+  ]);
+  const rows = (data ?? []) as (DocBalance & { id: string; type: string; number: string | null; date: string; total: number; balance: number; contact_id: string | null })[];
+  const { data: vendors } = rows.length ? await s.supabase.from("contacts").select("id, name").in("id", [...new Set(rows.map((r) => r.contact_id).filter(Boolean))] as string[]) : { data: [] };
+  const vn = new Map((vendors ?? []).map((v) => [v.id, v.name]));
+  const live = rows.filter((r) => !r.voided_at);
+  const t = today();
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Figure label="Bills on this project" value={String(live.length)} />
+        <Figure label="Total billed to the project" value={m(live.reduce((x, r) => x + Number(r.total) * (r.type === "vendor_credit" ? -1 : 1), 0))} hint="Including GST" />
+        <Figure label="Still to pay" value={m(live.filter((r) => r.type === "bill").reduce((x, r) => x + Number(r.balance), 0))} />
+      </div>
+      {writer && form && <ProjectBills projectId={p.id} data={form} blank={blankExpense("bill", "", p.id, form)} openNew={openNew} />}
+      <Card>
+        <CardHeader title="Bills" subtitle="Click a bill to open it, pay it or change it" />
+        {rows.length === 0 ? <Empty message="No bills on this project yet." /> : (
+          <Table>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor</Th><Th>Due</Th><Th right>Total</Th><Th right>To pay</Th><Th right>Status</Th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className={r.voided_at ? "text-[var(--muted)] line-through" : ""}>
+                  <Td className="whitespace-nowrap">{date(r.date)}</Td>
+                  <Td><Link href={`/expenses/${r.id}`} className="font-mono text-xs text-[var(--brand)] hover:underline">{r.number ?? "—"}</Link>{r.type === "vendor_credit" && <span className="ml-1 text-xs text-[var(--muted)]">credit</span>}</Td>
+                  <Td>{vn.get(r.contact_id ?? "") ?? "—"}</Td>
+                  <Td className="whitespace-nowrap">{r.due_date ? date(r.due_date) : ""}</Td>
+                  <Td right>{m(r.total)}</Td>
+                  <Td right>{Number(r.balance) ? m(r.balance) : ""}</Td>
+                  <Td right><Badge value={docStatus(r, t)} /></Td>
                 </tr>
               ))}
             </tbody>

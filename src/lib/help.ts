@@ -61,6 +61,7 @@ export const HELP: Help[] = [
     steps: [
       "Overview: contract value, billed, collected, cost to date, forecast profit, % complete and over/under-billing.",
       "Value & budget: set budget lines by category; see budget against actual and committed (open purchase orders). Amber/red warnings mean a category is past 80% or 100%.",
+      "Bills: every bill on the project. \"New bill\" opens the bill form in a pop-up. To add many: \"Download template\", fill one row per bill line (rows with the same vendor and supplier invoice no. make one bill), \"Upload filled sheet\", check the rows (problems show in red), then \"Save\". \"Download bills (Excel)\" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.",
       "Variations: raise a variation; only approved ones change the contract value.",
       "Billing plan: stages of the contract; turn a stage into an invoice when it is due.",
       "Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing.",
@@ -69,7 +70,7 @@ export const HELP: Help[] = [
       "Transactions: every document posted to the project.",
     ],
     tips: [
-      "Buttons at the top: New invoice, New bill, Edit, Archive. \"Old view\" shows the project as the old screens saw it (Live only).",
+      "Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive. \"Old view\" shows the project as the old screens saw it (Live only).",
       "Anything posted to a completed project later (a cost, a bad debt) adjusts the split with its own entry and flags the project for review.",
     ],
   },
