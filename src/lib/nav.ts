@@ -79,7 +79,6 @@ export const NAV: NavGroup[] = [
       { href: "/banking", label: "Banking", roles: MONEY },
       { href: "/taxes", label: "Taxes (GST)", roles: MONEY },
       { href: "/accounting/equipment", label: "Equipment register", roles: MONEY },
-      { href: "/accounting/year-end", label: "Year end", roles: MONEY },
       { href: "/accounting/chart", label: "Chart of accounts", roles: MONEY },
       { href: "/accounting/journal", label: "Journal entries", roles: MONEY },
       { href: "/accounting/health", label: "Health check", roles: MONEY },
@@ -117,6 +116,7 @@ export const OLD_SCREENS: { href: string; label: string; replacedBy: [string, st
   { href: "/accounting/bank", label: "Bank reconciliation (old)", replacedBy: ["/banking", "Banking"] },
   { href: "/accounting/tax", label: "Tax (old)", replacedBy: ["/taxes", "Taxes (GST)"] },
   { href: "/gst", label: "GST Input Schedule (old)", replacedBy: ["/taxes", "Taxes (GST)"] },
+  { href: "/accounting/year-end", label: "Year end (old)", replacedBy: ["/reports", "Reports (closing a year in the new books is not built yet)"] },
   { href: "/pnl", label: "Project P&L (old)", replacedBy: ["/reports", "Reports (project profit) and each project's Overview tab"] },
   { href: "/profit-share", label: "Profit Share (old)", replacedBy: ["/settings/profit-share", "Profit-share schemes"] },
 ];
