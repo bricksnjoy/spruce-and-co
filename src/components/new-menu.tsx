@@ -27,7 +27,7 @@ export function NewMenu({ canWrite, canPayroll, live }: { canWrite: boolean; can
     { title: "Vendors", items: [["/expenses/new?type=bill", "Bill"], ["/expenses/pay", "Pay bills"], ["/expenses/new?type=expense", "Expense"],
       ["/expenses/new?type=vendor_credit", "Vendor credit"], ["/expenses/new?type=purchase_order", "Purchase order"], ["/expenses/vendors", "Vendor"]] },
     ...(canPayroll ? [{ title: "Employees", items: [["/payroll", "Payroll run"], ["/payroll/employees", "Employee"], ["/payroll/remittances", "Pay pension / tax"]] as Item[] }] : []),
-    { title: "Projects & financing", items: [["/projects/new", "Project"], ["/partners", "Pay out to a partner"], ["/taxes", "File or pay GST"]] },
+    { title: "Projects & financing", items: [["/projects/new", "Project"], ["/partners/lenders", "Lender"], ["/partners", "Pay out to a partner"], ["/taxes", "File or pay GST"]] },
     { title: "Other", items: [["/accounting/journal/new", "Journal entry"], ["/accounting/journal/new?type=opening_balance", "Opening balances"],
       ["/banking", "Transfer / bank import"], ["/accounting/chart", "Account"]] },
   ];

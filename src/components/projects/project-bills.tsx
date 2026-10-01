@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { primary, small } from "@/components/form-styles";
@@ -8,26 +8,7 @@ import { previewBillSheet, saveBillSheet, type Preview, type SaveResult } from "
 import type { ExpenseFormData } from "@/server/expense-data";
 import type { ExpenseValues } from "@/lib/expense-doc";
 import { money } from "@/lib/format";
-
-/** A large dialog that closes on Escape or a click outside. */
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={onClose}>
-      <div className="my-6 w-full max-w-6xl rounded-xl bg-[var(--bg,var(--surface))] shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-5 py-3">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-[var(--muted)] hover:text-[var(--text)]">✕</button>
-        </div>
-        <div className="p-5">{children}</div>
-      </div>
-    </div>
-  );
-}
+import { Modal } from "@/components/modal";
 
 /** The Bills tab's actions: a new bill in a pop-up, the sheet to download, and uploading it back. */
 export function ProjectBills({ projectId, data, blank, openNew }: { projectId: string; data: ExpenseFormData; blank: ExpenseValues; openNew: boolean }) {

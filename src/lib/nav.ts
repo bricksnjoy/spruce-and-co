@@ -66,6 +66,7 @@ export const NAV: NavGroup[] = [
     defaultOpen: true,
     items: [
       { href: "/partners", label: "Partners & financing", roles: MONEY },
+      { href: "/partners/lenders", label: "Lenders", roles: MONEY },
       { href: "/partners/distributions", label: "Distribution history", roles: MONEY },
     ],
   },

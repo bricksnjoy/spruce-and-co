@@ -26,6 +26,8 @@ export default async function PartnersPage() {
   const rows = (statement ?? []) as StatementRow[];
   const people = byPerson(rows);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
+  const kindOf = new Map((contacts ?? []).map((c) => [c.id, (c.kinds as string[]).filter((k) => k === "partner" || k === "lender")
+    .map((k) => (k === "partner" ? "Capital Pool" : "Lender")).join(", ")]));
   const code = new Map(proj.map((p) => [p.id, p.code]));
   const blocked = new Map(proj.map((p) => [p.id, p.blocked]));
   const involved = proj.filter((p) => dbToLaari(p.financed) || dbToLaari(p.returns_outstanding) || p.completed_at);
@@ -40,6 +42,7 @@ export default async function PartnersPage() {
     <div className="max-w-6xl space-y-5">
       <PageHeader title="Partners & financing" subtitle={`Capital Pool, lenders, profit shares and payouts · ${bookLabel(s.book)} book`}
         action={<div className="flex gap-3 text-sm">
+          <Link href="/partners/lenders" className="font-medium text-[var(--brand)] hover:underline">Lenders</Link>
           <Link href="/partners/distributions" className="font-medium text-[var(--brand)] hover:underline">Distribution history</Link>
           <Link href="/settings/profit-share" className="font-medium text-[var(--brand)] hover:underline">Profit-share schemes</Link>
         </div>} />
@@ -74,9 +77,9 @@ export default async function PartnersPage() {
 
       <Card>
         <CardHeader title="People" subtitle="Outstanding amounts, each component kept apart (§5)" />
-        {personIds.length === 0 ? <Empty message="No partners or lenders yet. Mark a contact as partner or lender." /> : (
+        {personIds.length === 0 ? <Empty message="No partners or lenders yet. Add a lender on the Lenders page." /> : (
           <Table>
-            <thead><tr><Th>Name</Th><Th right>Principal</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total owed</Th></tr></thead>
+            <thead><tr><Th>Name</Th><Th>Type</Th><Th right>Principal</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total owed</Th></tr></thead>
             <tbody>
               {personIds.map((id) => {
                 const p = people.get(id);
@@ -84,6 +87,7 @@ export default async function PartnersPage() {
                 return (
                   <tr key={id}>
                     <Td><Link href={`/partners/${id}`} className="font-medium text-[var(--brand)] hover:underline">{names.get(id) ?? "—"}</Link></Td>
+                    <Td className="text-xs text-[var(--muted)]">{kindOf.get(id) ?? ""}</Td>
                     {COMPONENTS.map((c) => <Td key={c} right>{m(p?.[c].outstanding ?? 0n)}</Td>)}
                     <Td right className="font-semibold">{m(total)}</Td>
                   </tr>

@@ -8,6 +8,9 @@ import {
 import { money, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, toLaari } from "@/lib/money";
 import { COMPONENT_LABEL } from "@/lib/partners";
+import { useRouter } from "next/navigation";
+import { Modal } from "@/components/modal";
+import { ContactForm, blankContact } from "@/components/contacts/contact-form";
 
 type Opt = { id: string; name: string };
 type Bank = { id: string; code: string; name: string };
@@ -26,15 +29,22 @@ function BankSelect({ id, banks }: { id: string; banks: Bank[] }) {
   );
 }
 
-/** Money received for a project: an external loan or a Capital Pool contribution. */
-export function FinancingForm({ projectId, lenders, partners, banks }: { projectId: string; lenders: Opt[]; partners: Opt[]; banks: Bank[] }) {
+/** Money received for a project: an external loan or a Capital Pool contribution. A new lender can be added here. */
+export function FinancingForm({ projectId, lenders, partners, banks, initialLender }: {
+  projectId: string; lenders: Opt[]; partners: Opt[]; banks: Bank[]; initialLender?: string;
+}) {
   const [state, action, pending] = useActionState(recordFinancing, null as Result | null);
+  const router = useRouter();
   // the choices are held here so a refresh after saving never clears them; the amount and reference start afresh after each save
-  const [type, setType] = useState<"capital_contribution" | "loan_receipt">("capital_contribution");
-  const [contact, setContact] = useState("");
+  const start = initialLender && lenders.some((l) => l.id === initialLender) ? initialLender : "";
+  const [type, setType] = useState<"capital_contribution" | "loan_receipt">(start ? "loan_receipt" : "capital_contribution");
+  const [contact, setContact] = useState(start);
   const [bank, setBank] = useState("");
-  const who = type === "loan_receipt" ? lenders : partners;
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState<Opt[]>([]);   // shown until the page's list catches up
+  const who = type === "loan_receipt" ? [...lenders, ...added.filter((a) => !lenders.some((l) => l.id === a.id))].sort((a, b) => a.name.localeCompare(b.name)) : partners;
   return (
+    <>
     <form onSubmit={submit(action)} className="grid gap-3 px-5 py-4 sm:grid-cols-3">
       <input type="hidden" name="project_id" value={projectId} />
       <div><label htmlFor="fin-type" className={label}>From</label>
@@ -47,7 +57,9 @@ export function FinancingForm({ projectId, lenders, partners, banks }: { project
           <option value="">Choose…</option>
           {who.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        {who.length === 0 && <p className="mt-1 text-xs text-[var(--muted)]">Add a contact marked as {type === "loan_receipt" ? "lender" : "partner"} first.</p>}</div>
+        {type === "loan_receipt"
+          ? <button type="button" onClick={() => setAdding(true)} className="mt-1 text-xs font-medium text-[var(--brand)] hover:underline">+ New lender</button>
+          : who.length === 0 && <p className="mt-1 text-xs text-[var(--muted)]">No Capital Pool members yet.</p>}</div>
       <div><label htmlFor="fin-bank" className={label}>Paid into</label>
         <select id="fin-bank" name="bank_id" required value={bank} onChange={(e) => setBank(e.target.value)} className={input}>
           <option value="">Choose…</option>
@@ -62,6 +74,13 @@ export function FinancingForm({ projectId, lenders, partners, banks }: { project
         {state?.ok && <p className="text-sm text-[var(--muted)]">Recorded.</p>}
       </div>
     </form>
+      {adding && (
+        <Modal title="New lender" size="md" onClose={() => setAdding(false)}>
+          <ContactForm contact={blankContact("lender")} base="/partners/lenders" onDone={() => setAdding(false)}
+            onCreated={(id, name) => { setAdded((a) => [...a, { id, name }]); setContact(id); setAdding(false); router.refresh(); }} />
+        </Modal>
+      )}
+    </>
   );
 }
 

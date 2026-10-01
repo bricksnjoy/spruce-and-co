@@ -22,11 +22,11 @@ const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaa
 const TABS: [string, string][] = [["overview", "Overview"], ["value", "Value & budget"], ["bills", "Bills"], ["variations", "Variations"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
 
 export default async function ProjectPage({ params, searchParams }: {
-  params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; new?: string }>;
+  params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; new?: string; lender?: string }>;
 }) {
   const s = await getSession();
   if (!s) redirect("/login");
-  const [{ id }, { tab, new: openNew }] = await Promise.all([params, searchParams]);
+  const [{ id }, { tab, new: openNew, lender }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { data: f } = await s.supabase.from("project_list_v").select("*").eq("id", id).maybeSingle();
   if (!f) notFound();
@@ -63,7 +63,7 @@ export default async function ProjectPage({ params, searchParams }: {
       {active === "value" && <Value s={s} p={p} writer={writer} />}
       {active === "variations" && <Variations s={s} p={p} writer={writer} />}
       {active === "billing" && <Billing s={s} p={p} writer={writer} />}
-      {active === "financing" && <Financing s={s} p={p} writer={writer} />}
+      {active === "financing" && <Financing s={s} p={p} writer={writer} lender={lender} />}
       {active === "split" && <Split s={s} p={p} writer={writer} />}
       {active === "payouts" && <Payouts s={s} p={p} />}
       {active === "bills" && <Bills s={s} p={p} writer={writer} openNew={openNew === "bill"} />}
@@ -228,7 +228,7 @@ async function Transactions({ s, id }: { s: Session; id: string }) {
   );
 }
 
-async function Financing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
+async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigures; writer: boolean; lender?: string }) {
   const [{ data: sources }, { data: contacts }, { data: banks }, { data: txns }] = await Promise.all([
     s.supabase.from("project_financing_v").select("contact_id, source_type, received, repaid, outstanding").eq("project_id", p.id),
     s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
@@ -251,7 +251,7 @@ async function Financing({ s, p, writer }: { s: Session; p: ProjectFigures; writ
               {rows.map((r) => (
                 <tr key={r.contact_id}>
                   <Td><Link href={`/partners/${r.contact_id}`} className="text-[var(--brand)] hover:underline">{names.get(r.contact_id) ?? "—"}</Link></Td>
-                  <Td>{r.source_type === "external" ? "External lender" : "Capital Pool"}</Td>
+                  <Td>{r.source_type === "external" ? <Link href="/partners/lenders" className="hover:underline">External lender</Link> : "Capital Pool"}</Td>
                   <Td right>{m(r.received)}</Td><Td right>{pct(ratio(r.received), 2)}</Td><Td right>{m(r.repaid)}</Td><Td right>{m(r.outstanding)}</Td>
                 </tr>
               ))}
@@ -264,7 +264,7 @@ async function Financing({ s, p, writer }: { s: Session; p: ProjectFigures; writ
       {writer && !p.completed_at && (
         <Card>
           <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full." />
-          <FinancingForm projectId={p.id} banks={banks ?? []}
+          <FinancingForm projectId={p.id} banks={banks ?? []} initialLender={lender}
             lenders={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("lender"))}
             partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))} />
         </Card>

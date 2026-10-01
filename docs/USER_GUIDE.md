@@ -61,7 +61,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download template", fill one row per bill line (rows with the same vendor and supplier invoice no. make one bill), "Upload filled sheet", check the rows (problems show in red), then "Save". "Download bills (Excel)" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.
 4. Variations: raise a variation; only approved ones change the contract value.
 5. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
-6. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing.
+6. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing "External lender" shows "+ New lender" to add one without leaving the page.
 7. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
 8. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
 9. Transactions: every document posted to the project.
@@ -209,7 +209,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/expenses/vendors` — Every supplier, subcontractor and lender with what you owe them.
 
 1. "New vendor" adds one: name, TIN, tick "Registered for GST" if they are (needed to claim their GST), terms.
-2. Tick "Lender" for an external lender who finances projects.
+2. Tick "Lender" if this vendor also lends money for projects; it then shows on the Lenders page too.
 3. Click a vendor to open them.
 
 ### Vendor
@@ -273,13 +273,28 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 3. People: what each person is owed — principal, financing return and profit share kept apart. Click a name for their statement.
 4. Projects: financing, what is owed and whether payouts are released (and why not).
 
-### Partner statement
+### Lenders
 
-`/partners/[id]` — One person's statement by project: principal, financing return and profit share — accrued, paid, outstanding — and paying them.
+`/partners/lenders` — External lenders (banks, friends, investors) who finance projects: what each lent, what has been repaid and what is still owed.
+
+1. "New lender" adds one: name, phone, bank details. The lender is ticked already. You land on their page.
+2. The table shows each lender's projects, the amount lent, repaid, principal still owed and their financing return owed. Click a name to open their page.
+3. To record a loan: on the lender's page choose the project under "Record a loan" (or use the project's Financing tab and pick "External lender").
+4. Archived lenders are under "Archived"; archive one from their page.
+
+> Lenders are repaid their principal plus their share of the 20% financing pool, once the project is completed and the client has paid in full. They get no fixed profit share and no interest (P5).
+> A lender who also sells you goods can be ticked as a vendor too (Details on their page), and appears on both lists.
+
+### Partner or lender page
+
+`/partners/[id]` — One person's statement by project: principal, financing return and profit share — accrued, paid, outstanding — the money received from them, and paying them.
 
 1. Read the three tiles and the By project table.
-2. Pay out: type an amount against each line ("All" fills what is owed), choose the account and date. Lines on blocked projects say why.
-3. An admin's payout is paid at once; anyone else's goes to an admin for approval.
+2. Loans and money received lists each loan or contribution with its project.
+3. For a lender, "Record a loan": choose the project and its Financing tab opens with the lender picked.
+4. Details at the bottom: change their name, phone, bank details, or tick them as a customer or vendor too.
+5. Pay out: type an amount against each line ("All" fills what is owed), choose the account and date. Lines on blocked projects say why.
+6. An admin's payout is paid at once; anyone else's goes to an admin for approval.
 
 > Nothing can be paid until the project is completed and the client owes nothing.
 

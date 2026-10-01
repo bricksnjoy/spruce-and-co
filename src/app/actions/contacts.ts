@@ -64,7 +64,7 @@ function kindsFrom(fd: FormData, keep: string[] = []) {
 
 /** Paths that show a contact, for revalidation. */
 function refresh(id?: string) {
-  for (const base of ["/sales/customers", "/expenses/vendors"]) {
+  for (const base of ["/sales/customers", "/expenses/vendors", "/partners/lenders", "/partners"]) {
     revalidatePath(base);
     if (id) revalidatePath(`${base}/${id}`);
   }

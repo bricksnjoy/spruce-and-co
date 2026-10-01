@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { input, label, hint, primary } from "@/components/form-styles";
 import { createContact, updateContact, type Result } from "@/app/actions/contacts";
@@ -18,23 +18,29 @@ export const blankContact = (kind: string): ContactFields => ({
   vendor_kind: kind === "vendor" ? "supplier" : null, trade: null, licence_expiry: null, insurance_expiry: null, notes: null,
 });
 
-/** Add or edit a customer, vendor or lender. `base` is where the new contact's page lives. */
-export function ContactForm({ contact: c, base, onDone }: { contact: ContactFields; base: string; onDone?: () => void }) {
+/**
+ * Add or edit a customer, vendor or lender. `base` is where the new contact's page lives;
+ * with `onCreated` a new contact is handed back instead (a pick list adding one in place).
+ */
+export function ContactForm({ contact: c, base, onDone, onCreated }: {
+  contact: ContactFields; base: string; onDone?: () => void; onCreated?: (id: string, name: string) => void;
+}) {
   const [state, action, pending] = useActionState(c.id ? updateContact : createContact, null as Result | null);
   const router = useRouter();
   const isVendor = c.kinds.includes("vendor");
+  const typed = useRef("");
 
   useEffect(() => {
     if (!state?.ok) return;
-    if (!c.id && state.id) router.push(`${base}/${state.id}`);
+    if (!c.id && state.id) { if (onCreated) onCreated(state.id, typed.current); else router.push(`${base}/${state.id}`); }
     else onDone?.();
-  }, [state, c.id, base, router, onDone]);
+  }, [state, c.id, base, router, onDone, onCreated]);
 
   const f = (k: keyof ContactFields) => (c[k] == null ? "" : String(c[k]));
   return (
     // submitted by hand so a refusal (e.g. a duplicate) keeps what was typed
     <form className="grid gap-4 sm:grid-cols-2"
-      onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); startTransition(() => action(fd)); }}>
+      onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); typed.current = String(fd.get("name") ?? "").trim(); startTransition(() => action(fd)); }}>
       {c.id && <input type="hidden" name="id" value={c.id} />}
       <div className="sm:col-span-2">
         <label htmlFor="c-name" className={label}>Name</label>

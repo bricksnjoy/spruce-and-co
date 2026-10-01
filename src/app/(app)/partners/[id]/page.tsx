@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Stat, Table, Th, Td } from "@/components/ui";
 import { PayoutForm, type OwedRow } from "@/components/partners/forms";
+import { RecordLoan } from "@/components/partners/record-loan";
+import { EditContact } from "@/components/contacts/edit-contact";
+import { ReviewButtons } from "@/components/contacts/review-buttons";
 import { canWrite, getSession } from "@/server/session";
 import { date, money } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
@@ -16,15 +19,22 @@ export default async function PartnerStatementPage({ params }: { params: Promise
   if (!s) redirect("/login");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const [{ data: person }, { data: statement }, { data: projects }, { data: banks }, { data: payouts }] = await Promise.all([
-    s.supabase.from("contacts").select("id, name, kinds, phone, email").eq("id", id).maybeSingle(),
+  const [{ data: person }, { data: statement }, { data: projects }, { data: banks }, { data: payouts }, { data: loans }, { data: open }] = await Promise.all([
+    s.supabase.from("contacts").select("*").eq("id", id).maybeSingle(),
     s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding").eq("contact_id", id),
     s.supabase.from("project_payouts_v").select("id, code, name, stage, blocked, blocked_reason"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
     s.supabase.from("transactions").select("id, date, number, total_amount, is_draft, voided_at, void_reason, approval_status, reference, transaction_lines(project_id, component, amount)")
       .eq("type", "payout").eq("contact_id", id).order("date", { ascending: false }),
+    s.supabase.from("transactions").select("id, date, number, type, project_id, total_amount, reference, voided_at")
+      .eq("contact_id", id).in("type", ["loan_receipt", "capital_contribution"]).order("date", { ascending: false }),
+    s.supabase.from("projects").select("id, code, name").is("completed_at", null).is("archived_at", null).order("code"),
   ]);
   if (!person) notFound();
+  const kinds = person.kinds as string[];
+  const isLender = kinds.includes("lender");
+  const writer = canWrite(s.role);
+  const projName = new Map((projects ?? []).map((p) => [p.id, p]));
   const rows = (statement ?? []) as StatementRow[];
   const proj = new Map(((projects ?? []) as Pick<ProjectPayout, "id" | "code" | "name" | "stage" | "blocked" | "blocked_reason">[]).map((p) => [p.id, p]));
   const projectIds = [...new Set(rows.map((r) => r.project_id))].sort((a, b) => (proj.get(a)?.code ?? "").localeCompare(proj.get(b)?.code ?? ""));
@@ -37,8 +47,17 @@ export default async function PartnerStatementPage({ params }: { params: Promise
 
   return (
     <div className="max-w-6xl space-y-5">
-      <div><Link href="/partners" className="text-xs text-[var(--muted)] hover:underline">← Partners & financing</Link></div>
-      <PageHeader title={person.name} subtitle={`Statement · ${(person.kinds as string[]).filter((k) => k === "partner" || k === "lender").map((k) => k === "partner" ? "Capital Pool member" : "External lender").join(", ") || "Contact"}`} />
+      <div className="flex gap-3 text-xs text-[var(--muted)]">
+        <Link href="/partners" className="hover:underline">← Partners & financing</Link>
+        {isLender && <Link href="/partners/lenders" className="hover:underline">← Lenders</Link>}
+      </div>
+      {(person.needs_review || !person.active) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>{!person.active ? "Archived: hidden from lists and pickers." : "Copied from the old lists and not yet confirmed as real. Check the details, then confirm or archive it."}</span>
+          {writer && <ReviewButtons id={id} archived={!person.active} />}
+        </div>
+      )}
+      <PageHeader title={person.name} subtitle={`Statement · ${kinds.filter((k) => k === "partner" || k === "lender").map((k) => k === "partner" ? "Capital Pool member" : "External lender").join(", ") || "Contact"}`} />
       <div className="grid gap-4 sm:grid-cols-3">
         {COMPONENTS.map((c) => (
           <Stat key={c} label={`${COMPONENT_LABEL[c]} owed`} value={m(sum(c, "outstanding"))} hint={`${m(sum(c, "accrued"))} accrued · ${m(sum(c, "paid"))} paid`} />
@@ -68,6 +87,37 @@ export default async function PartnerStatementPage({ params }: { params: Promise
         )}
       </Card>
 
+      <Card>
+        <CardHeader title={isLender ? "Loans and money received" : "Money received"} subtitle="Each loan or contribution, by project" />
+        {(loans ?? []).length === 0 ? <Empty message="Nothing received from them yet." /> : (
+          <Table>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>Project</Th><Th>Type</Th><Th>Reference</Th><Th right>Amount</Th></tr></thead>
+            <tbody>
+              {(loans ?? []).map((t) => {
+                const p = projName.get(t.project_id!);
+                return (
+                  <tr key={t.id} className={t.voided_at ? "text-[var(--muted)] line-through" : ""}>
+                    <Td className="whitespace-nowrap">{date(t.date)}</Td>
+                    <Td className="font-mono text-xs">{t.number}</Td>
+                    <Td>{p ? <Link href={`/projects/${p.id}?tab=financing`} className="text-[var(--brand)] hover:underline"><span className="font-mono text-xs">{p.code}</span> {p.name}</Link> : "—"}</Td>
+                    <Td>{t.type === "loan_receipt" ? "Loan" : "Capital Pool contribution"}</Td>
+                    <Td className="text-xs">{t.reference ?? ""}</Td>
+                    <Td right>{m(t.total_amount)}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
+      {writer && isLender && person.active && (
+        <Card>
+          <CardHeader title="Record a loan" subtitle="Choose the project; its Financing tab opens with this lender picked" />
+          <RecordLoan lenderId={id} projects={open ?? []} />
+        </Card>
+      )}
+
       {canWrite(s.role) && owed.length > 0 && (
         <Card>
           <CardHeader title="Pay out" subtitle={s.role === "admin" ? "As an admin, your payout is approved and paid at once" : "Your payout goes to an admin for approval before it is paid"} />
@@ -96,6 +146,12 @@ export default async function PartnerStatementPage({ params }: { params: Promise
           </Table>
         )}
       </Card>
+      {writer && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold">Details</h2>
+          <EditContact contact={person} base="/partners" />
+        </div>
+      )}
     </div>
   );
 }

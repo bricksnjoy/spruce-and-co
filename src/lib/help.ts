@@ -64,7 +64,7 @@ export const HELP: Help[] = [
       "Bills: every bill on the project. \"New bill\" opens the bill form in a pop-up. To add many: \"Download template\", fill one row per bill line (rows with the same vendor and supplier invoice no. make one bill), \"Upload filled sheet\", check the rows (problems show in red), then \"Save\". \"Download bills (Excel)\" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.",
       "Variations: raise a variation; only approved ones change the contract value.",
       "Billing plan: stages of the contract; turn a stage into an invoice when it is due.",
-      "Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing.",
+      "Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing \"External lender\" shows \"+ New lender\" to add one without leaving the page.",
       "Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and \"Complete and post split\" to complete the project.",
       "Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.",
       "Transactions: every document posted to the project.",
@@ -202,7 +202,7 @@ export const HELP: Help[] = [
   {
     path: "/expenses/vendors", area: "Expenses", title: "Vendors",
     purpose: "Every supplier, subcontractor and lender with what you owe them.",
-    steps: ["\"New vendor\" adds one: name, TIN, tick \"Registered for GST\" if they are (needed to claim their GST), terms.", "Tick \"Lender\" for an external lender who finances projects.", "Click a vendor to open them."],
+    steps: ["\"New vendor\" adds one: name, TIN, tick \"Registered for GST\" if they are (needed to claim their GST), terms.", "Tick \"Lender\" if this vendor also lends money for projects; it then shows on the Lenders page too.", "Click a vendor to open them."],
   },
   {
     path: "/expenses/vendors/[id]", area: "Expenses", title: "Vendor",
@@ -263,10 +263,27 @@ export const HELP: Help[] = [
     ],
   },
   {
-    path: "/partners/[id]", area: "Partners & financing", title: "Partner statement",
-    purpose: "One person's statement by project: principal, financing return and profit share — accrued, paid, outstanding — and paying them.",
+    path: "/partners/lenders", area: "Partners & financing", title: "Lenders",
+    purpose: "External lenders (banks, friends, investors) who finance projects: what each lent, what has been repaid and what is still owed.",
+    steps: [
+      "\"New lender\" adds one: name, phone, bank details. The lender is ticked already. You land on their page.",
+      "The table shows each lender's projects, the amount lent, repaid, principal still owed and their financing return owed. Click a name to open their page.",
+      "To record a loan: on the lender's page choose the project under \"Record a loan\" (or use the project's Financing tab and pick \"External lender\").",
+      "Archived lenders are under \"Archived\"; archive one from their page.",
+    ],
+    tips: [
+      "Lenders are repaid their principal plus their share of the 20% financing pool, once the project is completed and the client has paid in full. They get no fixed profit share and no interest (P5).",
+      "A lender who also sells you goods can be ticked as a vendor too (Details on their page), and appears on both lists.",
+    ],
+  },
+  {
+    path: "/partners/[id]", area: "Partners & financing", title: "Partner or lender page",
+    purpose: "One person's statement by project: principal, financing return and profit share — accrued, paid, outstanding — the money received from them, and paying them.",
     steps: [
       "Read the three tiles and the By project table.",
+      "Loans and money received lists each loan or contribution with its project.",
+      "For a lender, \"Record a loan\": choose the project and its Financing tab opens with the lender picked.",
+      "Details at the bottom: change their name, phone, bank details, or tick them as a customer or vendor too.",
       "Pay out: type an amount against each line (\"All\" fills what is owed), choose the account and date. Lines on blocked projects say why.",
       "An admin's payout is paid at once; anyone else's goes to an admin for approval.",
     ],
