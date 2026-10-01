@@ -31,7 +31,6 @@ export const NAV: NavGroup[] = [
       { href: "/projects", label: "Projects", roles: ALL },
       { href: "/tasks", label: "Tasks & Calendar", roles: ALL },
       { href: "/messages", label: "Message Center", roles: MONEY },
-      { href: "/pnl", label: "Project P&L", roles: MONEY },
       { href: "/help", label: "Help", roles: ALL },
     ],
   },
@@ -118,6 +117,7 @@ export const OLD_SCREENS: { href: string; label: string; replacedBy: [string, st
   { href: "/accounting/bank", label: "Bank reconciliation (old)", replacedBy: ["/banking", "Banking"] },
   { href: "/accounting/tax", label: "Tax (old)", replacedBy: ["/taxes", "Taxes (GST)"] },
   { href: "/gst", label: "GST Input Schedule (old)", replacedBy: ["/taxes", "Taxes (GST)"] },
+  { href: "/pnl", label: "Project P&L (old)", replacedBy: ["/reports", "Reports (project profit) and each project's Overview tab"] },
   { href: "/profit-share", label: "Profit Share (old)", replacedBy: ["/settings/profit-share", "Profit-share schemes"] },
 ];
 

@@ -518,4 +518,5 @@ Kept, Live only, so old figures can be checked before the switch-over.
 - `/accounting/bank` Bank reconciliation (old) → use **Banking** (`/banking`)
 - `/accounting/tax` Tax (old) → use **Taxes (GST)** (`/taxes`)
 - `/gst` GST Input Schedule (old) → use **Taxes (GST)** (`/taxes`)
+- `/pnl` Project P&L (old) → use **Reports (project profit) and each project's Overview tab** (`/reports`)
 - `/profit-share` Profit Share (old) → use **Profit-share schemes** (`/settings/profit-share`)
