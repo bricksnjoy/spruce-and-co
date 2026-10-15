@@ -452,6 +452,19 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Enter the walls and units; the cut list, drawings and price follow.
 
+### Board cut planner
+
+`/cut-planner` — How the parts of a piece of furniture come out of 8 × 4 ft boards, and how many boards to buy.
+
+1. Type the parts in the box, the way you would say them, and press Enter: "Table leg: 2ft x 2in x 2in times 4, Table top: 2ft x 2ft". Split parts with commas or new lines; the line under the box shows how each one reads.
+2. Or add a part to the list and fill in its name, length, width, thickness (blank means as thick as the board) and how many. Plain numbers are in the unit picked at the top of the list.
+3. Set the board: 8ft by 4ft unless yours is different, its thickness, the saw cut, and the price per board if you want the cost.
+4. Read the result: boards needed, pieces to cut, how much wood is used, a drawing of each board with every piece in its colour, and the cut list. "Print" gives the drawings and cut list on paper.
+
+> With a board thickness set, a part thicker than the board — a 2in leg from 18mm board — is cut in layers to glue up, and the cut list says so.
+> Untick "Pieces may be turned to fit" to keep the grain running along every part.
+> The list stays in this browser until you clear it; it is not saved to the books.
+
 ## Settings
 
 ### Company

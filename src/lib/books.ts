@@ -23,6 +23,8 @@ export const BOOK_AWARE: string[] = [
   "/search",
   "/accounting/journal",
   "/help",
+  // a calculator: it reads and writes nothing, so it is the same in either book
+  "/cut-planner",
 ];
 
 /** Parts of a book-aware area that still read the old tables. */

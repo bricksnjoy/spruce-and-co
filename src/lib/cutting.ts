@@ -34,6 +34,9 @@ export interface Piece {
   span?: Span;
 }
 
+/** What the packer needs of a piece; the estimator's pieces carry more. */
+export type Cut = Pick<Piece, "code" | "label" | "w" | "h" | "rotate">;
+
 export interface Placed {
   label: string;
   code: string;
@@ -71,7 +74,7 @@ interface Free {
 type Fit = "short" | "long" | "area";
 type Split = "shorter-axis" | "longer-axis" | "shorter-leftover" | "longer-leftover";
 
-const SORTS: ((a: Piece, b: Piece) => number)[] = [
+const SORTS: ((a: Cut, b: Cut) => number)[] = [
   (a, b) => b.w * b.h - a.w * a.h,
   (a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || b.w * b.h - a.w * a.h,
   (a, b) => b.h - a.h || b.w - a.w,
@@ -83,9 +86,9 @@ const FITS: Fit[] = ["short", "long", "area"];
 const TOL = 0.1;
 const SPLITS: Split[] = ["shorter-axis", "longer-axis", "shorter-leftover", "longer-leftover"];
 
-function packOnce(order: Piece[], W: number, H: number, kerf: number, fit: Fit, split: Split) {
+function packOnce<P extends Cut>(order: P[], W: number, H: number, kerf: number, fit: Fit, split: Split) {
   const sheets: { placed: Placed[]; free: Free[] }[] = [];
-  const oversize: Piece[] = [];
+  const oversize: P[] = [];
 
   for (const p of order) {
     const straight = p.w <= W + TOL && p.h <= H + TOL;
@@ -144,8 +147,8 @@ function packOnce(order: Piece[], W: number, H: number, kerf: number, fit: Fit, 
 }
 
 /** Pack one sheet type's pieces onto as few sheets as the rules allow. */
-export function packPieces(pieces: Piece[], W: number, H: number, kerf: number) {
-  let best: ReturnType<typeof packOnce> | null = null;
+export function packPieces<P extends Cut>(pieces: P[], W: number, H: number, kerf: number) {
+  let best: ReturnType<typeof packOnce<P>> | null = null;
   for (const sort of SORTS) {
     const order = [...pieces].sort(sort);
     for (const fit of FITS) {
