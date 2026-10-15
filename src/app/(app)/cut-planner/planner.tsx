@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useDeferredValue, useEffect, useEffectEvent, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Card, CardHeader, Stat } from "@/components/ui";
 import { FormSkeleton } from "@/components/skeleton";
 import { hint, input, label, primary, small } from "@/components/form-styles";
@@ -20,42 +20,14 @@ import {
   type Unit,
 } from "@/lib/board-cuts";
 import type { Placed, Sheet } from "@/lib/cutting";
+import { START, pack, readSaved, type BoardText, type Row, type Saved } from "@/lib/cut-list";
+import { loadCutList, saveCutList } from "@/app/actions/cut-list";
 
-interface Row {
-  id: string;
-  name: string;
-  length: string;
-  width: string;
-  thick: string;
-  qty: string;
-}
-
-interface BoardText {
-  length: string;
-  width: string;
-  thick: string;
-  kerf: string;
-  price: string;
-  turn: boolean;
-}
-
-interface Saved {
-  unit: Unit;
-  rows: Row[];
-  board: BoardText;
-}
-
-/** the last list, kept in this browser so it is there when you come back */
+/** a copy of the list in this browser too, so nothing typed is lost while a save is on its way */
 const KEY = "cut-planner";
 
-const START: Saved = {
-  unit: "in",
-  rows: [
-    { id: "leg", name: "Table leg", length: "2ft", width: "2in", thick: "2in", qty: "4" },
-    { id: "top", name: "Table top", length: "2ft", width: "2ft", thick: "", qty: "1" },
-  ],
-  board: { length: "8ft", width: "4ft", thick: "", kerf: "1/8in", price: "", turn: true },
-};
+/** sizes to show in an empty part, in its unit: a table top */
+const EXAMPLE: Record<Unit, [string, string]> = { ft: ["3", "4"], in: ["36", "48"], mm: ["900", "1200"], cm: ["90", "120"] };
 
 const INK = "#1b2330";
 const MUTED = "#6b7686";
@@ -75,17 +47,11 @@ const COLORS: [string, string][] = [
 
 let seq = 0;
 const newId = () => `r${Date.now().toString(36)}${(seq++).toString(36)}`;
-const blank = (): Row => ({ id: newId(), name: "", length: "", width: "", thick: "", qty: "1" });
-
-const isRow = (r: unknown): r is Row =>
-  typeof r === "object" && r !== null &&
-  ["id", "name", "length", "width", "thick", "qty"].every((k) => typeof (r as Record<string, unknown>)[k] === "string");
+const blank = (unit: Unit): Row => ({ id: newId(), name: "", length: "", width: "", thick: "", unit, qty: "1" });
 
 function load(): Saved | null {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
-    if (!s || !Array.isArray(s.rows) || !s.rows.every(isRow) || !UNITS.some(([u]) => u === s.unit)) return null;
-    return { unit: s.unit, rows: s.rows, board: { ...START.board, ...s.board } };
+    return readSaved(JSON.parse(localStorage.getItem(KEY) ?? "null"));
   } catch {
     return null;
   }
@@ -97,10 +63,11 @@ function readKerf(text: string, unit: Unit) {
   return parseLength(text, unit);
 }
 
-function readRow(r: Row, unit: Unit) {
-  const length = parseLength(r.length, unit);
-  const width = parseLength(r.width, unit);
-  const thick = r.thick.trim() ? parseLength(r.thick, unit) : null;
+/** a part's sizes, in inches; plain numbers are in the part's own unit */
+function readRow(r: Row) {
+  const length = parseLength(r.length, r.unit);
+  const width = parseLength(r.width, r.unit);
+  const thick = r.thick.trim() ? parseLength(r.thick, r.unit) : null;
   const qty = /^\s*\d+\s*$/.test(r.qty) ? Number(r.qty) : 0;
   const bad = {
     length: length == null,
@@ -134,29 +101,105 @@ const cell = (bad: boolean) =>
 
 const never = () => () => {};
 
-/** The list lives in the browser, so the planner is drawn there and not on the server. */
-export function CutPlanner() {
+export type Initial = { saved: Saved | null; at: string | null };
+type Status = "saved" | "unsaved" | "saving" | "error" | "conflict";
+
+/** The planner reads the browser's copy too, so it is drawn there and not on the server. */
+export function CutPlanner({ initial }: { initial: Initial }) {
   const browser = useSyncExternalStore(never, () => true, () => false);
-  return browser ? <Planner /> : <FormSkeleton />;
+  return browser ? <Planner initial={initial} /> : <FormSkeleton />;
 }
 
-function Planner() {
-  const [saved] = useState(() => load() ?? START);
-  const [unit, setUnit] = useState<Unit>(saved.unit);
-  const [rows, setRows] = useState<Row[]>(saved.rows);
-  const [board, setBoard] = useState<BoardText>(saved.board);
+function Planner({ initial }: { initial: Initial }) {
+  // the list saved to the account wins; a list only in this browser (from before lists were saved) is saved at once
+  const [first] = useState(() => {
+    const local = initial.saved ? null : load();
+    return { list: initial.saved ?? local ?? START, savedText: initial.saved ? pack(initial.saved) : local ? null : pack(START) };
+  });
+  const [unit, setUnit] = useState<Unit>(first.list.unit);
+  const [rows, setRows] = useState<Row[]>(first.list.rows);
+  const [board, setBoard] = useState<BoardText>(first.list.board);
   const [quick, setQuick] = useState("");
   const figs = useRef<HTMLDivElement>(null);
 
+  // saving: `base` is when the copy this page started from was saved; `savedText` is that copy
+  const base = useRef(initial.at);
+  const savedText = useRef(first.savedText);
+  const busy = useRef(false);
+  const [status, setStatus] = useState<Status>(first.savedText ? "saved" : "unsaved");
+  const [saveError, setSaveError] = useState("");
+  const [clash, setClash] = useState<{ saved: Saved; at: string } | null>(null);
+  const [stored, setStored] = useState(initial.at !== null);
+  const text = pack({ unit, rows, board });
+
+  const show = (l: Saved, at: string | null) => {
+    setUnit(l.unit);
+    setRows(l.rows);
+    setBoard(l.board);
+    base.current = at;
+    savedText.current = pack(l);
+    setStored(true);
+    setStatus("saved");
+  };
+
+  async function save(over?: string) {
+    if (busy.current || (clash && !over)) return; // a save on its way looks again when it is back
+    const body = text;
+    if (body === savedText.current && !over) return setStatus("saved");
+    busy.current = true;
+    setStatus("saving");
+    const r = await saveCutList(body, over ?? base.current).catch(() => ({ error: "No connection. It saves when you are back online." }));
+    busy.current = false;
+    if ("conflict" in r) {
+      setClash({ saved: r.saved, at: r.at });
+      return setStatus("conflict");
+    }
+    if ("error" in r) {
+      setSaveError(r.error);
+      return setStatus("error");
+    }
+    base.current = r.at;
+    savedText.current = body;
+    setClash(null);
+    setStored(true);
+    setStatus("saved");
+  }
+  const autoSave = useEffectEvent(() => void save());
+
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ unit, rows, board } satisfies Saved));
+      localStorage.setItem(KEY, text);
     } catch {
-      // private window or storage full: the planner still works, it just forgets
+      // private window or storage full: the copy in the account is enough
     }
-  }, [unit, rows, board]);
+    if (text === savedText.current) return;
+    setStatus((st) => (st === "conflict" ? st : "unsaved"));
+    const t = setTimeout(autoSave, 800);
+    return () => clearTimeout(t);
+  }, [text]);
 
-  const read = rows.map((r) => readRow(r, unit));
+  // after a save comes back, anything typed meanwhile is saved too
+  useEffect(() => {
+    if (status === "saved" && text !== savedText.current) autoSave();
+  }, [status, text]);
+
+  // back on this page after using another device: show the list saved there
+  const refresh = useEffectEvent(async () => {
+    if (busy.current || clash || text !== savedText.current) return;
+    const r = await loadCutList().catch(() => null);
+    if (r?.saved && r.at !== base.current && text === savedText.current) show(r.saved, r.at);
+  });
+  useEffect(() => {
+    const look = () => document.visibilityState === "visible" && void refresh();
+    window.addEventListener("focus", look);
+    document.addEventListener("visibilitychange", look);
+    return () => {
+      window.removeEventListener("focus", look);
+      document.removeEventListener("visibilitychange", look);
+    };
+  }, []);
+
+  const read = rows.map((r) => readRow(r));
   const named = (i: number) => rows[i].name.trim() || `Part ${i + 1}`;
   const parts: PartSize[] = rows.flatMap((r, i) => {
     const x = read[i];
@@ -198,7 +241,7 @@ function Planner() {
     if (!found.length) return;
     setRows((rs) => [
       ...rs.filter((r) => r.name || r.length || r.width || r.thick),
-      ...found.map((p) => ({ id: newId(), name: p.name, length: p.length, width: p.width, thick: p.thick, qty: String(p.qty) })),
+      ...found.map((p) => ({ id: newId(), name: p.name, length: p.length, width: p.width, thick: p.thick, unit: p.unit ?? unit, qty: String(p.qty) })),
     ]);
     setQuick(bad.join("\n"));
   }
@@ -249,6 +292,23 @@ function Planner() {
 
   return (
     <div className="space-y-6">
+      {clash ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>This list was changed on another device since this page opened ({clash.saved.rows.length} part{clash.saved.rows.length === 1 ? "" : "s"} there, {rows.length} here). Which one do you want to keep?</span>
+          <span className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => { setClash(null); show(clash.saved, clash.at); }} className={`${small} bg-white`}>Use the other device&apos;s list</button>
+            <button type="button" onClick={() => void save(clash.at)} className={`${small} bg-white`}>Keep this one</button>
+          </span>
+        </div>
+      ) : (
+        <p className="text-xs text-[var(--muted)]" aria-live="polite">
+          {status === "saving" ? "Saving…"
+            : status === "unsaved" ? "Changes not saved yet…"
+            : status === "error" ? <span className="text-red-700">{saveError} <button type="button" onClick={() => void save()} className="font-medium underline">Try again</button></span>
+            : stored ? "Saved to your account: this list opens on any device you sign in on."
+            : "Changes are saved to your account as you make them, so this list opens on any device you sign in on."}
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
           <CardHeader
@@ -256,7 +316,7 @@ function Planner() {
             subtitle="Everything you need cut, one line per part"
             action={
               <label className="flex shrink-0 items-center gap-2 text-xs text-[var(--muted)]">
-                Plain numbers in
+                New parts in
                 <select value={unit} onChange={(e) => setUnit(e.target.value as Unit)}
                   className="rounded-lg border border-[var(--border)] bg-[var(--field)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-[var(--brand)]">
                   {UNITS.map(([u, text]) => <option key={u} value={u}>{text}</option>)}
@@ -275,7 +335,7 @@ function Planner() {
                       addQuick();
                     }
                   }}
-                  placeholder="Table leg: 2ft x 2in x 2in times 4, Table top: 2ft x 2ft"
+                  placeholder="Table leg: 2ft x 2in x 2in times 4, Table top: 3 x 4 ft"
                   className={`${input} min-h-[42px] resize-y`} />
                 <button type="button" onClick={addQuick} disabled={!quickRead.parts.length} className={`${primary} shrink-0`}>
                   Add{quickRead.parts.length > 1 ? ` ${quickRead.parts.length}` : ""}
@@ -284,11 +344,12 @@ function Planner() {
               {quick.trim() ? (
                 <ul className="mt-2 space-y-0.5 text-xs">
                   {quickRead.parts.map((p, i) => {
-                    const r = readRow({ id: "", ...p, qty: String(p.qty) }, unit);
+                    const u = p.unit ?? unit;
+                    const r = readRow({ id: "", name: p.name, length: p.length, width: p.width, thick: p.thick, unit: u, qty: String(p.qty) });
                     return (
                       <li key={i} className={r.ok ? "text-[var(--muted)]" : "text-red-700"}>
                         {r.ok ? "✓" : "✗"} {p.name || "Part"} ·{" "}
-                        {r.ok ? `${bare(r.length!, unit)} × ${bare(r.width!, unit)}${r.thick ? ` × ${bare(r.thick, unit)}` : ""} ${unitWord(unit)}` : "a size cannot be read"}
+                        {r.ok ? `${bare(r.length!, u)} × ${bare(r.width!, u)}${r.thick ? ` × ${bare(r.thick, u)}` : ""} ${unitWord(u)}` : "a size cannot be read"}
                         {" "}· {p.qty} {p.qty === 1 ? "piece" : "pieces"}
                       </li>
                     );
@@ -299,14 +360,14 @@ function Planner() {
                 </ul>
               ) : (
                 <p className={hint}>
-                  Name first if you like, then length x width (x thickness), then how many: times 4, x 4 or 4 pcs. Split parts
-                  with commas or new lines. Check the line that appears here: it shows how each part reads. Feet: 2ft or 2&apos;. Inches: 2in or 2&quot;. Also 2&apos;6&quot;, 3/4in, 18mm. Enter adds them.
+                  Name first if you like, then length x width (x thickness, if it is not the board&apos;s), then how many: times 4, x 4 or 4 pcs. A unit
+                  written once covers the sizes before it: 3 x 4 ft is 3 ft by 4 ft. Split parts with commas or new lines. Check the line that appears here: it shows how each part reads. Feet: 2ft or 2&apos;. Inches: 2in or 2&quot;. Also 2&apos;6&quot;, 3/4in, 18mm. Enter adds them.
                 </p>
               )}
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[860px] text-sm">
                 <thead>
                   <tr className="text-left text-xs text-[var(--muted)]">
                     <th className="w-6 pb-1.5 font-medium" aria-label="Colour" />
@@ -314,6 +375,7 @@ function Planner() {
                     <th className="w-24 pb-1.5 pr-2 font-medium">Length</th>
                     <th className="w-24 pb-1.5 pr-2 font-medium">Width</th>
                     <th className="w-24 pb-1.5 pr-2 font-medium">Thickness</th>
+                    <th className="w-24 pb-1.5 pr-2 font-medium">Unit</th>
                     <th className="w-16 pb-1.5 pr-2 font-medium">Qty</th>
                     <th className="w-40 pb-1.5 pr-2 font-medium">Reads as</th>
                     <th className="w-8 pb-1.5" aria-label="Remove" />
@@ -334,11 +396,11 @@ function Planner() {
                             onChange={(e) => update(r.id, { name: e.target.value })} className={cell(false)} />
                         </td>
                         <td className="py-1 pr-2">
-                          <input aria-label={`${named(i)} length`} value={r.length} placeholder="2ft"
+                          <input aria-label={`${named(i)} length`} value={r.length} placeholder={EXAMPLE[r.unit][0]}
                             onChange={(e) => update(r.id, { length: e.target.value })} className={cell(!empty && x.bad.length)} />
                         </td>
                         <td className="py-1 pr-2">
-                          <input aria-label={`${named(i)} width`} value={r.width} placeholder="18in"
+                          <input aria-label={`${named(i)} width`} value={r.width} placeholder={EXAMPLE[r.unit][1]}
                             onChange={(e) => update(r.id, { width: e.target.value })} className={cell(!empty && x.bad.width)} />
                         </td>
                         <td className="py-1 pr-2">
@@ -346,12 +408,18 @@ function Planner() {
                             onChange={(e) => update(r.id, { thick: e.target.value })} className={cell(x.bad.thick)} />
                         </td>
                         <td className="py-1 pr-2">
+                          <select aria-label={`${named(i)} unit`} value={r.unit} onChange={(e) => update(r.id, { unit: e.target.value as Unit })}
+                            className={cell(false)}>
+                            {UNITS.map(([u, text]) => <option key={u} value={u}>{text}</option>)}
+                          </select>
+                        </td>
+                        <td className="py-1 pr-2">
                           <input aria-label={`${named(i)} quantity`} value={r.qty} inputMode="numeric"
                             onChange={(e) => update(r.id, { qty: e.target.value })} className={cell(x.bad.qty)} />
                         </td>
                         <td className="py-1 pr-2 text-xs text-[var(--muted)]">
                           {x.ok
-                            ? `${bare(x.length!, unit)} × ${bare(x.width!, unit)}${x.thick ? ` × ${bare(x.thick, unit)}` : ""} ${unitWord(unit)}`
+                            ? `${bare(x.length!, r.unit)} × ${bare(x.width!, r.unit)}${x.thick ? ` × ${bare(x.thick, r.unit)}` : ""} ${unitWord(r.unit)}`
                             : empty ? "" : <span className="text-red-700">{problem(x.bad)}</span>}
                         </td>
                         <td className="py-1 text-right">
@@ -366,7 +434,7 @@ function Planner() {
               </table>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setRows((rs) => [...rs, blank()])} className={small}>+ Add a part</button>
+              <button type="button" onClick={() => setRows((rs) => [...rs, blank(unit)])} className={small}>+ Add a part</button>
               {rows.length > 0 && (
                 <button type="button" onClick={() => window.confirm("Clear every part from the list?") && setRows([])}
                   className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--muted)] hover:text-red-700">

@@ -76,6 +76,8 @@ export interface PartText {
   /** blank: as thick as the board */
   thick: string;
   qty: number;
+  /** when every size is in one unit (3 x 4 ft): the sizes are plain numbers in it */
+  unit?: Unit;
 }
 
 /** how many, written after the sizes: "times 4", "x 4 pcs", "4 nos", "(4)", "qty 4" */
@@ -124,7 +126,30 @@ export function parseLine(line: string): PartText | null {
   if (qty === 1 && dims.length === 4 && plain(dims[3])) qty = Number(dims.pop());
   else if (qty === 1 && dims.length === 3 && plain(dims[2]) && !plain(dims[0]) && !plain(dims[1])) qty = Number(dims.pop());
   if (dims.length < 2 || dims.length > 3 || !Number.isInteger(qty) || qty < 1) return null;
-  return { name: name.trim().replace(/[\s:–—-]+$/, ""), length: dims[0], width: dims[1], thick: dims[2] ?? "", qty };
+  const { sizes, unit } = shareUnit(dims);
+  return { name: name.trim().replace(/[\s:–—-]+$/, ""), length: sizes[0], width: sizes[1], thick: sizes[2] ?? "", qty, ...(unit ? { unit } : {}) };
+}
+
+const NUMBER = String.raw`(\d+[ -]+\d+\/\d+|\d+\/\d+|\d*\.?\d+)`;
+const PLAIN = new RegExp(`^${NUMBER}$`);
+const ONE_UNIT = new RegExp(`^${NUMBER}\\s*(feet|foot|ft|inches|inch|in|mm|cm|m|'|")$`);
+const AS_UNIT: Record<string, Unit> = { feet: "ft", foot: "ft", ft: "ft", "'": "ft", inches: "in", inch: "in", in: "in", '"': "in", mm: "mm", cm: "cm" };
+
+/**
+ * A unit written once covers the sizes before it, as people say it: "3 x 4 ft"
+ * is 3 ft by 4 ft, and "3 x 4 ft x 18mm" a 3 by 4 ft top, 18mm thick. When
+ * every size ends up in one unit, they come back as plain numbers in it.
+ */
+function shareUnit(dims: string[]): { sizes: string[]; unit?: Unit } {
+  const sizes = [...dims];
+  for (let i = sizes.length - 2; i >= 0; i--) {
+    const next = sizes[i + 1].match(ONE_UNIT);
+    if (PLAIN.test(sizes[i]) && next) sizes[i] = `${sizes[i]}${next[2]}`;
+  }
+  const units = sizes.map((d) => d.match(ONE_UNIT));
+  const unit = units[0] ? AS_UNIT[units[0][2]] : undefined;
+  if (!unit || units.some((m) => !m || AS_UNIT[m[2]] !== unit)) return { sizes };
+  return { sizes: units.map((m) => m![1]), unit };
 }
 
 /** Several parts at once, one per line or split by commas or semicolons. */

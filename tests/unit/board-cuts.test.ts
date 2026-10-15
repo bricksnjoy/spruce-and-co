@@ -34,8 +34,18 @@ describe("reading a part", () => {
     expect(bad).toEqual([]);
     expect(parts).toEqual([
       { name: "", length: "2ft", width: "2inch", thick: "2inch", qty: 4 },
-      { name: "", length: "2ft", width: "2ft", thick: "", qty: 1 },
+      { name: "", length: "2", width: "2", thick: "", qty: 1, unit: "ft" },
     ]);
+  });
+
+  it("a unit written once covers the sizes before it: 3 x 4 ft is a 3 by 4 ft top", () => {
+    expect(parseLine("Table top 3x4 ft")).toEqual({ name: "Table top", length: "3", width: "4", thick: "", qty: 1, unit: "ft" });
+    expect(parseLine("Shelf: 600 x 300 mm times 2")).toEqual({ name: "Shelf", length: "600", width: "300", thick: "", qty: 2, unit: "mm" });
+    expect(parseLine("Top 3 x 4 ft x 18mm")).toEqual({ name: "Top", length: "3ft", width: "4 ft", thick: "18mm", qty: 1 });
+    expect(parseLine("Leg 2ft x 2 x 2in")).toEqual({ name: "Leg", length: "2ft", width: "2in", thick: "2in", qty: 1 });
+    // read the way the planner reads them: 3 ft by 4 ft, not 3 inches
+    const p = parseLine("Table top 3x4 ft")!;
+    expect([parseLength(p.length, p.unit!), parseLength(p.width, p.unit!)]).toEqual([36, 48]);
   });
 
   it.each([
