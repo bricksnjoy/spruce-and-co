@@ -93,9 +93,11 @@ export function Sidebar({
                       !g.items.some((o) => o.href.length > item.href.length && isActive(pathname, o.href));
                     return (
                       <li key={item.href}>
+                        {/* the default prefetch stops at the loading screen: a full one would
+                            render every page on the menu on every page view, and the click
+                            then queued behind them */}
                         <Link
                           href={item.href}
-                          prefetch
                           className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-[13px] transition-colors ${
                             active
                               ? "bg-[var(--brand-soft)] font-medium text-[var(--brand)]"

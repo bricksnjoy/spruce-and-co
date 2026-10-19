@@ -5,6 +5,7 @@ import { canWrite, getSession } from "@/server/session";
 import { addDays, date, money, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
 import { bookLabel } from "@/lib/books";
+import { Pending } from "@/components/pending";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
           <div className="flex flex-wrap gap-2 text-sm">
             {[["/sales/new?type=invoice", "Invoice"], ["/sales/payments/new", "Receive payment"], ["/sales/new?type=sales_receipt", "Sales receipt"],
               ["/sales/new?type=credit_note", "Credit note"], ["/sales/advances", "Advance"], ["/sales/deposits/new", "Bank deposit"]].map(([h, l], i) => (
-              <Link key={h} href={h} className={i === 0 ? "rounded-lg bg-[var(--brand)] px-3.5 py-2 font-medium text-white hover:bg-[var(--brand-hover)]" : "rounded-lg border border-[var(--border)] px-3 py-2 font-medium hover:bg-[var(--brand-soft)]"}>+ {l}</Link>
+              <Link key={h} href={h} className={i === 0 ? "rounded-lg bg-[var(--brand)] px-3.5 py-2 font-medium text-white hover:bg-[var(--brand-hover)]" : "rounded-lg border border-[var(--border)] px-3 py-2 font-medium hover:bg-[var(--brand-soft)]"}>+ {l}<Pending light={i === 0} /></Link>
             ))}
           </div>
         ) : undefined} />

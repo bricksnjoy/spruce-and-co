@@ -1,8 +1,16 @@
 import type { Session } from "./session";
 import { today } from "@/lib/format";
+import { signerFor, toTemplate } from "@/lib/documents";
+import { signingKit } from "@/lib/branding";
+import type { Company } from "@/components/sales/ledger-sheet";
+import type { SheetSigner } from "@/components/sales/sales-sheet";
 
 export type Option = { id: string; name: string };
-export type CustomerOpt = Option & { terms_days: number | null; currency: string };
+export type CustomerOpt = Option & {
+  terms_days: number | null; currency: string;
+  // what the document prints under "Bill to"
+  company_name: string | null; address: string | null; tin: string | null; gst_registered: boolean | null; taxable_activity_no: string | null;
+};
 export type TaxCodeOpt = { id: string; code: string; name: string; rate: string };
 export type AccountOpt = { id: string; code: string; name: string; currency?: string };
 export type ProjectOpt = { id: string; code: string; name: string; customer_id: string | null };
@@ -10,7 +18,7 @@ export type ProjectOpt = { id: string; code: string; name: string; customer_id: 
 /** What every sales form picks from, for the book you are in. */
 export async function salesFormData(s: Session) {
   const [cust, proj, codes, income, banks, company] = await Promise.all([
-    s.supabase.from("contacts").select("id, name, terms_days, currency").contains("kinds", ["customer"]).eq("active", true).order("name"),
+    s.supabase.from("contacts").select("id, name, terms_days, currency, company_name, address, tin, gst_registered, taxable_activity_no").contains("kinds", ["customer"]).eq("active", true).order("name"),
     s.supabase.from("projects").select("id, code, name, customer_id").is("archived_at", null).order("code"),
     s.supabase.from("tax_codes").select("id, code, name, rate_code").eq("active", true).order("code"),
     s.supabase.from("accounts").select("id, code, name").eq("type", "income").eq("active", true).order("code"),
@@ -35,3 +43,16 @@ export async function salesFormData(s: Session) {
   };
 }
 export type SalesFormData = Awaited<ReturnType<typeof salesFormData>>;
+
+/**
+ * The company block and the signer a printed sales document carries: signed and
+ * stamped as the default invoice template says (Quotations → Edit templates).
+ */
+export async function salesBranding(s: Session): Promise<{ company: Company | null; signer: SheetSigner | null }> {
+  const [{ data: company }, { data: tpl }, kit] = await Promise.all([
+    s.supabase.from("company").select("legal_name, trade_name, tin, gst_registered, taxable_activity_no, address, phone, email, bank_details").eq("id", true).maybeSingle(),
+    s.supabase.from("document_templates").select("*").eq("kind", "invoice").order("is_default", { ascending: false }).limit(1).maybeSingle(),
+    signingKit(s.supabase),
+  ]);
+  return { company: (company as Company | null) ?? null, signer: tpl ? signerFor(kit, toTemplate(tpl).tail, null, null) : null };
+}
