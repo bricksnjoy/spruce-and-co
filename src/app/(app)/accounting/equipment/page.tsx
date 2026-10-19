@@ -1,21 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, Stat } from "@/components/ui";
 import { date, money, today } from "@/lib/format";
-import { loadRecords } from "@/lib/accounting";
-import { assetValue } from "@/lib/statements";
+import { assetValue } from "@/lib/assets";
 import { AssetForm, AssetRow, type AssetView } from "./equipment-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function EquipmentPage() {
   const supabase = await createClient();
-  const [records, { data: company }, { data: full }] = await Promise.all([
-    loadRecords(supabase),
+  const [{ data: billRows }, { data: company }, { data: full }] = await Promise.all([
+    supabase.from("bills").select("id, bill_no, status, issue_date, total, description, expense_class, created_at, vendors(name)"),
     supabase.from("company").select("asset_life_years").eq("id", true).maybeSingle(),
     supabase.from("assets").select("*").order("purchased_on", { ascending: false }),
   ]);
   const now = today();
   const life = Number(company?.asset_life_years ?? 5);
+  const records = { bills: billRows ?? [] };
   const bills = new Map(records.bills.map((b) => [b.id, b]));
   const vendor = (b: (typeof records.bills)[number]) => (b.vendors as unknown as { name: string } | null)?.name ?? "Supplier";
 

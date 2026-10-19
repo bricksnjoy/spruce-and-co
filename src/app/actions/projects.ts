@@ -115,7 +115,6 @@ export async function createProject(_prev: unknown, fd: FormData): Promise<Resul
   }
 
   revalidatePath("/projects");
-  revalidatePath("/pnl");
   revalidatePath("/");
   redirect(`/projects/${project.id}`);
 }
@@ -161,7 +160,6 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
 
   revalidatePath(`/projects/${id}`, "layout");
   revalidatePath("/projects");
-  revalidatePath("/pnl");
   revalidatePath("/");
   redirect(`/projects/${id}`);
 }

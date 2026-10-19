@@ -241,9 +241,7 @@ export async function saveBills(_prev: unknown, fd: FormData): Promise<SaveResul
   if (error) return { error: error.message };
 
   revalidatePath(`/projects/${projectId}`, "layout");
-  revalidatePath("/pnl");
   revalidatePath("/projects");
-  revalidatePath("/gst");
   revalidatePath("/");
   return { saved: rows.length };
 }
