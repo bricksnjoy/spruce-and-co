@@ -59,7 +59,6 @@ export async function saveCompany(_prev: unknown, fd: FormData): Promise<Company
   revalidatePath("/settings/company");
   // the activity number rides on every new bill, and the GST sheet carries
   // the company header
-  revalidatePath("/gst");
   revalidatePath("/projects", "layout");
   return { ok: true };
 }

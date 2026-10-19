@@ -27,11 +27,7 @@ export const BOOK_AWARE: string[] = [
   "/cut-planner",
 ];
 
-/** Parts of a book-aware area that still read the old tables. */
-const LIVE_ONLY: RegExp[] = [/^\/projects\/[^/]+\/legacy(\/|$)/];
-
 export function worksInTest(pathname: string) {
-  if (LIVE_ONLY.some((r) => r.test(pathname))) return false;
   return BOOK_AWARE.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 

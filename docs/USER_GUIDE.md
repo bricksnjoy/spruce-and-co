@@ -66,7 +66,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 8. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
 9. Transactions: every document posted to the project.
 
-> Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive. "Old view" shows the project as the old screens saw it (Live only).
+> Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive.
 > Anything posted to a completed project later (a cost, a bad debt) adjusts the split with its own entry and flags the project for review.
 
 ### Edit project
@@ -401,21 +401,13 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Every line should say it passes. If one fails, the detail says what is out and by how much — tell your accountant or developer.
 
-### Equipment register (older screen)
+### Equipment register
 
 `/accounting/equipment` — Tools, machines and vehicles the company owns.
 
 1. Add an item with cost and date; the list keeps them.
 
 > Depreciation in the new books is not built yet (see QA report).
-
-### Year end (older screen)
-
-`/accounting/year-end` — Approve the old statements and close the year.
-
-1. Follow the steps on the page.
-
-> For the new books use Reports → Year-end pack, and Settings → Accounting → Closing date to lock a year.
 
 ## Other
 

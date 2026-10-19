@@ -56,7 +56,6 @@ export async function addVariation(_prev: unknown, fd: FormData): Promise<Result
 
   if (error) return { error: error.message };
   revalidatePath(`/projects/${projectId}`, "layout");
-  revalidatePath("/pnl");
   revalidatePath("/projects");
   revalidatePath("/");
   return { ok: true };
@@ -87,7 +86,6 @@ export async function updateVariation(_prev: unknown, fd: FormData): Promise<Res
   if (error) return { error: error.message };
 
   revalidatePath(`/projects/${projectId}`, "layout");
-  revalidatePath("/pnl");
   revalidatePath("/projects");
   return { ok: true };
 }
@@ -97,7 +95,6 @@ export async function deleteVariation(id: string, projectId: string) {
   if (await isLocked(supabase, await projectOf(supabase, "variations", id))) return;
   await supabase.from("variations").delete().eq("id", id);
   revalidatePath(`/projects/${projectId}`, "layout");
-  revalidatePath("/pnl");
   revalidatePath("/projects");
 }
 
@@ -284,9 +281,7 @@ export async function addBill(_prev: unknown, fd: FormData): Promise<BillResult>
   if (error) return { error: error.message };
 
   revalidatePath(`/projects/${projectId}`, "layout");
-  revalidatePath("/pnl");
   revalidatePath("/projects");
-  revalidatePath("/gst");
   revalidatePath("/");
   return { ok: true };
 }
@@ -318,7 +313,6 @@ export async function updateBill(fd: FormData): Promise<void> {
 
   if (error) return;
   revalidatePath(`/projects/${projectId}`, "layout");
-  revalidatePath("/pnl");
   revalidatePath("/projects");
 }
 
@@ -337,6 +331,5 @@ export async function deleteBill(id: string, projectId: string) {
   }
 
   revalidatePath(`/projects/${projectId}`, "layout");
-  revalidatePath("/pnl");
   revalidatePath("/projects");
 }

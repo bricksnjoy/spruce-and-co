@@ -5,13 +5,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   docNumber,
-  portionLines,
-  round2,
   toTemplate,
-  INVOICE_STATUSES,
   QUOTE_STATUSES,
   type DocKind,
-  type InvoiceStatus,
   type QuoteStatus,
   type TemplateBody,
   type TemplateHeader,
@@ -24,12 +20,9 @@ export type DocResult = { error?: string; ok?: boolean; id?: string };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("en-MV", { style: "currency", currency: "MVR" }).format(n);
-
 function refresh(projectId?: string | null) {
   revalidatePath("/quotations", "layout");
-  revalidatePath("/invoices", "layout");
+  revalidatePath("/sales", "layout");
   if (projectId) revalidatePath(`/projects/${projectId}`, "layout");
 }
 
@@ -328,188 +321,13 @@ export async function deleteQuotation(id: string): Promise<DocResult> {
   redirect("/quotations");
 }
 
-/* ─────────────────────────── invoices ─────────────────────────── */
-
-/**
- * Raise an invoice from a won quotation, for a percentage of it (a 70%
- * advance, the 30% balance) or a set amount. Together the invoices can never
- * bill more than was quoted.
- */
-export async function convertToInvoice(_prev: unknown, fd: FormData): Promise<DocResult> {
-  const supabase = await createClient();
-  const user = await signedIn(supabase);
-  if (!user) return { error: "Not signed in." };
-
-  const quotationId = String(fd.get("quotation_id") ?? "");
-  const basis = String(fd.get("basis") ?? "percent") === "amount" ? "amount" : "percent";
-  const value = Number(String(fd.get("value") ?? "").replace(/[^0-9.]/g, ""));
-  const issueDate = String(fd.get("issue_date") ?? "") || today();
-  const dueDate = String(fd.get("due_date") ?? "") || null;
-  const templateId = String(fd.get("template_id") ?? "") || null;
-  const label = String(fd.get("label") ?? "").trim();
-  const signatoryId = String(fd.get("signatory_id") ?? "") || null;
-  const showStamp = fd.get("show_stamp") === "on";
-
-  if (!Number.isFinite(value) || value <= 0) {
-    return { error: basis === "percent" ? "Enter the percentage to invoice." : "Enter the amount to invoice." };
-  }
-
-  const [{ data: q }, { data: lines }, { data: totals }] = await Promise.all([
-    supabase.from("quotations").select("*").eq("id", quotationId).maybeSingle(),
-    supabase.from("quotation_items").select("*").eq("quotation_id", quotationId).order("sort_order"),
-    supabase.from("quotation_totals").select("subtotal, invoiced").eq("quotation_id", quotationId).maybeSingle(),
-  ]);
-  if (!q) return { error: "That quotation no longer exists." };
-  if (q.status !== "won") return { error: "Only a won quotation can be invoiced." };
-
-  const subtotal = Number(totals?.subtotal ?? 0);
-  const remaining = round2(subtotal - Number(totals?.invoiced ?? 0));
-  if (subtotal <= 0) return { error: "This quotation has nothing to invoice." };
-
-  const target = round2(basis === "percent" ? (subtotal * value) / 100 : value);
-  const pct = basis === "percent" ? value : (target / subtotal) * 100;
-  if (target > remaining + 0.005) {
-    return {
-      error: `Only ${fmt(remaining)} (${((remaining / subtotal) * 100).toFixed(2).replace(/\.00$/, "")}%) of this quotation is left to invoice.`,
-    };
-  }
-
-  const template = templateId
-    ? toTemplate((await supabase.from("document_templates").select("*").eq("id", templateId).single()).data!)
-    : await defaultTemplate(supabase, "invoice");
-
-  const pctLabel = `${Number(pct.toFixed(2))}%`;
-  const suffix = label || (pct >= 99.995 ? "" : pctLabel);
-
-  let id: string | undefined;
-  for (let attempt = 0; attempt < 3 && !id; attempt++) {
-    const seq = await nextSeq(supabase, "invoices");
-    const { data, error } = await supabase
-      .from("invoices")
-      .insert({
-        seq,
-        number: docNumber(
-          template?.header.number_prefix ?? "SC-INV/{YY}/",
-          seq,
-          issueDate,
-          template?.header.number_pad ?? 2,
-        ),
-        quotation_id: q.id,
-        template_id: template?.id ?? null,
-        project_id: q.project_id,
-        client_id: q.client_id,
-        to_name: q.to_name,
-        to_details: q.to_details,
-        title: [q.title, suffix].filter(Boolean).join(" _ ") || null,
-        issue_date: issueDate,
-        due_date: dueDate,
-        basis,
-        portion_pct: round2(pct * 100) / 100,
-        tax_rate: q.tax_rate,
-        terms: template?.tail.terms ?? "",
-        signatory_id: signatoryId,
-        show_stamp: showStamp,
-        created_by: user.id,
-      })
-      .select("id")
-      .single();
-    if (data) id = data.id;
-    else if (error?.code !== "23505") return { error: error?.message ?? "Could not raise the invoice." };
-  }
-  if (!id) return { error: "Could not number the invoice — try again." };
-
-  const items = portionLines(
-    (lines ?? []).map((l) => ({
-      title: l.title,
-      description: l.description,
-      unit: l.unit,
-      qty: Number(l.qty),
-      rate: Number(l.rate),
-    })),
-    pct,
-    target,
-  );
-  const { error: iErr } = await supabase
-    .from("invoice_items")
-    .insert(items.map((l, i) => ({ ...l, invoice_id: id, sort_order: i })));
-  if (iErr) {
-    await supabase.from("invoices").delete().eq("id", id);
-    return { error: iErr.message };
-  }
-
-  refresh(q.project_id);
-  redirect(`/invoices/${id}`);
-}
-
-export async function setInvoiceStatus(id: string, status: InvoiceStatus): Promise<DocResult> {
-  if (!INVOICE_STATUSES.includes(status)) return { error: "Unknown status." };
-  const supabase = await createClient();
-  const { data: inv, error } = await supabase
-    .from("invoices")
-    .update({
-      status,
-      paid_at: status === "paid" ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select("project_id")
-    .maybeSingle();
-  if (error) return { error: error.message };
-  refresh(inv?.project_id);
-  return { ok: true };
-}
-
-/** What can change on an invoice once raised: its wording and dates, not its amounts. */
-export async function updateInvoice(_prev: unknown, fd: FormData): Promise<DocResult> {
-  const supabase = await createClient();
-  if (!(await signedIn(supabase))) return { error: "Not signed in." };
-  const id = String(fd.get("id") ?? "");
-  const toName = String(fd.get("to_name") ?? "").trim();
-  if (!toName) return { error: "Who is the invoice for?" };
-
-  const { data: inv, error } = await supabase
-    .from("invoices")
-    .update({
-      to_name: toName,
-      to_details: String(fd.get("to_details") ?? "").trim() || null,
-      title: String(fd.get("title") ?? "").trim() || null,
-      issue_date: String(fd.get("issue_date") ?? "") || today(),
-      due_date: String(fd.get("due_date") ?? "") || null,
-      terms: String(fd.get("terms") ?? ""),
-      signatory_id: String(fd.get("signatory_id") ?? "") || null,
-      show_stamp: fd.get("show_stamp") === "on",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select("project_id")
-    .maybeSingle();
-  if (error) return { error: error.message };
-  refresh(inv?.project_id);
-  return { ok: true };
-}
-
-export async function deleteInvoice(id: string): Promise<DocResult> {
-  const supabase = await createClient();
-  const { data: inv } = await supabase
-    .from("invoices")
-    .select("status, project_id, quotation_id")
-    .eq("id", id)
-    .maybeSingle();
-  if (!inv) return { error: "That invoice no longer exists." };
-  if (inv.status === "paid") return { error: "A paid invoice stays on record." };
-  const { error } = await supabase.from("invoices").delete().eq("id", id);
-  if (error) return { error: error.message };
-  refresh(inv.project_id);
-  redirect(inv.quotation_id ? `/quotations/${inv.quotation_id}` : "/invoices");
-}
-
 /* ─────────────────────────── stamp & signatures ─────────────────────────── */
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 function refreshSigning() {
   revalidatePath("/quotations", "layout");
-  revalidatePath("/invoices", "layout");
+  revalidatePath("/sales", "layout");
   revalidatePath("/print", "layout");
 }
 

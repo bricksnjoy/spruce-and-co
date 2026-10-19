@@ -41,10 +41,9 @@ describe("money typed into forms", () => {
 
 import { worksInTest } from "@/lib/books";
 describe("which screens work in the Test book", () => {
-  it("allows the rebuilt screens and keeps the old ones Live only", () => {
+  it("allows the rebuilt screens and keeps the Live-only ones out", () => {
     expect(worksInTest("/projects")).toBe(true);
     expect(worksInTest("/projects/abc")).toBe(true);
-    expect(worksInTest("/projects/abc/legacy")).toBe(false);
     expect(worksInTest("/sales/customers/1")).toBe(true);
     expect(worksInTest("/quotations")).toBe(false);
     // the dashboard reads the new ledger; "/" must not open every route

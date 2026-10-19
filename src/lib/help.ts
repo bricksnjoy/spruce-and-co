@@ -70,7 +70,7 @@ export const HELP: Help[] = [
       "Transactions: every document posted to the project.",
     ],
     tips: [
-      "Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive. \"Old view\" shows the project as the old screens saw it (Live only).",
+      "Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive.",
       "Anything posted to a completed project later (a cost, a bad debt) adjusts the split with its own entry and flags the project for review.",
     ],
   },
@@ -386,17 +386,12 @@ export const HELP: Help[] = [
     steps: ["Every line should say it passes. If one fails, the detail says what is out and by how much — tell your accountant or developer."],
   },
   {
-    path: "/accounting/equipment", area: "Accounting", title: "Equipment register (older screen)",
+    path: "/accounting/equipment", area: "Accounting", title: "Equipment register",
     purpose: "Tools, machines and vehicles the company owns.",
     steps: ["Add an item with cost and date; the list keeps them."],
     tips: ["Depreciation in the new books is not built yet (see QA report)."],
   },
-  {
-    path: "/accounting/year-end", area: "Accounting", title: "Year end (older screen)",
-    purpose: "Approve the old statements and close the year.",
-    steps: ["Follow the steps on the page."],
-    tips: ["For the new books use Reports → Year-end pack, and Settings → Accounting → Closing date to lock a year."],
-  },
+
 
   // ── Other ──
   { path: "/tasks", area: "Other", title: "Tasks & calendar", purpose: "What is due across every project.", steps: ["Add a task with a project and due date; tick it when done."] },
