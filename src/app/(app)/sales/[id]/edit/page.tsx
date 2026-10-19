@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
-import { salesFormData } from "@/server/sales-data";
+import { salesBranding, salesFormData } from "@/server/sales-data";
 import { DocForm } from "@/components/sales/doc-form";
 import { TITLES, type DocType } from "@/lib/sales-doc";
 
@@ -15,18 +15,19 @@ export default async function EditSalesDoc({ params }: { params: Promise<{ id: s
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   if (!canWrite(s.role)) redirect(`/sales/${id}`);
-  const [{ data: t }, { data: lines }, data] = await Promise.all([
+  const [{ data: t }, { data: lines }, data, branding] = await Promise.all([
     s.supabase.from("transactions").select("*").eq("id", id).maybeSingle(),
     s.supabase.from("transaction_lines").select("*").eq("transaction_id", id).order("line_no"),
     salesFormData(s),
+    salesBranding(s),
   ]);
   if (!t || !["invoice", "credit_note", "sales_receipt"].includes(t.type)) notFound();
   if (t.voided_at) redirect(`/sales/${id}`);
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-[1700px]">
       <Link href={`/sales/${id}`} className="text-xs text-[var(--muted)] hover:underline">← {t.number ?? "Back"}</Link>
       <PageHeader title={`Edit ${TITLES[t.type as DocType].toLowerCase()} ${t.number ?? ""}`} subtitle="Saving posts the new figures in place of the old; the change is kept in the audit trail" />
-      <DocForm data={data} values={{
+      <DocForm data={data} branding={branding} number={t.number} values={{
         id, type: t.type, date: t.date, due_date: s2(t.due_date), contact_id: s2(t.contact_id), project_id: s2(t.project_id),
         currency: t.currency, fx_rate: s2(t.fx_rate), memo: s2(t.memo), reference: s2(t.reference), bank_account_id: s2(t.bank_account_id), is_draft: t.is_draft,
         lines: (lines ?? []).map((l) => ({ description: s2(l.description), qty: s2(l.qty), rate: s2(l.rate), amount: l.qty == null ? s2(l.amount) : "",

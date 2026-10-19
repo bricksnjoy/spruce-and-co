@@ -8,12 +8,22 @@ import { saveSalesDoc, type Result } from "@/app/actions/sales";
 import { addDays, money } from "@/lib/format";
 import { laariToNumber, percentOf, qtyTimesRate, toLaari } from "@/lib/money";
 import type { SalesFormData } from "@/server/sales-data";
+import type { Company } from "./ledger-sheet";
+import { SalesSheet, type SheetSigner } from "./sales-sheet";
 
 import { TITLES, type DocType, type DocValues, type LineValue } from "@/lib/sales-doc";
 export type { DocType, DocValues, LineValue };
 
-/** Invoice, credit note or sales receipt. The database posts it and works out GST; this shows the running total. */
-export function DocForm({ data, values }: { data: SalesFormData; values: DocValues }) {
+/**
+ * Invoice, credit note or sales receipt. The database posts it and works out GST;
+ * this shows the running total, and the document as it will print.
+ */
+export function DocForm({ data, values, branding, number = null }: {
+  data: SalesFormData; values: DocValues;
+  branding: { company: Company | null; signer: SheetSigner | null };
+  /** the document's number, once it has one */
+  number?: string | null;
+}) {
   const router = useRouter();
   const [state, action, pending] = useActionState(saveSalesDoc, null as Result | null);
   const [v, setV] = useState(values);
@@ -26,6 +36,21 @@ export function DocForm({ data, values }: { data: SalesFormData; values: DocValu
   const lineAmount = (l: LineValue) => (l.qty !== "" && l.rate !== "" ? qtyTimesRate(l.qty, l.rate) : toLaari(l.amount)) ?? 0n;
   const subtotal = v.lines.reduce((t, l) => t + lineAmount(l), 0n);
   const gst = v.lines.reduce((t, l) => t + percentOf(lineAmount(l), rateOf.get(l.tax_code_id) ?? "0"), 0n);
+  const taxName = useMemo(() => new Map(data.taxCodes.map((t) => [t.id, t.name])), [data.taxCodes]);
+  const sheetLines = v.lines
+    .filter((l) => l.description.trim() || lineAmount(l) !== 0n)
+    .map((l) => {
+      const byQty = l.qty !== "" && l.rate !== "";
+      const amount = lineAmount(l);
+      return {
+        description: l.description,
+        qty: byQty ? Number(l.qty) : null,
+        rate: byQty ? qtyTimesRate("1", l.rate) : null,
+        amount,
+        tax: percentOf(amount, rateOf.get(l.tax_code_id) ?? "0"),
+        taxName: taxName.get(l.tax_code_id) ?? "",
+      };
+    });
   const projects = v.contact_id ? data.projects.filter((p) => !p.customer_id || p.customer_id === v.contact_id) : data.projects;
 
   const chooseCustomer = (id: string) => {
@@ -39,7 +64,8 @@ export function DocForm({ data, values }: { data: SalesFormData; values: DocValu
       const fd = new FormData(e.currentTarget);
       fd.set("lines", JSON.stringify(v.lines));
       startTransition(() => action(fd));
-    }} className="space-y-5">
+    }} className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
+      <div className="min-w-0 space-y-5">
       <input type="hidden" name="type" value={v.type} />
       {v.id && <input type="hidden" name="id" value={v.id} />}
       <Card className="grid gap-4 px-5 py-5 sm:grid-cols-3">
@@ -162,6 +188,26 @@ export function DocForm({ data, values }: { data: SalesFormData; values: DocValu
         )}
         {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
       </div>
+      </div>
+
+      {branding.company && (
+        <aside aria-label="Preview" className="min-w-0 2xl:sticky 2xl:top-4">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
+            Preview{!number && " · the number is given when you save"}
+          </p>
+          <div className="overflow-auto rounded-xl border border-[var(--border)] bg-[#e9ecf0] p-3">
+            {/* the A4 sheet is 210mm wide; zoomed to sit beside the form */}
+            <div style={{ zoom: 0.66 }}>
+              <SalesSheet type={v.type} company={branding.company} number={number}
+                customer={data.customers.find((c) => c.id === v.contact_id) ?? null}
+                date={v.date} due={v.type === "invoice" ? (v.due_date || v.date) : null}
+                projectCode={data.projects.find((p) => p.id === v.project_id)?.code ?? null}
+                reference={v.reference || null} lines={sheetLines} currency={v.currency}
+                memo={v.memo || null} signer={branding.signer} />
+            </div>
+          </div>
+        </aside>
+      )}
     </form>
   );
 }
