@@ -1,0 +1,11 @@
+drop view if exists public.project_payouts_v;
+drop function if exists public.rpc_delete_scheme(uuid);
+drop function if exists public.rpc_save_scheme(jsonb);
+drop function if exists public._reassign_schemes();
+drop function if exists public.rpc_approve_payout(uuid);
+drop function if exists public.rpc_save_payout(jsonb);
+drop function if exists public._approve_payout(uuid);
+drop trigger if exists transactions_payout_approval on public.transactions;
+drop function if exists public.check_payout_approval();
+drop function if exists public._payout_lines(uuid);
+alter table public.transactions drop column if exists approved_snapshot;

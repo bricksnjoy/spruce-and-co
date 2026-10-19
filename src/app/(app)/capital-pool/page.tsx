@@ -188,7 +188,7 @@ export default async function CapitalPoolPage() {
                       {e.origin === "manual" ? (
                         <RemoveEntry id={e.id} />
                       ) : e.origin === "salary" ? (
-                        <Link href="/salaries" className="text-xs text-[var(--muted)] hover:underline">salaries</Link>
+                        <Link href="/payroll" className="text-xs text-[var(--muted)] hover:underline">salaries</Link>
                       ) : null}
                     </Td>
                   </tr>

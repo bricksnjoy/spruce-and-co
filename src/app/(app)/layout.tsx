@@ -7,6 +7,11 @@ import { initials } from "@/lib/format";
 import { Badge } from "@/components/ui";
 import { Logo, Wordmark } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
+import { BookSwitch } from "@/components/book-switch";
+import { BookGuard } from "@/components/book-guard";
+import type { Book } from "@/lib/books";
+import { NewMenu } from "@/components/new-menu";
+import { PageHelp } from "@/components/page-help";
 
 export default async function AppLayout({
   children,
@@ -22,15 +27,17 @@ export default async function AppLayout({
   const [{ data: profile }, { data: company }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name, email, role, job_title")
+      .select("full_name, email, role, job_title, active_book, can_payroll")
       .eq("id", user.id)
       .single(),
     supabase.from("company").select("gst_registered").eq("id", true).maybeSingle(),
   ]);
 
   const name = profile?.full_name || user.email || "User";
+  const book = (profile?.active_book ?? "live") as Book;
   const groups = visibleFor(profile?.role, {
     gstRegistered: company?.gst_registered ?? false,
+    book,
   });
   const quickActions = quickActionsFor(profile?.role);
 
@@ -59,7 +66,16 @@ export default async function AppLayout({
             </MobileNav>
             <Logo size={28} />
           </div>
+          <div className="flex min-w-0 items-center gap-3">
+            <NewMenu canWrite={["admin", "manager", "finance"].includes(profile?.role ?? "")}
+              canPayroll={profile?.role === "admin" || profile?.role === "finance" || Boolean(profile?.can_payroll)} live={book === "live"} />
+            <form action="/search" method="get" role="search" className="hidden sm:block">
+              <input name="q" type="search" placeholder="Search number, name or amount" aria-label="Search"
+                className="w-64 rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-1.5 text-sm outline-none focus:border-[var(--brand)]" />
+            </form>
+          </div>
           <div className="ml-auto flex items-center gap-3">
+            <BookSwitch book={book} />
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium leading-tight">{name}</p>
               <p className="text-xs text-[var(--muted)]">
@@ -80,7 +96,12 @@ export default async function AppLayout({
             </form>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        {book === "sandbox" && (
+          <div role="status" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900 sm:px-6">
+            <strong>Test book.</strong> Nothing here is real or reaches the Live books; document numbers start with TEST-.
+          </div>
+        )}
+        <main className="flex-1 p-4 sm:p-6"><BookGuard book={book}><PageHelp />{children}</BookGuard></main>
       </div>
     </div>
   );

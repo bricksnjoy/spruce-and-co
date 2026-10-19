@@ -1,15 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import {
-  convertToInvoice,
-  deleteQuotation,
-  setQuotationStatus,
-  type DocResult,
-} from "@/app/actions/documents";
-import { QUOTE_STATUSES, QUOTE_STATUS_LABEL, STATUS_TONE, addDays, round2, type QuoteStatus, type SigningKit } from "@/lib/documents";
-import { SignerPicker } from "../quotation-form";
-import { money, today } from "@/lib/format";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { deleteQuotation, setQuotationStatus } from "@/app/actions/documents";
+import { QUOTE_STATUSES, QUOTE_STATUS_LABEL, STATUS_TONE, round2, type QuoteStatus } from "@/lib/documents";
+import { money } from "@/lib/format";
 
 const input =
   "w-full rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-2 text-sm outline-none focus:border-[var(--brand)]";
@@ -67,36 +62,21 @@ export function DeleteQuotation({ id }: { id: string }) {
   );
 }
 
-export interface InvoiceTemplateOption {
-  id: string;
-  name: string;
-  is_default: boolean;
-  due_days: number;
-}
-
 /**
  * Turn a won quotation into an invoice — for a percentage of it (the advance,
- * the balance) or a set amount — without going past what is left to bill.
+ * the balance) or a set amount — without going past what is left to bill. The
+ * invoice opens filled in, to check and save into the books.
  */
 export function ConvertButton({
   quotationId,
   subtotal,
   invoiced,
   taxRate,
-  templates,
-  kit,
-  signatoryId,
-  showStamp,
 }: {
   quotationId: string;
   subtotal: number;
   invoiced: number;
   taxRate: number;
-  templates: InvoiceTemplateOption[];
-  kit: SigningKit;
-  /** the quotation's signer, offered first for its invoices */
-  signatoryId: string | null;
-  showStamp: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const remaining = round2(subtotal - invoiced);
@@ -111,7 +91,6 @@ export function ConvertButton({
       </button>
       {open && (
         <ConvertModal quotationId={quotationId} subtotal={subtotal} remaining={remaining} taxRate={taxRate}
-          templates={templates} kit={kit} signatoryId={signatoryId} showStamp={showStamp}
           onClose={() => setOpen(false)} />
       )}
     </>
@@ -123,34 +102,21 @@ function ConvertModal({
   subtotal,
   remaining,
   taxRate,
-  templates,
-  kit,
-  signatoryId,
-  showStamp,
   onClose,
 }: {
   quotationId: string;
   subtotal: number;
   remaining: number;
   taxRate: number;
-  templates: InvoiceTemplateOption[];
-  kit: SigningKit;
-  signatoryId: string | null;
-  showStamp: boolean;
   onClose: () => void;
 }) {
-  const [signer, setSigner] = useState(signatoryId);
-  const [stamp, setStamp] = useState(showStamp);
-  const [state, action, pending] = useActionState(convertToInvoice, null as DocResult | null);
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const remainingPct = (remaining / subtotal) * 100;
   const fresh = remaining >= subtotal - 0.005;
   const [basis, setBasis] = useState<"percent" | "amount">("percent");
   // nothing billed yet: suggest the usual advance; otherwise, whatever is left
   const [value, setValue] = useState(fresh ? "75" : String(Number(remainingPct.toFixed(2))));
-  const [templateId, setTemplateId] = useState(templates.find((t) => t.is_default)?.id ?? templates[0]?.id ?? "");
-  const todayIso = today();
-  const [issue, setIssue] = useState(todayIso);
-  const dueDays = templates.find((t) => t.id === templateId)?.due_days ?? 0;
 
   const v = Number(value) || 0;
   const amount = round2(basis === "percent" ? (subtotal * v) / 100 : v);
@@ -184,10 +150,11 @@ function ConvertModal({
           </button>
         </div>
 
-        <form action={action} className="space-y-4 px-5 py-5">
-          <input type="hidden" name="quotation_id" value={quotationId} />
-          <input type="hidden" name="basis" value={basis} />
-
+        <form className="space-y-4 px-5 py-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            startTransition(() => router.push(`/sales/new?quotation=${quotationId}&pct=${pct}`));
+          }}>
           <div role="radiogroup" className="flex rounded-lg border border-[var(--border)] p-0.5 text-sm font-medium">
             {(["percent", "amount"] as const).map((b) => (
               <button key={b} type="button" role="radio" aria-checked={basis === b}
@@ -204,7 +171,7 @@ function ConvertModal({
           <div>
             <label htmlFor="c-value" className={label}>{basis === "percent" ? "Percentage of the quotation" : "Amount (before tax)"}</label>
             <div className="flex items-center gap-2">
-              <input id="c-value" name="value" type="number" step="0.01" min="0" required autoFocus
+              <input id="c-value" type="number" step="0.01" min="0" required autoFocus
                 value={value} onChange={(e) => setValue(e.target.value)} className={input} />
               <span className="text-sm text-[var(--muted)]">{basis === "percent" ? "%" : "MVR"}</span>
             </div>
@@ -226,43 +193,6 @@ function ConvertModal({
             )}
           </div>
 
-          <div>
-            <label htmlFor="c-label" className={label}>Label</label>
-            <input id="c-label" name="label" className={input}
-              placeholder={fresh ? `Advance_${Number(pct.toFixed(2))}%` : `Balance_${Number(pct.toFixed(2))}%`} />
-            <p className="mt-1 text-xs text-[var(--muted)]">Added to the heading — leave empty to use the percentage.</p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="c-date" className={label}>Invoice date</label>
-              <input id="c-date" name="issue_date" type="date" value={issue} onChange={(e) => setIssue(e.target.value)} className={input} />
-            </div>
-            <div>
-              <label htmlFor="c-due" className={label}>Due date</label>
-              <input id="c-due" name="due_date" type="date" key={`${issue}-${dueDays}`}
-                defaultValue={dueDays ? addDays(issue || todayIso, dueDays) : ""} className={input} />
-            </div>
-          </div>
-
-          {templates.length > 1 && (
-            <div>
-              <label htmlFor="c-template" className={label}>Invoice template</label>
-              <select id="c-template" name="template_id" value={templateId} onChange={(e) => setTemplateId(e.target.value)} className={input}>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}{t.is_default ? " (default)" : ""}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {templates.length <= 1 && <input type="hidden" name="template_id" value={templateId} />}
-
-          <div>
-            <p className={label}>Signed by</p>
-            <SignerPicker kit={kit} signatoryId={signer} showStamp={stamp} onSigner={setSigner} onStamp={setStamp}
-              names={{ signer: "signatory_id", stamp: "show_stamp" }} />
-          </div>
-
           <p className={`rounded-lg px-3 py-2 text-sm ${over ? "bg-red-50 text-red-700" : "bg-[var(--hover)]"}`}>
             {over ? (
               <>That is more than the {money(remaining)} left to invoice.</>
@@ -275,13 +205,14 @@ function ConvertModal({
               </>
             )}
           </p>
-
-          {state?.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
+          <p className="text-xs text-[var(--muted)]">
+            The invoice opens filled in: customer, project and lines. Set its date and due date there, then save to post it to the books.
+          </p>
 
           <div className="flex items-center gap-3">
             <button type="submit" disabled={pending || over || amount <= 0}
               className="rounded-lg bg-[var(--brand)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--brand-hover)] disabled:opacity-50">
-              {pending ? "Creating…" : "Create invoice"}
+              {pending ? "Opening…" : "Continue to invoice"}
             </button>
             <button type="button" onClick={onClose} className="text-sm text-[var(--muted)] hover:underline">Cancel</button>
           </div>

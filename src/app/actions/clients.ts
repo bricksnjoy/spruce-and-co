@@ -1,12 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { canWrite, dbMessage, getSession } from "@/server/session";
 
+/**
+ * Quick-add a customer from a picker (the project form's "Add new customer").
+ * Clients and customers are one list: this adds a customer, and the database
+ * keeps the old clients table in step for the screens that still read it.
+ */
 export type ClientResult = {
   error?: string;
   ok?: boolean;
-  /** id of the client just created, so a caller can select it */
+  /** id of the customer just created, so a caller can select it */
   id?: string;
   name?: string;
 };
@@ -17,72 +22,24 @@ const text = (fd: FormData, k: string) => {
 };
 
 export async function addClient(_prev: unknown, fd: FormData): Promise<ClientResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in." };
+  const s = await getSession();
+  if (!s) return { error: "Not signed in." };
+  if (!canWrite(s.role)) return { error: "You can view but not add customers." };
 
   const name = text(fd, "name");
-  if (!name) return { error: "Enter the client name." };
+  if (!name) return { error: "Enter the customer name." };
 
-  const { data: existing } = await supabase
-    .from("clients")
-    .select("id")
-    .ilike("name", name)
-    .maybeSingle();
-  if (existing) return { error: `${name} is already on the list.` };
+  const { data: existing } = await s.supabase.from("contacts").select("id")
+    .contains("kinds", ["customer"]).ilike("name", name.replace(/[%_\\]/g, (m) => `\\${m}`)).limit(1);
+  if (existing?.length) return { error: `${name} is already a customer.` };
 
-  const { data, error } = await supabase
-    .from("clients")
-    .insert({
-      name,
-      type: "company",
-      address: text(fd, "address"),
-      phone: text(fd, "phone"),
-      email: text(fd, "email"),
-      is_active: true,
-      created_by: user.id,
-    })
-    .select("id, name")
-    .single();
+  const { data, error } = await s.supabase.from("contacts").insert({
+    kinds: ["customer"], name,
+    address: text(fd, "address"), phone: text(fd, "phone"), email: text(fd, "email"),
+  }).select("id, name").single();
+  if (error) return { error: dbMessage(error) };
 
-  if (error) return { error: error.message };
-
-  revalidatePath("/clients");
+  revalidatePath("/sales/customers");
   revalidatePath("/projects");
   return { ok: true, id: data.id, name: data.name };
-}
-
-export async function updateClient(_prev: unknown, fd: FormData): Promise<ClientResult> {
-  const supabase = await createClient();
-  const id = String(fd.get("id") ?? "");
-  if (!id) return { error: "Missing client." };
-
-  const name = text(fd, "name");
-  if (!name) return { error: "Enter the client name." };
-
-  const { error } = await supabase
-    .from("clients")
-    .update({
-      name,
-      address: text(fd, "address"),
-      phone: text(fd, "phone"),
-      email: text(fd, "email"),
-    })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/clients");
-  revalidatePath("/projects");
-  return { ok: true, id };
-}
-
-export async function deleteClient(id: string) {
-  const supabase = await createClient();
-  // projects.client_id is ON DELETE SET NULL, so a project outlives its client
-  await supabase.from("clients").delete().eq("id", id);
-  revalidatePath("/clients");
-  revalidatePath("/projects");
 }

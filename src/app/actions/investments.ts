@@ -18,7 +18,7 @@ const text = (fd: FormData, k: string) => {
 };
 
 const refresh = (projectId: string) => {
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   revalidatePath("/financing");
   revalidatePath("/investors");
 };

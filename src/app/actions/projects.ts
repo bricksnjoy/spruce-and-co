@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isLocked, LOCKED } from "@/lib/project-lock";
+import { moneyToDb, percentToDb } from "@/lib/money";
 
 export type Result = { error?: string; ok?: boolean };
 
@@ -12,10 +13,13 @@ const text = (fd: FormData, k: string) => {
   return v === "" ? null : v;
 };
 
-const number = (fd: FormData, k: string) => {
-  const raw = String(fd.get(k) ?? "").replace(/[^0-9.-]/g, "");
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+/** An amount as the database's exact decimal string (never a float); blank is 0. */
+const amount = (fd: FormData, k: string) => moneyToDb(String(fd.get(k) ?? "").replace(/[^0-9.,-]/g, "")) ?? "0.00";
+const percent = (fd: FormData, k: string) => percentToDb(String(fd.get(k) ?? "")) ?? "0";
+/** Blank means "use the company default" (Settings → Accounting). */
+const recognition = (fd: FormData) => {
+  const v = text(fd, "recognition_method");
+  return v === "billing" || v === "poc" ? v : null;
 };
 
 const int = (fd: FormData, k: string) => {
@@ -33,31 +37,33 @@ function endDate(start: string | null, days: number | null) {
 }
 
 /**
- * Resolve the client for a project: either an existing id, or a name typed
- * into the "new client" box, which is created on the fly.
+ * Resolve the customer for a project: an existing customer, or a name typed
+ * into the "new customer" box, added on the fly. Clients and customers are one
+ * list; the database keeps the project's old client field in step.
  */
-async function resolveClient(
+async function resolveCustomer(
   supabase: Awaited<ReturnType<typeof createClient>>,
   fd: FormData,
 ): Promise<{ id: string | null; error?: string }> {
-  const newName = text(fd, "new_client_name");
+  const newName = text(fd, "new_client_name") ?? text(fd, "new_customer_name");
   if (newName) {
     const { data: existing } = await supabase
-      .from("clients")
+      .from("contacts")
       .select("id")
-      .ilike("name", newName)
-      .maybeSingle();
-    if (existing) return { id: existing.id };
+      .contains("kinds", ["customer"])
+      .ilike("name", newName.replace(/[%_\\]/g, (m) => `\\${m}`))
+      .limit(1);
+    if (existing?.length) return { id: existing[0].id };
 
     const { data, error } = await supabase
-      .from("clients")
-      .insert({ name: newName, type: "company", is_active: true })
+      .from("contacts")
+      .insert({ name: newName, kinds: ["customer"] })
       .select("id")
       .single();
-    if (error) return { id: null, error: `Could not add the client: ${error.message}` };
+    if (error) return { id: null, error: `Could not add the customer: ${error.message}` };
     return { id: data.id };
   }
-  return { id: text(fd, "client_id") };
+  return { id: text(fd, "customer_id") };
 }
 
 export async function createProject(_prev: unknown, fd: FormData): Promise<Result> {
@@ -70,8 +76,8 @@ export async function createProject(_prev: unknown, fd: FormData): Promise<Resul
   const name = text(fd, "name");
   if (!name) return { error: "Give the project a name." };
 
-  const client = await resolveClient(supabase, fd);
-  if (client.error) return { error: client.error };
+  const customer = await resolveCustomer(supabase, fd);
+  if (customer.error) return { error: customer.error };
 
   const start = text(fd, "start_date");
   const days = int(fd, "duration_days");
@@ -88,16 +94,17 @@ export async function createProject(_prev: unknown, fd: FormData): Promise<Resul
     .insert({
       code,
       name,
-      client_id: client.id,
+      customer_id: customer.id,
       status: text(fd, "status") ?? "in_progress",
       description: text(fd, "description"),
       site_address: text(fd, "site_address"),
-      contract_value: number(fd, "contract_value"),
-      gst_amount: number(fd, "gst_amount"),
+      contract_value: amount(fd, "contract_value"),
+      gst_amount: amount(fd, "gst_amount"),
       start_date: start,
       duration_days: days,
       end_date: endDate(start, days),
-      progress_pct: number(fd, "progress_pct"),
+      progress_pct: percent(fd, "progress_pct"),
+      recognition_method: recognition(fd),
     })
     .select("id")
     .single();
@@ -122,8 +129,8 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
   const name = text(fd, "name");
   if (!name) return { error: "Give the project a name." };
 
-  const client = await resolveClient(supabase, fd);
-  if (client.error) return { error: client.error };
+  const customer = await resolveCustomer(supabase, fd);
+  if (customer.error) return { error: customer.error };
 
   const start = text(fd, "start_date");
   const days = int(fd, "duration_days");
@@ -133,16 +140,17 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
     .update({
       code: text(fd, "code") ?? undefined,
       name,
-      client_id: client.id,
+      customer_id: customer.id,
       status: text(fd, "status") ?? "in_progress",
       description: text(fd, "description"),
       site_address: text(fd, "site_address"),
-      contract_value: number(fd, "contract_value"),
-      gst_amount: number(fd, "gst_amount"),
+      contract_value: amount(fd, "contract_value"),
+      gst_amount: amount(fd, "gst_amount"),
       start_date: start,
       duration_days: days,
       end_date: endDate(start, days),
-      progress_pct: number(fd, "progress_pct"),
+      progress_pct: percent(fd, "progress_pct"),
+      recognition_method: recognition(fd),
     })
     .eq("id", id);
 
@@ -151,7 +159,7 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
     return { error: error.message };
   }
 
-  revalidatePath(`/projects/${id}`);
+  revalidatePath(`/projects/${id}`, "layout");
   revalidatePath("/projects");
   revalidatePath("/pnl");
   revalidatePath("/");

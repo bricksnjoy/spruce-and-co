@@ -3,7 +3,6 @@ import { Card, CardHeader, PageHeader, Stat } from "@/components/ui";
 import { date, money, today } from "@/lib/format";
 import { loadRecords } from "@/lib/accounting";
 import { assetValue } from "@/lib/statements";
-import { AccountingTabs } from "../nav";
 import { AssetForm, AssetRow, type AssetView } from "./equipment-client";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +56,6 @@ export default async function EquipmentPage() {
   return (
     <div>
       <PageHeader title="Accounting" subtitle="Tools, machines and vehicles the company owns" />
-      <AccountingTabs active="/accounting/equipment" />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Items in use" value={String(inUse.length)} hint={`${assets.length - inUse.length} sold or scrapped`} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { addClient, updateClient } from "@/app/actions/clients";
+import { addClient } from "@/app/actions/clients";
 import type { ClientResult } from "@/app/actions/clients";
 
 export interface ClientValues {
@@ -17,8 +17,8 @@ const input =
 const label = "mb-1.5 block text-sm font-medium";
 
 /**
- * Add or edit a client. `onSaved` receives the row so a caller — the project
- * form, for instance — can select the client it just created.
+ * Add a customer. `onSaved` receives the row so a caller — the project form,
+ * for instance — can select the customer it just created.
  */
 export function ClientModal({
   open,
@@ -31,11 +31,8 @@ export function ClientModal({
   onSaved?: (client: { id: string; name: string }) => void;
   values?: ClientValues;
 }) {
-  const editing = Boolean(values?.id);
-  const [state, action, pending] = useActionState(
-    editing ? updateClient : addClient,
-    null as ClientResult | null,
-  );
+  const editing = false;   // customers are edited on their own page now
+  const [state, action, pending] = useActionState(addClient, null as ClientResult | null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -63,7 +60,7 @@ export function ClientModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={editing ? "Edit client" : "Add new client"}
+      aria-label={editing ? "Edit customer" : "Add new customer"}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
@@ -73,7 +70,7 @@ export function ClientModal({
       >
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
           <h2 className="text-sm font-semibold">
-            {editing ? "Edit client" : "Add new client"}
+            {editing ? "Edit customer" : "Add new customer"}
           </h2>
           <button
             type="button"
@@ -91,7 +88,7 @@ export function ClientModal({
           {values?.id && <input type="hidden" name="id" value={values.id} />}
 
           <div>
-            <label htmlFor="client-name" className={label}>Client name</label>
+            <label htmlFor="client-name" className={label}>Customer name</label>
             <input id="client-name" name="name" required autoFocus
               defaultValue={values?.name ?? ""} className={input}
               placeholder="Ministry Of Youth" />
@@ -126,7 +123,7 @@ export function ClientModal({
           <div className="flex items-center gap-3 pt-1">
             <button type="submit" disabled={pending}
               className="rounded-lg bg-[var(--brand)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--brand-hover)] disabled:opacity-60">
-              {pending ? "Saving…" : editing ? "Save changes" : "Add client"}
+              {pending ? "Saving…" : editing ? "Save changes" : "Add customer"}
             </button>
             <button type="button" onClick={onClose}
               className="text-sm text-[var(--muted)] hover:underline">

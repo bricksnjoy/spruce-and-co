@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, Table, Th, Td } from "@/components/ui";
 import { DocumentSheet } from "@/components/document-sheet";
 import { loadQuotation } from "@/lib/document-loaders";
-import { INVOICE_STATUS_LABEL, STATUS_TONE, toTemplate, type InvoiceStatus, type QuoteStatus } from "@/lib/documents";
+import { type QuoteStatus } from "@/lib/documents";
+import { invoicedOf, quotationInvoices } from "@/server/quotation-invoices";
 import { money, date, num } from "@/lib/format";
 import { ConvertButton, DeleteQuotation, StatusPicker } from "./quotation-controls";
 
@@ -13,27 +14,18 @@ export const dynamic = "force-dynamic";
 export default async function QuotationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [doc, { data: totals }, { data: invoices }, { data: invTemplates }] = await Promise.all([
+  const [doc, { data: totals }] = await Promise.all([
     loadQuotation(supabase, id),
     supabase.from("quotation_totals").select("*").eq("quotation_id", id).maybeSingle(),
-    supabase
-      .from("invoices")
-      .select("id, number, issue_date, status, portion_pct, title")
-      .eq("quotation_id", id)
-      .order("seq"),
-    supabase.from("document_templates").select("*").eq("kind", "invoice").order("is_default", { ascending: false }),
   ]);
   if (!doc) notFound();
-  const { q, project, template, signer, kit, sheet } = doc;
+  const { q, project, template, signer, sheet } = doc;
 
-  const { data: invTotals } = invoices?.length
-    ? await supabase.from("invoice_totals").select("*").in("invoice_id", invoices.map((i) => i.id))
-    : { data: [] };
-  const totalOf = new Map((invTotals ?? []).map((t) => [t.invoice_id, num(t.total)]));
-
+  // invoices in the books carry the quotation's number as their reference
+  const invoices = (await quotationInvoices(supabase, [q.number])).get(q.number) ?? [];
   const subtotal = num(totals?.subtotal);
-  const invoiced = num(totals?.invoiced);
-  const live = (invoices ?? []).filter((i) => i.status !== "cancelled");
+  const invoiced = invoicedOf(invoices);
+  const live = invoices;
   const status = q.status as QuoteStatus;
 
   return (
@@ -75,11 +67,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
             <div className="space-y-4 px-5 py-4">
               <StatusPicker id={q.id} status={status} />
               {status === "won" ? (
-                <ConvertButton quotationId={q.id} subtotal={subtotal} invoiced={invoiced} taxRate={num(q.tax_rate)}
-                  kit={kit} signatoryId={q.signatory_id ?? template.tail.signatory_id ?? null} showStamp={q.show_stamp}
-                  templates={(invTemplates ?? []).map(toTemplate).map((t) => ({
-                    id: t.id, name: t.name, is_default: t.is_default, due_days: t.body.due_days ?? 0,
-                  }))} />
+                <ConvertButton quotationId={q.id} subtotal={subtotal} invoiced={invoiced} taxRate={num(q.tax_rate)} />
               ) : (
                 <p className="text-xs text-[var(--muted)]">Mark it won to turn it into invoices.</p>
               )}
@@ -114,8 +102,8 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
-            <CardHeader title="Invoices" subtitle="Raised from this quotation" />
-            {!invoices?.length ? (
+            <CardHeader title="Invoices" subtitle="Raised from this quotation, in Sales & invoices" />
+            {!invoices.length ? (
               <p className="px-5 py-6 text-center text-sm text-[var(--muted)]">None yet.</p>
             ) : (
               <Table>
@@ -126,16 +114,14 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
                   {invoices.map((i) => (
                     <tr key={i.id} className="hover:bg-[var(--hover)]">
                       <Td>
-                        <Link href={`/invoices/${i.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">
-                          {i.number}
+                        <Link href={`/sales/${i.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">
+                          {i.number ?? "Draft"}
                         </Link>
-                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_TONE[i.status]}`}>
-                          {INVOICE_STATUS_LABEL[i.status as InvoiceStatus]}
-                        </span>
-                        <span className="block text-xs text-[var(--muted)]">{date(i.issue_date)}</span>
+                        {i.is_draft && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">Draft</span>}
+                        <span className="block text-xs text-[var(--muted)]">{date(i.date)}</span>
                       </Td>
-                      <Td right className="text-[var(--muted)]">{Number(Number(i.portion_pct).toFixed(2))}%</Td>
-                      <Td right>{money(totalOf.get(i.id) ?? 0)}</Td>
+                      <Td right className="text-[var(--muted)]">{subtotal ? Number(((i.subtotal / subtotal) * 100).toFixed(2)) : 0}%</Td>
+                      <Td right>{money(i.total)}</Td>
                     </tr>
                   ))}
                 </tbody>

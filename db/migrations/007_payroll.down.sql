@@ -1,0 +1,14 @@
+drop view if exists public.payroll_runs_v;
+drop function if exists public.pay_salaries(uuid, uuid, date);
+drop function if exists public.approve_payroll_run(uuid);
+drop function if exists public.set_payroll_status(uuid, text);
+drop function if exists public.create_payroll_run(date, date);
+drop function if exists public.calc_payslip(uuid);
+drop function if exists public._alloc(numeric, numeric, numeric, boolean, numeric);
+drop function if exists public.staff_advance_balance(uuid);
+drop table if exists public.advance_recoveries;
+drop table if exists public.labour_allocations;
+drop table if exists public.payslip_lines;
+drop table if exists public.payslips;
+drop table if exists public.payroll_runs;
+drop function if exists public.guard_run_editable();

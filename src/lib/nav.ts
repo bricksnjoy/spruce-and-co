@@ -1,4 +1,5 @@
 import type { UserRole } from "./types";
+import { worksInTest, type Book } from "./books";
 
 export interface NavItem {
   href: string;
@@ -28,61 +29,72 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/", label: "Dashboard", roles: ALL },
       { href: "/projects", label: "Projects", roles: ALL },
-      { href: "/clients", label: "Clients", roles: ALL },
-      { href: "/shops", label: "Shops", roles: ALL },
       { href: "/tasks", label: "Tasks & Calendar", roles: ALL },
       { href: "/messages", label: "Message Center", roles: MONEY },
-      { href: "/pnl", label: "Project P&L", roles: MONEY },
+      { href: "/help", label: "Help", roles: ALL },
     ],
   },
   {
     group: "Sales",
     defaultOpen: true,
     items: [
+      { href: "/sales", label: "Sales & invoices", roles: MONEY },
+      { href: "/sales/customers", label: "Customers", roles: MONEY },
       { href: "/quotations", label: "Quotations", roles: MONEY },
-      { href: "/invoices", label: "Invoices", roles: MONEY },
       { href: "/estimator", label: "Cabinet Estimator", roles: MONEY },
+      { href: "/cut-planner", label: "Board cut planner", roles: ALL },
+    ],
+  },
+  {
+    group: "Expenses",
+    defaultOpen: true,
+    items: [
+      { href: "/expenses", label: "Bills & expenses", roles: MONEY },
+      { href: "/expenses/vendors", label: "Vendors", roles: MONEY },
     ],
   },
   {
     group: "People",
     defaultOpen: true,
     items: [
-      { href: "/people", label: "People", roles: ALL },
-      { href: "/salaries", label: "Salaries", roles: MONEY },
+      { href: "/payroll", label: "Payroll", roles: MONEY },
+      { href: "/payroll/employees", label: "Employees", roles: MONEY },
     ],
   },
   {
     group: "Finance",
     defaultOpen: true,
     items: [
-      { href: "/capital-pool", label: "Capital Pool", roles: MONEY },
-      { href: "/investors", label: "Investors", roles: MONEY },
-      { href: "/financing", label: "Project Financing", roles: MONEY },
-      { href: "/internal", label: "Internal Account", roles: MONEY },
+      { href: "/partners", label: "Partners & financing", roles: MONEY },
+      { href: "/partners/lenders", label: "Lenders", roles: MONEY },
+      { href: "/partners/distributions", label: "Distribution history", roles: MONEY },
     ],
   },
   {
     group: "Accounting",
     defaultOpen: true,
     items: [
-      { href: "/accounting", label: "Overview", roles: MONEY },
-      { href: "/accounting/ledger", label: "Ledger", roles: MONEY },
-      { href: "/accounting/audit", label: "Self-audit", roles: MONEY },
-      { href: "/accounting/statements", label: "Financial statements", roles: MONEY },
-      { href: "/accounting/bank", label: "Bank reconciliation", roles: MONEY },
-      { href: "/accounting/tax", label: "Tax", roles: MONEY },
+      { href: "/reports", label: "Reports", roles: MONEY },
+      { href: "/reports/profit-loss", label: "Profit or loss", roles: MONEY },
+      { href: "/reports/balance-sheet", label: "Balance sheet", roles: MONEY },
+      { href: "/banking", label: "Banking", roles: MONEY },
+      { href: "/taxes", label: "Taxes (GST)", roles: MONEY },
       { href: "/accounting/equipment", label: "Equipment register", roles: MONEY },
-      { href: "/accounting/year-end", label: "Year end", roles: MONEY },
-      { href: "/gst", label: "GST Input Schedule", roles: MONEY },
+      { href: "/accounting/chart", label: "Chart of accounts", roles: MONEY },
+      { href: "/accounting/journal", label: "Journal entries", roles: MONEY },
+      { href: "/accounting/health", label: "Health check", roles: MONEY },
     ],
   },
   {
     group: "Admin",
     defaultOpen: true,
     items: [
-      { href: "/settings", label: "Company", roles: MONEY },
-      { href: "/profit-share", label: "Profit Share", roles: MONEY },
+      { href: "/settings/company", label: "Company", roles: MONEY },
+      { href: "/settings/accounting", label: "Accounting settings", roles: MONEY },
+      { href: "/settings/taxes", label: "Taxes & rates", roles: MONEY },
+      { href: "/settings/numbering", label: "Numbering", roles: MONEY },
+      { href: "/settings/currencies", label: "Currencies", roles: MONEY },
+      { href: "/settings/profit-share", label: "Profit-share schemes", roles: MONEY },
     ],
   },
 ];
@@ -101,7 +113,7 @@ const GST_ONLY = new Set(["/gst"]);
 
 export function visibleFor(
   role: UserRole | undefined,
-  opts: { gstRegistered?: boolean } = {},
+  opts: { gstRegistered?: boolean; book?: Book } = {},
 ): NavGroup[] {
   const r = role ?? "viewer";
   return NAV.map((g) => ({
@@ -109,7 +121,9 @@ export function visibleFor(
     items: g.items.filter(
       (i) =>
         (!i.roles || i.roles.includes(r)) &&
-        (opts.gstRegistered !== false || !GST_ONLY.has(i.href)),
+        (opts.gstRegistered !== false || !GST_ONLY.has(i.href)) &&
+        // in the Test book only the screens that keep the books apart are shown
+        (opts.book !== "sandbox" || worksInTest(i.href)),
     ),
   })).filter((g) => g.items.length > 0);
 }

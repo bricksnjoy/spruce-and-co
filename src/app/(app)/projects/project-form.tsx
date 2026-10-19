@@ -11,7 +11,7 @@ export interface ProjectFormValues {
   id?: string;
   code?: string;
   name?: string;
-  client_id?: string | null;
+  customer_id?: string | null;
   status?: string;
   description?: string | null;
   site_address?: string | null;
@@ -20,6 +20,7 @@ export interface ProjectFormValues {
   start_date?: string | null;
   duration_days?: number | null;
   progress_pct?: number;
+  recognition_method?: string | null;
 }
 
 const input =
@@ -38,12 +39,12 @@ const STATUSES = [
 
 export function ProjectForm({
   mode,
-  clients,
+  customers,
   values = {},
   nextCode,
 }: {
   mode: "create" | "edit";
-  clients: { id: string; name: string }[];
+  customers: { id: string; name: string }[];
   values?: ProjectFormValues;
   nextCode?: string;
 }) {
@@ -53,11 +54,11 @@ export function ProjectForm({
     null as Result | null,
   );
   const router = useRouter();
-  const [addingClient, setAddingClient] = useState(false);
-  // a client created from the modal is selected straight away, so the new
+  const [addingCustomer, setAddingCustomer] = useState(false);
+  // a customer created from the modal is selected straight away, so the new
   // project does not have to be saved and reopened to attach it
   const [justAdded, setJustAdded] = useState<{ id: string; name: string } | null>(null);
-  const [clientId, setClientId] = useState(values.client_id ?? "");
+  const [customerId, setCustomerId] = useState(values.customer_id ?? "");
 
   // live end-date preview so the duration is not an abstract number
   const [start, setStart] = useState(values.start_date ?? "");
@@ -77,11 +78,11 @@ export function ProjectForm({
   return (
     <>
     <ClientModal
-      open={addingClient}
-      onClose={() => setAddingClient(false)}
+      open={addingCustomer}
+      onClose={() => setAddingCustomer(false)}
       onSaved={(c) => {
         setJustAdded(c);
-        setClientId(c.id);
+        setCustomerId(c.id);
         router.refresh();
       }}
     />
@@ -104,17 +105,17 @@ export function ProjectForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label htmlFor="client_id" className="text-sm font-medium">Client</label>
-            <button type="button" onClick={() => setAddingClient(true)}
+            <label htmlFor="customer_id" className="text-sm font-medium">Customer</label>
+            <button type="button" onClick={() => setAddingCustomer(true)}
               className="text-xs font-medium text-[var(--brand)] hover:underline">
-              + Add new client
+              + Add new customer
             </button>
           </div>
-          <select id="client_id" name="client_id" value={clientId}
-            onChange={(e) => setClientId(e.target.value)} className={input}>
-            <option value="">No client</option>
-            {justAdded && <option value={justAdded.id}>{justAdded.name}</option>}
-            {clients.map((c) => (
+          <select id="customer_id" name="customer_id" value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)} className={input}>
+            <option value="">No customer</option>
+            {justAdded && !customers.some((c) => c.id === justAdded.id) && <option value={justAdded.id}>{justAdded.name}</option>}
+            {customers.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
@@ -163,6 +164,16 @@ export function ProjectForm({
           <input id="progress_pct" name="progress_pct" type="number" min="0" max="100"
             defaultValue={values.progress_pct ?? 0} className={input} />
         </div>
+      </div>
+
+      <div className="sm:w-1/2">
+        <label htmlFor="recognition_method" className={label}>Revenue is recognised</label>
+        <select id="recognition_method" name="recognition_method" defaultValue={values.recognition_method ?? ""} className={input}>
+          <option value="">Company default (Settings → Accounting)</option>
+          <option value="billing">As it is billed</option>
+          <option value="poc">By percentage of completion</option>
+        </select>
+        <p className="mt-1 text-xs text-[var(--muted)]">Percentage of completion posts WIP at each period end from cost to date.</p>
       </div>
 
       <div>

@@ -1,0 +1,60 @@
+# Checks every push and pull request. Nothing here reaches the live Supabase
+# project: the database tests run in memory (PGlite), and the browser tests run
+# against a throwaway local Supabase started inside the job. No secrets needed.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Types, lint and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx eslint src tests e2e
+      - run: npx vitest run
+
+  e2e:
+    name: Browser tests (local Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.118.0
+      - name: Start a throwaway Supabase
+        run: supabase start
+      - name: Load the schema, migrations and test users
+        run: ./e2e/setup-db.sh
+      - run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: npx playwright test
+        env:
+          CI: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/report
+            test-results
+          retention-days: 7

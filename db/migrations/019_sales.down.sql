@@ -1,0 +1,10 @@
+drop function if exists public.rpc_make_deposit(uuid, date, uuid[], text);
+drop function if exists public.rpc_invoice_stage(uuid, date, date);
+drop function if exists public.sales_paid_since(date);
+drop view if exists public.sales_list_v;
+drop trigger if exists transactions_release_on_void on public.transactions;
+drop function if exists public.release_on_void();
+drop function if exists public.make_deposit(uuid, date, uuid[], text);
+drop function if exists public.invoice_stage(uuid, date, date);
+drop index if exists public.transactions_deposited_in;
+alter table public.transactions drop column if exists deposited_in;

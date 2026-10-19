@@ -110,6 +110,7 @@ const BADGE_TONES: Record<string, string> = {
   sent: "bg-blue-50 text-blue-700",
   part_paid: "bg-amber-50 text-amber-700",
   paid: "bg-emerald-50 text-emerald-700",
+  filed: "bg-amber-50 text-amber-700",
   overdue: "bg-red-50 text-red-700",
   void: "bg-slate-100 text-slate-500",
   awaiting_approval: "bg-amber-50 text-amber-700",

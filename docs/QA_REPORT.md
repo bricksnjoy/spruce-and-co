@@ -1,0 +1,299 @@
+# QA report
+
+Kept up to date as the rebuild goes. The latest run is at the top.
+
+## Phase 5 — final report (30 Sep 2026)
+
+### What was tested, and the result
+
+| Layer | How | Tests | Result |
+|---|---|---|---|
+| Database engines and every module's rules | Vitest on PGlite: production's baseline schema, then migrations 001–027; **the Health Check runs after every scenario** | 125 in 23 files | ✅ |
+| §13 flows through the `rpc_` doors, as a signed-in admin | full project lifecycle; GST quarter; bad-debt path — each ends with every statement tying out | 3 (`lifecycle.test`) | ✅ |
+| Property test | 25 random sequences of up to 30 steps (sales, payments, bills, voids, edits, payroll, GST, financing, completion, bad debts, payouts) | 1 | ✅ |
+| Pure logic | money in laari, date ranges and comparatives, statements from a trial balance, cash forecast, CSV | 23 | ✅ |
+| Connectivity guards | every internal link (200+) points at a real route; no server file takes plain values from a client module; no database function deletes or updates without WHERE | 3 | ✅ |
+| **Browser (Playwright) on a throwaway local Supabase** | real sign-in, real API, real RLS and roles — never the live project | 5 | ✅ 3 runs in a row |
+| · every rebuilt screen | 34 screens open with no console errors, no error page, no 404 | | ✅ |
+| · every report | 40 reports run; CSV and Excel export; print view; year-end pack | | ✅ |
+| · roles | the viewer cannot see payroll reports or the + New menu | | ✅ |
+| · project lifecycle, clicked through | customer, vendor, lender → project → GST invoice → bill with claimable GST → payroll run with site labour on the project (approve, pay) → Capital Pool contribution and external loan → part payment → complete (split posted) → **payouts blocked** → final payment → **payouts released** → all three components paid → balance sheet balances, Health Check 13/13 | | ✅ |
+| · GST quarter, clicked through | file the return (settlement posted) → pay MIRA → locked | | ✅ |
+| Build checks | `tsc` 0 errors; `eslint` clean; `next build` OK | | ✅ |
+| Live database | Health Check on Live | 13 / 13 | ✅ (the new Live ledger has no postings yet) |
+
+**Totals: 153 unit/database tests and 5 browser tests, all passing.** CI (`.github/workflows/ci.yml`) runs all of it on every push, with no secrets: the browser job starts its own Supabase inside the runner.
+
+### Bugs Phase 5 found, all fixed
+
+| Bug | Found by | Fix |
+|---|---|---|
+| **New invoice and New bill crashed in the production build** (they worked in development): the server pages read plain values from a client module | browser test, "every screen opens" | shared values moved to `src/lib/sales-doc.ts` / `expense-doc.ts`; a guard test now fails on this pattern |
+| **Any posting to a completed project failed through the app** — a late cost, payroll labour, a bad debt after the split: Supabase's `safeupdate` refuses the split adjustment's bare `DELETE` | browser test, payroll on a completed project | migration **027**, applied to Live; a guard test scans every function |
+| The Collections report crashed on its total row | browser test, "every report runs" | date columns show labels as text |
+| Recording a second financing source straight after the first could lose the chosen lender | browser test | the form keeps its choices in state |
+| The project-code suggestion was missing from the test baseline | browser test | added to `db/baseline/existing.sql` (Live was right) |
+
+### Connectivity checklist (§14)
+
+| Item | Status |
+|---|---|
+| Every "+ New" item opens a working form | ✅ grouped menu (Customers, Vendors, Employees, Projects & financing, Other); every target is covered by the route guard and the screens test |
+| Forms save, post, and appear in registers, lists, reports and statements | ✅ for invoices, payments, bills, payroll, financing, payouts, GST, journals (lifecycle tests) |
+| Report figures drill down to the source document and back | ✅ figure → general ledger → document; back link on every report |
+| Chains link both ways | ✅ customer ↔ projects ↔ invoices ↔ payments ↔ deposits ↔ bank; vendor ↔ bills ↔ payments ↔ bank; employee ↔ payslips ↔ run ↔ labour ↔ project; invoices/bills ↔ GST return ↔ settlement ↔ payment; project ↔ value ↔ financing ↔ distribution ↔ payables ↔ payouts ↔ statements. **Estimates** are still the old quotation screens (see Still open) |
+| Editing or voiding updates everything downstream | ✅ posting is regenerated from the source; split adjustments, GST next-return adjustments and statements follow (engine tests) |
+| No dead routes, buttons or placeholder pages | ✅ route guard over 200+ links; the old screens are off the menu (listed on the Help page, Live only) until switch-over |
+| Permissions the same in UI and database | ✅ payroll enforced in RLS and every rpc; UI hides what the database refuses (security tests, viewer browser test) |
+
+### 10-minute walkthrough (do it in the **Test** book)
+
+Switch to **Test** with the Live/Test switch at the top. Everything below stays in Test; *Settings → Accounting → Reset Test book* clears it afterwards.
+
+1. **+ New → Customer** — add "Walkthrough Resort" with a TIN. **+ New → Vendor** — add "Walkthrough Timber", tick *Registered for GST*, enter a TIN.
+2. **+ New → Project** — "Walkthrough Villa", customer Walkthrough Resort, value 500,000. Open it: the Overview shows value, billed 0, cost 0.
+3. **+ New → Invoice** — customer and project as above, amount 200,000, GST standard. Save. The invoice shows GST on top; *Sales* lists it as unpaid.
+4. **+ New → Bill** — vendor Walkthrough Timber, project Walkthrough Villa, a tax invoice number, account 5000 Materials, 80,000 and GST 6,400. Save.
+5. Open the project → **Financing** tab → record a Capital Pool contribution from Mujahid of 100,000 into 1010.
+6. **+ New → Receive payment** — 100,000 from Walkthrough Resort against the invoice.
+7. Project → **Profit split** tab: check the preview (principal back, 20% pool, fixed shares, company keeps) → tick → *Complete and post split*. **Payouts** tab: *blocked — the client still owes …*.
+8. Receive the rest of the invoice. The Payouts tab now says *released*. Open **Partners & financing → Mujahid**: principal, financing return and profit share are three separate lines; press *All* on each and *Approve and pay*.
+9. **Reports → Balance sheet**: total assets = total liabilities and equity. **Profit or loss** by project: the villa's profit. Click any figure → the ledger lines → the document.
+10. **Taxes**: this quarter shows the invoice's output and the bill's input GST. **Accounting → Health check**: 13 of 13 pass.
+11. Search the top bar for the invoice number, and for "Walkthrough". Then *Settings → Accounting → Reset Test book*.
+
+## Phase 3 — engines (28 Sep 2026)
+
+**How it is tested**
+- Every database migration runs on a local copy of Postgres (PGlite, Postgres 18 in WebAssembly). The same SQL files will later be applied to Supabase.
+- The starting point is a copy of production's schema (`db/baseline/existing.sql`).
+- **After every test scenario, the Health Check (§13 invariants) must pass.**
+- Command: `npm test`.
+
+| Area | File | Tests | Result |
+|---|---|---|---|
+| Settings, rates, accounts, contacts | `tests/db/foundation.test.ts` | 6 | ✅ |
+| Posting rules (§3), void, delete, closing-date lock, applications, derived status, FX | `tests/db/posting.test.ts` | 28 | ✅ |
+| Project value (§4): variations, % complete, over/under billing, ledger profit, POC WIP + reversal, stage | `tests/db/project-value.test.ts` | 6 | ✅ |
+| Payroll (§7): gross to net, pension, WHT brackets, no-pay, advances, allocation = 100%, posting, payment, remittance | `tests/db/payroll.test.ts` | 6 | ✅ |
+| GST (§8): quarter totals, non-claimable to cost, claim needs TIN and tax invoice, filing lock and next-return adjustments, settlement, payment, carry-forward, filing order | `tests/db/gst.test.ts` | 5 | ✅ |
+| Profit split and payouts (§5, §6): worked example exact, zero, loss, single financier, external-only, no financing, rounding, dividends setting, scheme = 100%, scheme at start, payout block, over-payout, bad-debt adjustment, late entry and review flag | `tests/db/financing.test.ts` | 11 | ✅ |
+| Property (§13): 25 random sequences of up to 30 steps (sales, payments, bills, voids, edits, payroll, GST returns, financing, completion, bad debts, payouts) | `tests/db/property.test.ts` | 1 | ✅ |
+| Migrations are reversible and non-destructive | `tests/db/migrations.test.ts` | 1 | ✅ |
+| **Total** | | **64** | **✅ all pass** |
+
+A one-off stress run of **150 more random sequences** (seed 7) also passed.
+
+**Bugs the tests caught, all fixed:**
+- An invoice could be edited below what had already been paid on it. The property test found this; posting now refuses.
+- Receivable and payable lines could be posted without a customer or vendor. Found by Health Check #4.
+- A GST payment could be posted outside a filed return. Found by Health Check #9.
+- In the payroll trigger, the remittance posting and the split calculation, where the tests caught them.
+
+**Build:**
+- `tsc`: 0 errors
+- `eslint --max-warnings 0`: clean
+- `next build`: OK
+
+**The 13 invariants** (`health_check()`, also for the Health page on real data):
+
+| # | Invariant | Status |
+|---|---|---|
+| 1–9, 12, 13 | as in §13 | checked directly |
+| 10 | Cash flow = change in cash | checked directly against the cash-flow statement since Phase 4 module 10 |
+| 11 | Equity statement = balance-sheet equity | checked directly against the equity statement since Phase 4 module 10 |
+
+## Applied to the live database (30 Sep 2026)
+
+Migrations 001–009, 012, 013 and the new 014 (hardening) were applied in order to Supabase project `uiemghogknbvxuqstwio`, after the `backup_20260928` snapshot. Nothing was dropped or deleted; the old tables are unchanged apart from added columns.
+
+| Check | Result |
+|---|---|
+| Health Check, Live book | all 13 pass (the ledger is empty) |
+| Chart of accounts | 61 system accounts + 8 partner sub-accounts (Capital Pool Loan and Profit Share Payable for each of the 4 partners) |
+| Contacts copied | 2 customers, 39 vendors, 2 lenders (all marked *needs review*), 4 partners |
+| Employees copied | 4 (marked *needs review*: salary, nationality and bank details were never recorded) |
+| Profit scheme | 20 financing pool / 30 company / 25 Mujahid / 10 Muaz / 10 Mushahid / 5 Mariyam Zahir, linked by id |
+| Smoke test, rolled back | a Test-book invoice numbered `TEST-SC-INV/26/001`: Dr AR 1,080 / Cr Revenue 1,000 / Cr GST 80 (8%) in its return period; Live untouched; nothing kept |
+| Supabase security advisor | the 67 "mutable search_path" warnings on the new functions are fixed by 014. Left as designed: the `rpc_*` functions are callable by signed-in users (that is their job; each checks role and book). Left from before, not part of this rebuild: `pg_trgm` in `public`, older helper functions callable by `anon`, leaked-password protection off |
+
+## Phase 4 · Module 1 — Settings & Chart of Accounts (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Live / Test | Switch in the top bar; amber banner in Test; screens still on the old tables are hidden in Test (sidebar and direct links); admin "Reset the Test book" (type RESET) | `security.test` (books never mix, reset leaves Live untouched) |
+| Settings | Tabs: Company · Accounting (closing date, opening-balance date, financial year, revenue recognition, profit-share charge, bill approval limit, GST period and due day, no-pay divisor) · Taxes & rates · Numbering · Currencies | `settings.test` |
+| Rates | Dated history per rate; a rate in force can't be edited or removed; new rates from a date; bracket editor for withholding tax and BPT, checked for gaps and overlaps; warning while withholding-tax brackets are missing | `settings.test` (5 cases) |
+| Numbering | Per book; admin only; refuses a number already issued; Test numbers must start `TEST-` | `settings.test` |
+| Chart of accounts | Grouped by type with balances for the current book, sub-accounts nested and rolled up; add account (bank accounts, fixed assets, job-cost categories); edit name, code (non-system), description; switching off refused while it has a balance | build, types |
+| Account register | Every line with a running balance, oldest first; note when payroll lines are hidden from the viewer | `money.test` (running balance in laari) |
+| Health check | `/accounting/health` runs the 13 checks on the current book | `health_check` after every DB test |
+| Money on screen | Amounts parsed and summed as whole laari (`src/lib/money.ts`), never as floats | `money.test` (incl. property test) |
+
+Migration 015 (balances RPC, numbering RPC, rate guard) is applied to Live. Tests: **78 passing** (was 68). `tsc`, `eslint` and `next build` are clean.
+Not verified here: clicking through the screens against the live database. This sandbox cannot reach Supabase; the Playwright suite in CI (Q3) will cover it.
+
+## Phase 4 · Module 2 — Contacts (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Customers `/sales/customers` · Vendors `/expenses/vendors` | One contact list, two views; totals owed and overdue; Active / Needs review / Archived; search; "also a vendor" marker for contacts on both sides | `contacts.test` |
+| Balances | `contact_balances_v` (016): owed = the contact's AR or AP lines; overdue = unpaid part of invoices or bills past due; drafts and voids ignored; per book | `contacts.test` (3 cases) |
+| Detail tabs | Transactions (status derived), Projects (customers), Statement (date range, balance brought forward, running balance, print), Details (edit) | `contacts.test`, `doc-status.test` (screen status = database status, 200 random cases) |
+| Add / edit | Customer, vendor, lender; TIN required when GST-registered; duplicate name or TIN refused unless confirmed; what was typed is kept when a save is refused | build, types |
+| Review of copied contacts | "Confirm it is real" clears the flag; Archive is refused while the contact has an open balance; Restore | build, types |
+
+Migration 016 applied to Live. Tests: **84 passing**. `tsc`, `eslint` and `next build` are clean.
+**Clients merged into Customers (migration 017):** the Clients screen is removed and `/clients` opens Customers. The project form picks a customer (or adds one). Every Live customer has a mirrored row in the old `clients` table, which quotations, invoices and the estimator still read; a client added by one of those older screens appears as a customer; a project's customer and old client field always agree. Checked by `customers-clients.test` (4 cases). On Live: 2 clients = 2 customers, none unmirrored. Tests: **88 passing**.
+The old Shops screen still writes to its own table until the Expenses module.
+
+## Phase 4 · Module 3 — Projects & Project Value (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Project list `/projects` | Works in Live and Test; per project: stage, contract value (with approved variations), billed and %, collected, cost, forecast profit, margin, client balance; totals; archived view | `projects.test` (list view ties to the ledger) |
+| Project page tabs | Overview (value, billing, collection, cost, forecast, % complete, over/under billing, actual profit) · Value & budget (budget vs actual vs forecast by category, variance) · Variations · Billing plan · Transactions | `project-value.test`, `projects.test` |
+| Budget lines | Add, edit, delete by job-cost category with revised budget and forecast to complete (blank = what is left of the budget) | `project-value.test` |
+| Variations register | Raise (VO-01…), approve with a date, reject, withdraw, reopen; only approved ones move the contract value | `projects.test` |
+| Billing plan | Stages by percent or fixed amount, worked out in laari; warns when the plan is over or under the contract; invoiced stages cannot be removed | `money.test` (percentOf) |
+| Recognition | Per project: as billed, percentage of completion, or the company default; "Post WIP" at a period end for POC projects (auto-reversed next day) | `project-value.test` (run_wip) |
+| Book safety | A project's variations, budget lines and billing stages follow its book (migration 018) | `projects.test` |
+| Old view | The earlier project page (bill uploads, investments, old profit-share card, quotations) moved to `/projects/[id]/legacy`, Live only, until Sales, Expenses and Financing replace those parts | `money.test` (Live-only route rule) |
+
+Project amounts on the form are now saved as exact decimals (no floats). Migration 018 applied to Live. Tests: **93 passing**; `tsc`, `eslint`, `next build` clean.
+
+## Phase 4 · Module 4 — Sales (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Sales hub `/sales` | Money bar: Unpaid · Overdue · Paid in the last 30 days · Not yet banked; every sales document with customer, project, balance and derived status; filters | `sales.test` (list and "paid since") |
+| Invoices, credit notes, sales receipts | One form: customer (terms set the due date; none = due on receipt), project, lines by quantity × rate or amount, GST code per line, income account, MVR or USD with rate, draft; running total in laari; edit re-posts; void with a reason | `posting.test`, `money.test` (quantity × rate) |
+| Document page | Lines with GST, totals, payments applied, where the money went, void notice; Print / PDF; Receive payment; Mark sent; Edit; Void | build, types |
+| Tax invoice PDF `/print/sales/[id]` | Supplier name, TIN and GST registration; customer and their TIN; number, date, due date; each line with its GST; subtotal, GST, total, paid, balance; bank details; "VOID" when voided; titled INVOICE when not GST-registered | build, types |
+| Receive payment | One payment across a customer's open invoices, oldest first, each editable; over-applying refused; the rest stays as credit; to a bank or Undeposited Funds | `sales.test` |
+| Bank deposit | Tick receipts waiting in Undeposited Funds; the deposit records which ones, so none is banked twice; voiding it frees them; a banked receipt can't be voided | `sales.test` (2 cases) |
+| Client advances (B2) | Receive an advance; balances held per customer; apply to invoices; the database refuses using more than was paid (migration 020) | `sales.test` |
+| Progress billing | "Create invoice" on a billing stage makes the invoice for its share of the revised contract (GST by registration; customer's terms); voiding it frees the stage | `sales.test` (2 cases) |
+| Customer statement PDF `/print/statement/[id]` | From the Statement tab, for any dates | `contacts.test` |
+
+Migrations 019 and 020 applied to Live. Tests: **100 passing**; `tsc`, `eslint`, `next build` clean.
+Estimates stay on the existing Quotations screens (Live only) for now; converting a quotation into a new-ledger invoice and e-mailing invoices with reminders are listed under Still open.
+
+## Phase 4 · Module 5 — Expenses (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Expenses hub `/expenses` | Money bar: Unpaid bills · Overdue · Paid in the last 30 days · Awaiting approval; every bill, expense, payment, vendor credit and purchase order with vendor, project, balance and status | `expenses.test` |
+| Bill, expense, vendor credit, purchase order | One form: vendor (terms set the due date), project, lines by account (job costs, overheads, assets) with quantity × rate or amount, the supplier's own GST figure (or one tap for the current rate), "claim it back" per line, tax-invoice evidence (TIN, number, date, customs); GST not claimed is added to cost; MVR or USD | `posting.test`, `gst.test` |
+| Receipt scanning | "Read the photo" fills vendor (matched by TIN, then name), TIN, invoice number, date, amount and GST, using the server reader when set up, otherwise on the device; the photo is kept with the document | build, types |
+| Approval workflow | A bill over the limit in Settings is saved as a draft and sent to an admin (an admin's own bill is approved as saved); it posts only on approval and only up to the approved amount; the database refuses otherwise | `expenses.test` |
+| Pay bills | Tick bills across vendors; one payment per vendor, applied to its bills, all or nothing; warns when a vendor's licence or insurance has expired | `expenses.test` |
+| Vendor credits | Applied to the vendor's open bills from the credit's page | `expenses.test` |
+| Purchase orders | Open orders count as committed cost on the project, by category; "Turn into a bill" copies the lines into a draft bill and closes the order; close or reopen | `expenses.test` |
+| Budget alerts | Project Value tab flags a category past 80% or 100% of its revised budget, counting open orders | build, types |
+| Shops → Vendors | The Shops screen is removed; `/shops` opens Vendors; every Live vendor is mirrored in the old vendors table for the older screens, and a shop added there becomes a vendor (39 on Live, all in step) | `expenses.test` |
+
+Migration 021 applied to Live. Tests: **105 passing**; `tsc`, `eslint`, `next build` clean.
+
+## Phase 4 · Module 6 — Payroll (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Access | Payroll screens show only for admin, finance or someone given payroll permission; the database enforces the same | `security.test` |
+| Payroll runs `/payroll` | Start a month's run (every active employee gets a payslip with salary, standing allowances, project split and advance recovery); list with net and paid; warning while withholding-tax brackets are missing | `payroll.test` |
+| Run page | Per payslip: lines, add overtime (hours × rate), no-pay days (basic ÷ divisor), bonus, allowance or deduction; pension and withholding tax worked out; this month's project split; add a new hire or take someone off; draft ↔ review; admin approves and posts; pay net salaries from a bank; print payslips | `payroll.test`, `payroll-screens.test` |
+| Employees `/payroll/employees` | Details (site/admin, nationality, salary, pension and tax flags, bank, permit with expiry, phone, email, left date); standing monthly items; cost split from a month on (must total 100%); salary advances with monthly recovery; payslip history | `payroll.test` |
+| Pension & tax | What is held back (pension, withholding tax, other deductions) and recording its payment over | `payroll.test` |
+| Payslip PDF `/print/payslips/[run]` | One A4 page per person (or one with `?slip=`): earnings, deductions, company pension, net, bank account | build, types |
+| People & Salaries retired | `/people` opens Employees, `/salaries` opens Payroll; every Live employee is mirrored in the old people list the Message Center reads (migration 022) | `payroll-screens.test` |
+
+Migration 022 applied to Live. Tests: **107 passing**; `tsc`, `eslint`, `next build` clean.
+The 4 employees copied from People still need salary, nationality and bank details before the first run (they are marked "Needs details").
+
+## Phase 4 · Module 7 — Banking (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Banking `/banking` | Each bank, cash and card account with its balance in the books, lines waiting for review and the date it was last reconciled; import a statement; transfer between your own accounts | `banking.test`, build |
+| Statement import | CSV read on the server; each line is fingerprinted so importing the same file twice adds nothing; lines that plainly fit an entry already in the books (same amount, within 10 days) are matched automatically | `banking.test` |
+| Review lines | Match to an entry, add as a new expense (money out) or journal (money in), exclude, or undo; a bank rule fills in the Add form | `banking.test`, `money.test` (rule choice) |
+| Bank rules `/banking/rules` | Description contains / money in or out / amount range → account, name, project; priority; turn on or off; delete. Rules are shared by the Live and Test books | `money.test`, build |
+| Register | Every entry through the account with a running balance and its cleared / reconciled mark | build, types |
+| Reconcile | Enter the statement date and ending balance, tick what the statement shows; the difference must be 0 to finish; cancel or undo the latest; ticking is allowed in a closed or GST-filed period, amounts are not | `banking.test` |
+| Reconciliation report `/print/reconciliations/[id]` | Statement balance, cleared items, items still outstanding at that date, balance in the books | build, types |
+
+Migration 023 applied to Live. Tests: **114 passing**; `tsc`, `eslint`, `next build` clean.
+The old Bank reconciliation screen stays in the menu, marked "(old)", Live only, until cut-over.
+
+## Phase 4 · Module 8 — Taxes (GST) (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Taxes `/taxes` | The current quarter's GST to date and its due date, filed-but-unpaid returns, credit carried forward, every return with status, output, input, net, still owed and due date (overdue in red); pension and withholding tax owed, with a link to record the payment | build, types, `money.test` (periods) |
+| Return `/taxes/gst/[id]` | Worksheet (output, input, net or credit, with amounts that came from earlier periods called out); supplies dated in the period by tax code (standard, zero-rated, exempt) for the MIRA form; output schedule per invoice; input schedule per supplier tax invoice with TIN or customs declaration | `taxes.test` |
+| Schedules CSV | Output and input schedule downloads | `money.test` (CSV) |
+| File | Confirm and file; the return is locked, the settlement posts, and the schedule is kept exactly as filed. Returns are filed in order; filing before the period ends warns | `gst.test`, `taxes.test` |
+| Late documents | A document dated in a filed quarter, or a change to one, lands in the next open return and is flagged (decision G4) | `gst.test`, `taxes.test` |
+| Pay MIRA | From a bank or cash account, whole or part; the return turns Paid when nothing is owed | `gst.test` |
+| Due day | Changing the due day in Settings moves the due date of every return not yet filed | `taxes.test` |
+
+Migration 024 applied to Live (no returns existed yet; health 13/13). Tests: **121 passing**; `tsc`, `eslint`, `next build` clean.
+The old Tax and GST Input Schedule screens stay in the menu, marked "(old)", Live only, until cut-over.
+
+## Phase 4 · Module 9 — Financing & Profit Share (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Partners & financing `/partners` | Principal outstanding, returns and shares owed, ready to pay, blocked; payouts awaiting approval (approve / turn down); each person's outstanding principal, financing return and profit share kept apart; each project's financing, amounts owed, split profit and payout status with the reason when blocked | `financing-screens.test` (view) |
+| Partner statement `/partners/[id]` | Per project and component: accrued, paid, outstanding; pay-out form (blocked lines show why); payout history | `financing-screens.test`, `financing.test` |
+| Payout approval | A payout posts only once an admin approves it, for exactly the lines approved; an admin's own payout is approved as saved; the release rule (completed + client owes 0, never more than owed) still applies | `financing-screens.test` |
+| Project tabs | **Financing** (sources, contribution ratio, record a Capital Pool contribution or lender loan, receipts); **Profit split** (preview before completion with principal back, pool share, fixed share and what the company keeps; complete and post; afterwards the net split and every adjustment entry, review flag); **Payouts** (release status, what each person is owed) | `financing.test` (worked example, bad debt, late entry) |
+| Distribution history `/partners/distributions` | Every split and adjustment as posted, never edited | `financing.test` |
+| Profit-share schemes `/settings/profit-share` | Versions by start date, each totalling 100%; add (admin) prefilled from the current one; remove a version no split used | `financing-screens.test` |
+
+Migration 025 applied to Live (no payouts existed; health 13/13). Tests: **127 passing**; `tsc`, `eslint`, `next build` clean.
+The old Capital Pool, Investors, Project Financing, Internal Account and Profit Share screens stay in the menu, marked "(old)", Live only, until cut-over. Their records have not been copied into the new ledger: financing is recorded afresh per project (see Still open).
+
+## Phase 4 · Module 10 — Reports & Statements (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Reports `/reports` | Every report by group, with saved views; year-end pack for the auditor (print/PDF and Excel) | build, types |
+| Every report `/reports/[key]` | Date presets (month, quarter, financial year, year to date, last year, custom), comparison with the previous period or the same period last year, filters (project, customer/vendor, account), drill-down from each figure to the general ledger and on to the document; CSV, Excel and print/PDF; save a view | `report-period.test`, `report-model.test` |
+| Financial statements | Profit or loss (total, by month, by quarter, by project; % of revenue); financial position (as at a date, prior-year comparison, profit brought forward apart from this year's); cash flows (indirect, with a direct summary); changes in equity; trial balance (opening, movement, closing) | `reports.test`, `report-model.test` |
+| Notes schedules | Loans, related-party balances, payroll costs, business profit tax (from the rate brackets), GST control, receivables aging, payables | `reports.test` (ledger figures) |
+| Projects | Value summary, WIP / over-under billing, cost by category, labour by project, variations register | build, types |
+| Sales / Expenses | AR and AP aging (summary, detail), customer and vendor balances, collections, sales by customer/project, expenses by category/vendor/project | build, types |
+| Payroll (payroll permission only) | Summary by month, by employee, pension and withholding-tax schedules, staff advances | build, types |
+| Tax / Partners / Control | GST control reconciliation and filing history; financing summary, payouts pending/blocked; cash position, general ledger, journal, audit log | build, types |
+| Health checks 10 and 11 | Now test the cash-flow statement against the cash accounts, and the equity statement against net assets | `reports.test` (every test ends with the health check) |
+
+Migration 026 applied to Live (health 13/13; the new Live ledger has no postings yet, so 10 and 11 read 0 = 0). Tests: **143 passing**; `tsc`, `eslint`, `next build` clean.
+Report builders that read through the API (lists, aging, payroll) are type-checked but not run against a database here; the statement functions under them are tested. The old Overview, Ledger, Self-audit and Financial statements screens stay, marked "(old)", Live only.
+
+## Phase 4 · Module 11 — Dashboard (30 Sep 2026)
+
+| Area | What was built | Checked by |
+|---|---|---|
+| Dashboard `/` | Cash and bank; what customers owe and what is owed to vendors, with overdue; profit this month (revenue) and year to date; cash by account with reconciliation due; GST this quarter to date, due date and any filed-but-unpaid; next payroll (payroll permission); payouts ready, blocked and awaiting approval; accounts not reconciled to last month end; active projects by value with billed and forecast profit | build, types |
+| Cash-flow forecast (feature) | 12 weeks: open invoices and bills by due date, salaries and payroll taxes owed, payroll repeating the last run, GST due, released payouts; chart of cash at each week end with a hover tooltip, and `/reports/cash-forecast` week by week (CSV, Excel, print) | `cash-forecast.test` |
+| Test book | The dashboard now reads the new ledger, so it works in the Test book too | `money.test` (book routes) |
+
+No migration. Tests: **146 passing**; `tsc`, `eslint`, `next build` clean. The old dashboard's "Upcoming tasks" box is not carried over; tasks stay on Tasks & Calendar.
+
+## Still open
+
+Nothing below blocks the books balancing; each is either your decision or a feature not yet built.
+
+| Item | Why it is open | Next step |
+|---|---|---|
+| **Switch-over** | Opening balances are not entered in the new Live books; old financing records (capital pool entries, investors, project financing sources) are not copied | You confirm the opening balances (Accounting → Journal entries → Opening balances) and each old figure; then the "(old)" screens are retired |
+| **Fixed asset register and depreciation; recurring transactions** (feature menu ✅, migration 011) | Not built in this rebuild | Build as a follow-up module; the equipment register stays on the old screen meanwhile |
+| **Estimates in the new books** (quotation → invoice / progress invoices); **e-mailing invoices and reminders** | Quotations keep their own templates and signatures on the old screens | Follow-up, at switch-over |
+| List-page extras from §10: row menu *Duplicate* / *Send*, bulk actions, attachments on every transaction (bills have their photo) | Not built | Follow-up |
+| Cash-basis view of reports | Statements are accrual (IFRS for SMEs); a cash view needs your rule for part-paid invoices and bills | Your rule |
+| Aging as at a past date | Aging is as at today | If wanted |
+| Withholding-tax brackets, pension-rate confirmation, GST due day, approval limit for bills | Your figures (📝) | Before the first real payroll / GST filing |
+| Assumptions I1–I13 (DECISIONS.md) | Your confirmation | Any time |
+| Contacts and employees copied from the old lists are marked *needs review*; two lender contacts ("hassan muaz", "mushahihd") look like duplicates of partners | Data you know | Review in Customers / Vendors / Employees |
+| Supabase advisor items from before the rebuild (`pg_trgm` in public, older helpers callable by anon, leaked-password protection off) | Not part of this rebuild | Your call; leaked-password protection is a dashboard switch |

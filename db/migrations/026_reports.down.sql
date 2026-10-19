@@ -1,0 +1,11 @@
+drop table if exists public.saved_reports;
+drop function if exists public.health_check(text);
+alter function public._health_check_base(text) rename to health_check;
+drop function if exists public.equity_changes(date, date, text);
+drop function if exists public.cash_summary(date, date, text);
+drop function if exists public.cash_flow(date, date, text);
+drop function if exists public._cf_section(public.account_type, text);
+drop function if exists public.report_by(date, date, text, text);
+drop function if exists public.report_tb(date, date, uuid, uuid, text);
+drop function if exists public._subtype(uuid);
+drop function if exists public.fiscal_year_start(date);
