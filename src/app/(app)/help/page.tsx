@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Card, CardHeader, PageHeader } from "@/components/ui";
 import { getSession } from "@/server/session";
 import { AREAS, HELP } from "@/lib/help";
-import { OLD_SCREENS } from "@/lib/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -42,19 +41,6 @@ export default async function HelpPage() {
           </div>
         </Card>
       ))}
-      {s.book === "live" && (
-        <Card>
-          <CardHeader title="Old screens (off the menu)" subtitle="Kept, Live only, so old figures can be checked before the switch-over" />
-          <ul className="divide-y divide-[var(--border)] text-sm">
-            {OLD_SCREENS.map((o) => (
-              <li key={o.href} className="flex flex-wrap justify-between gap-2 px-5 py-2">
-                <Link href={o.href} className="text-[var(--brand)] hover:underline">{o.label}</Link>
-                <span className="text-xs text-[var(--muted)]">replaced by <Link href={o.replacedBy[0]} className="hover:underline">{o.replacedBy[1]}</Link></span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
     </div>
   );
 }

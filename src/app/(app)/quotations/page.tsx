@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader, Stat, Table, Th, Td, Empty } from "@/components/ui";
 import { QUOTE_STATUSES, QUOTE_STATUS_LABEL, STATUS_TONE, type QuoteStatus } from "@/lib/documents";
 import { money, date, num } from "@/lib/format";
+import { invoicedOf, quotationInvoices } from "@/server/quotation-invoices";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function QuotationsPage({
     supabase.from("quotation_totals").select("*"),
   ]);
   const totalOf = new Map((totals ?? []).map((t) => [t.quotation_id, t]));
+  const billed = await quotationInvoices(supabase, (quotes ?? []).filter((q) => q.status === "won").map((q) => q.number));
   const rows = (quotes ?? []).map((q) => {
     const t = totalOf.get(q.id);
     return {
@@ -29,7 +31,7 @@ export default async function QuotationsPage({
       project: q.projects as unknown as { id: string; code: string; name: string } | null,
       total: num(t?.total),
       subtotal: num(t?.subtotal),
-      invoiced: num(t?.invoiced),
+      invoiced: invoicedOf(billed.get(q.number)),
     };
   });
 

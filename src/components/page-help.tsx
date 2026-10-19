@@ -3,20 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { helpFor } from "@/lib/help";
-import { OLD_SCREENS } from "@/lib/nav";
 
-/** "How to use this page", folded away at the top of every page; and a note on the old screens. */
+/** "How to use this page", folded away at the top of every page. */
 export function PageHelp() {
   const pathname = usePathname();
-  const old = OLD_SCREENS.find((o) => pathname === o.href || (o.href !== "/accounting" && pathname.startsWith(`${o.href}/`)));
-  if (old) {
-    return (
-      <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-        This is an old screen, kept so old figures can be checked before the switch-over. Use{" "}
-        <Link href={old.replacedBy[0]} className="font-medium underline">{old.replacedBy[1]}</Link> instead.
-      </p>
-    );
-  }
   const h = helpFor(pathname);
   if (!h) return null;
   return (

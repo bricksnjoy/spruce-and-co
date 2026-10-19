@@ -18,6 +18,7 @@ import {
   type TemplateTail,
 } from "@/lib/documents";
 import { today } from "@/lib/format";
+import { quotationInvoices } from "@/server/quotation-invoices";
 
 export type DocResult = { error?: string; ok?: boolean; id?: string };
 
@@ -178,13 +179,11 @@ export interface QuotationInput {
   estimate_id?: string | null;
 }
 
+/** Invoices in the books raised from a quotation (they carry its number as their reference), voided ones aside. */
 async function invoiceCount(supabase: Supabase, quotationId: string) {
-  const { count } = await supabase
-    .from("invoices")
-    .select("id", { count: "exact", head: true })
-    .eq("quotation_id", quotationId)
-    .neq("status", "cancelled");
-  return count ?? 0;
+  const { data: q } = await supabase.from("quotations").select("number").eq("id", quotationId).maybeSingle();
+  if (!q) return 0;
+  return (await quotationInvoices(supabase, [q.number])).get(q.number)?.length ?? 0;
 }
 
 export async function saveQuotation(_prev: unknown, fd: FormData): Promise<DocResult> {
@@ -291,7 +290,7 @@ export async function setQuotationStatus(id: string, status: QuoteStatus): Promi
   if (!q) return { error: "That quotation no longer exists." };
 
   if (q.status === "won" && status !== "won" && (await invoiceCount(supabase, id))) {
-    return { error: "Invoices have been raised from this quotation — cancel them first." };
+    return { error: "Invoices have been raised from this quotation — void them in Sales & invoices first." };
   }
 
   const now = new Date().toISOString();
@@ -321,11 +320,7 @@ export async function setQuotationStatus(id: string, status: QuoteStatus): Promi
 
 export async function deleteQuotation(id: string): Promise<DocResult> {
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("invoices")
-    .select("id", { count: "exact", head: true })
-    .eq("quotation_id", id);
-  if (count) return { error: "Invoices were raised from this quotation, so it has to stay on record." };
+  if (await invoiceCount(supabase, id)) return { error: "Invoices were raised from this quotation, so it has to stay on record." };
   const { data: q } = await supabase.from("quotations").select("project_id").eq("id", id).maybeSingle();
   const { error } = await supabase.from("quotations").delete().eq("id", id);
   if (error) return { error: error.message };

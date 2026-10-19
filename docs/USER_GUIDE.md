@@ -75,14 +75,6 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Change the fields and press "Save changes".
 
-### Project P&L (older screen)
-
-`/pnl` — The project profit table from the old screens, kept for reference.
-
-1. Read value, variation, GST, expenses and profit per project as the old records have them.
-
-> For figures from the new books use the project's Overview tab or Reports → Profit or loss by project.
-
 ## Sales
 
 ### Sales & invoices
@@ -444,7 +436,8 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/quotations` — Price the work, win it, then invoice it (Live only for now).
 
 1. "New quotation", fill in the lines, save; print it with your template and signature.
-2. Templates and Signatures & stamp set how they look.
+2. Mark it won, then "Convert to invoice" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.
+3. Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices.
 
 ### Cabinet estimator
 
@@ -515,23 +508,3 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 3. A version no split has used can be removed.
 
 > A project uses the version in force on its start date.
-
-## Old screens (off the menu)
-
-Kept, Live only, so old figures can be checked before the switch-over.
-
-- `/invoices` Invoices (old) → use **Sales & invoices** (`/sales`)
-- `/capital-pool` Capital Pool (old) → use **Partners & financing** (`/partners`)
-- `/investors` Investors (old) → use **Partners & financing** (`/partners`)
-- `/financing` Project Financing (old) → use **Partners & financing** (`/partners`)
-- `/internal` Internal Account (old) → use **Partners & financing** (`/partners`)
-- `/accounting` Accounting overview (old) → use **Dashboard** (`/`)
-- `/accounting/ledger` Ledger (old) → use **General Ledger report** (`/reports/general-ledger`)
-- `/accounting/audit` Self-audit (old) → use **Health check** (`/accounting/health`)
-- `/accounting/statements` Financial statements (old) → use **Reports** (`/reports`)
-- `/accounting/bank` Bank reconciliation (old) → use **Banking** (`/banking`)
-- `/accounting/tax` Tax (old) → use **Taxes (GST)** (`/taxes`)
-- `/gst` GST Input Schedule (old) → use **Taxes (GST)** (`/taxes`)
-- `/accounting/year-end` Year end (old) → use **Reports (closing a year in the new books is not built yet)** (`/reports`)
-- `/pnl` Project P&L (old) → use **Reports (project profit) and each project's Overview tab** (`/reports`)
-- `/profit-share` Profit Share (old) → use **Profit-share schemes** (`/settings/profit-share`)

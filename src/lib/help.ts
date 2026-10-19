@@ -79,12 +79,6 @@ export const HELP: Help[] = [
     purpose: "Change a project's name, customer, dates, value or recognition method.",
     steps: ["Change the fields and press \"Save changes\"."],
   },
-  {
-    path: "/pnl", area: "Projects", title: "Project P&L (older screen)",
-    purpose: "The project profit table from the old screens, kept for reference.",
-    steps: ["Read value, variation, GST, expenses and profit per project as the old records have them."],
-    tips: ["For figures from the new books use the project's Overview tab or Reports → Profit or loss by project."],
-  },
 
   // ── Sales ──
   {
@@ -407,7 +401,7 @@ export const HELP: Help[] = [
   // ── Other ──
   { path: "/tasks", area: "Other", title: "Tasks & calendar", purpose: "What is due across every project.", steps: ["Add a task with a project and due date; tick it when done."] },
   { path: "/messages", area: "Other", title: "Message center", purpose: "Send an SMS or email to anyone, and see what was sent.", steps: ["Choose who, write the message, send. The history lists what went out."] },
-  { path: "/quotations", area: "Other", title: "Quotations", purpose: "Price the work, win it, then invoice it (Live only for now).", steps: ["\"New quotation\", fill in the lines, save; print it with your template and signature.", "Templates and Signatures & stamp set how they look."] },
+  { path: "/quotations", area: "Other", title: "Quotations", purpose: "Price the work, win it, then invoice it (Live only for now).", steps: ["\"New quotation\", fill in the lines, save; print it with your template and signature.", "Mark it won, then \"Convert to invoice\" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.", "Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices."] },
   { path: "/estimator", area: "Other", title: "Cabinet estimator", purpose: "Price kitchen and cabinet jobs from wall measurements.", steps: ["Enter the walls and units; the cut list, drawings and price follow."] },
   {
     path: "/cut-planner", area: "Other", title: "Board cut planner",
@@ -472,7 +466,7 @@ export function helpFor(pathname: string): Help | undefined {
 export const AREAS = [...new Set(HELP.map((h) => h.area))];
 
 /** The whole guide as Markdown (docs/USER_GUIDE.md). */
-export function guideMarkdown(old: { href: string; label: string; replacedBy: [string, string] }[]) {
+export function guideMarkdown() {
   const out = ["# Spruce & Co — how to use each page", "",
     "Each page also has a \"How to use this page\" box at the top, and the Help page lists them all.", ""];
   for (const a of AREAS) {
@@ -484,7 +478,5 @@ export function guideMarkdown(old: { href: string; label: string; replacedBy: [s
       out.push("");
     }
   }
-  out.push("## Old screens (off the menu)", "", "Kept, Live only, so old figures can be checked before the switch-over.", "");
-  for (const o of old) out.push(`- \`${o.href}\` ${o.label} → use **${o.replacedBy[1]}** (\`${o.replacedBy[0]}\`)`);
-  return out.join("\n") + "\n";
+  return out.join("\n").replace(/\n+$/, "") + "\n";
 }

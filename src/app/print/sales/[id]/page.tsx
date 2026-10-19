@@ -3,6 +3,8 @@ import { getSession } from "@/server/session";
 import { PrintToolbar } from "../../toolbar";
 import { LedgerSheet, sheetAccent, sheetTh, type Company } from "@/components/sales/ledger-sheet";
 import { dbToLaari, laariToNumber } from "@/lib/money";
+import { signerFor, toTemplate } from "@/lib/documents";
+import { signingKit } from "@/lib/branding";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +24,14 @@ export default async function PrintSalesDoc({ params }: { params: Promise<{ id: 
     s.supabase.from("company").select("legal_name, trade_name, tin, gst_registered, taxable_activity_no, address, phone, email, bank_details").eq("id", true).maybeSingle(),
   ]);
   if (!doc || !TITLE[doc.type] || !company) notFound();
-  const [{ data: t }, { data: cust }] = await Promise.all([
+  const [{ data: t }, { data: cust }, { data: tpl }, kit] = await Promise.all([
     s.supabase.from("transactions").select("memo, reference, currency").eq("id", id).maybeSingle(),
     s.supabase.from("contacts").select("name, company_name, address, tin, gst_registered, taxable_activity_no").eq("id", doc.contact_id).maybeSingle(),
+    // signed and stamped as the default invoice template says (Quotations → Edit templates)
+    s.supabase.from("document_templates").select("*").eq("kind", "invoice").order("is_default", { ascending: false }).limit(1).maybeSingle(),
+    signingKit(s.supabase),
   ]);
+  const signer = tpl ? signerFor(kit, toTemplate(tpl).tail, null, null) : null;
   const subtotal = (lines ?? []).reduce((a, l) => a + dbToLaari(l.amount), 0n);
   const gst = (lines ?? []).reduce((a, l) => a + dbToLaari(l.tax_amount), 0n);
   const cur = t?.currency ?? "MVR";
@@ -89,8 +95,31 @@ export default async function PrintSalesDoc({ params }: { params: Promise<{ id: 
         </div>
 
         {t?.memo && <p className="mt-6 whitespace-pre-line text-[10px]">{t.memo}</p>}
-        <div className="mt-auto pt-8 text-[9.5px]">
-          {doc.type === "invoice" && company.bank_details && <><p className="font-semibold">Please pay to</p><p className="whitespace-pre-line">{company.bank_details}</p></>}
+        <div className="mt-auto flex items-end justify-between gap-6 pt-8 text-[9.5px]">
+          <div>
+            {doc.type === "invoice" && company.bank_details && <><p className="font-semibold">Please pay to</p><p className="whitespace-pre-line">{company.bank_details}</p></>}
+          </div>
+          {signer && (signer.name || signer.signatureUrl || signer.stampUrl) && (
+            <div>
+              {/* signature centred over the name, the stamp overlapping it up to the right, as on quotations */}
+              {(signer.stampUrl || signer.signatureUrl) && (
+                <div className="relative h-[30mm] w-[50mm]">
+                  {signer.signatureUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={signer.signatureUrl} alt="Signature" className="absolute bottom-0 left-0 z-10 h-[18mm] w-[36mm] object-contain object-bottom" />
+                  )}
+                  {signer.stampUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={signer.stampUrl} alt="Company stamp" className="absolute right-0 top-0 h-[26mm] w-[26mm] object-contain" />
+                  )}
+                </div>
+              )}
+              <div className="w-[36mm] text-center text-[10.5px] leading-tight">
+                {signer.name && <p>{signer.name}</p>}
+                {signer.title && <p>{signer.title}</p>}
+              </div>
+            </div>
+          )}
         </div>
       </LedgerSheet>
     </>
