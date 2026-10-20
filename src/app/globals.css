@@ -61,3 +61,22 @@ html, body {
 * { border-color: var(--border); }
 
 table { border-collapse: separate; border-spacing: 0; }
+
+/*
+ * A list row that opens as a whole: the row's main link stretches over it, so
+ * a click anywhere on the row goes where its name or number goes. Other links
+ * and controls in the row sit above the stretch and keep working.
+ */
+tr.row-link {
+  position: relative;
+  cursor: pointer;
+}
+tr.row-link .row-link-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+tr.row-link :is(a, button, input, select, textarea, label):not(.row-link-main) {
+  position: relative;
+  z-index: 1;
+}

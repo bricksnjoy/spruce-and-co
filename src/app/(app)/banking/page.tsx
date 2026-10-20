@@ -36,10 +36,10 @@ export default async function BankingPage() {
             <thead><tr><Th>Account</Th><Th right>Balance in the books</Th><Th right>To review</Th><Th right>Reconciled to</Th></tr></thead>
             <tbody>
               {(accts ?? []).map((a) => (
-                <tr key={a.id} className="hover:bg-[var(--hover)]">
+                <tr key={a.id} className="row-link hover:bg-[var(--hover)]">
                   <Td>
-                    {a.subtype === "undeposited" ? <Link href="/sales/deposits/new" className="font-medium hover:underline">{a.name}</Link>
-                      : <Link href={`/banking/${a.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">{a.name}</Link>}
+                    {a.subtype === "undeposited" ? <Link href="/sales/deposits/new" className="row-link-main font-medium hover:underline">{a.name}</Link>
+                      : <Link href={`/banking/${a.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{a.name}</Link>}
                     <span className="ml-2 font-mono text-xs text-[var(--muted)]">{a.code}</span>{a.currency !== "MVR" && <span className="ml-1 text-xs">{a.currency}</span>}
                   </Td>
                   <Td right>{money(laariToNumber(bal.get(a.id) ?? 0n))}</Td>

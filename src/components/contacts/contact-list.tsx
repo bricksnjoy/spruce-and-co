@@ -77,9 +77,9 @@ export async function ContactList({ s, side, view = "active", query = "" }: { s:
             <thead><tr><Th>Name</Th><Th>Contact</Th><Th right>{side.owedLabel}</Th><Th right>Overdue</Th></tr></thead>
             <tbody>
               {list.map((r) => (
-                <tr key={r.id} className="hover:bg-[var(--hover)]">
+                <tr key={r.id} className="row-link hover:bg-[var(--hover)]">
                   <Td>
-                    <Link href={`${side.base}/${r.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">{r.name}</Link>
+                    <Link href={`${side.base}/${r.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{r.name}</Link>
                     {r.needs_review && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">Needs review</span>}
                     {r.kinds.length > 1 && <span className="ml-2 text-xs text-[var(--muted)]">also {r.kinds.filter((k) => k !== side.kind).join(", ")}</span>}
                   </Td>

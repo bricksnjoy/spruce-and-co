@@ -71,9 +71,9 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
             <thead><tr><Th>Lender</Th><Th>Contact</Th><Th right>Projects</Th><Th right>Lent</Th><Th right>Repaid</Th><Th right>Principal owed</Th><Th right>Return owed</Th><Th right>Total owed</Th></tr></thead>
             <tbody>
               {per.map((r) => (
-                <tr key={r.id} className="hover:bg-[var(--hover)]">
+                <tr key={r.id} className="row-link hover:bg-[var(--hover)]">
                   <Td>
-                    <Link href={`/partners/${r.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">{r.name}</Link>
+                    <Link href={`/partners/${r.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{r.name}</Link>
                     {r.needs_review && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">Needs review</span>}
                     {r.kinds.length > 1 && <span className="ml-2 text-xs text-[var(--muted)]">also {r.kinds.filter((k) => k !== "lender").map((k) => k === "partner" ? "Capital Pool member" : k).join(", ")}</span>}
                   </Td>

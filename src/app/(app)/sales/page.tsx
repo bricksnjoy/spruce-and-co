@@ -77,10 +77,10 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
             <thead><tr><Th>Date</Th><Th>Type</Th><Th>No.</Th><Th>Customer</Th><Th>Due</Th><Th right>Total</Th><Th right>Balance</Th><Th right>Status</Th></tr></thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} className={`hover:bg-[var(--hover)] ${r.voided_at ? "text-[var(--muted)]" : ""}`}>
+                <tr key={r.id} className={`row-link hover:bg-[var(--hover)] ${r.voided_at ? "text-[var(--muted)]" : ""}`}>
                   <Td className="whitespace-nowrap">{date(r.date)}</Td>
                   <Td>{titleize(r.type)}</Td>
-                  <Td><Link href={`/sales/${r.id}`} className="font-mono text-xs font-medium hover:text-[var(--brand)] hover:underline">{r.number ?? "view"}</Link></Td>
+                  <Td><Link href={`/sales/${r.id}`} className="row-link-main font-mono text-xs font-medium hover:text-[var(--brand)] hover:underline">{r.number ?? "view"}</Link></Td>
                   <Td>{r.customer_name ?? "—"}{r.project_code && <span className="ml-1 text-xs text-[var(--muted)]">{r.project_code}</span>}</Td>
                   <Td className={`whitespace-nowrap ${r.status === "overdue" ? "text-red-700" : ""}`}>{r.type === "invoice" && r.due_date ? date(r.due_date) : ""}</Td>
                   <Td right>{m(r.total)}</Td>
