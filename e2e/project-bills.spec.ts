@@ -44,15 +44,15 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await tpl.body() as unknown as ArrayBuffer);
   const ws = wb.getWorksheet("Bills")!;
-  expect(ws.getRow(1).getCell(4).value).toBe("Vendor");
-  expect(wb.getWorksheet("Accounts")!.rowCount).toBeGreaterThan(5);
+  expect(ws.getRow(1).getCell(2).value).toBe("Shop");
+  expect(wb.getWorksheet("Categories")!.getColumn(1).values).toContain("Materials");
 
-  // fill it: one bill of two lines, one single-line bill from a new vendor, and one bad row
+  // fill it: one receipt of two lines (one with a discount), one receipt from a shop not on file, and one bad row
   const today = new Date().toISOString().slice(0, 10);
-  ws.addRow(["", today, "", vendor, "", `HW-${tag}-2`, "", "Cement", "5000", 2000, 160, "Y", ""]);
-  ws.addRow(["", today, "", vendor, "", `HW-${tag}-2`, "", "Delivery", "5040", 300, 24, "Y", ""]);
-  ws.addRow(["", today, "", `New Shop ${tag}`, "", "", "", "Nails", "5000", 45.5, "", "N", ""]);
-  ws.addRow(["", "someday", "", vendor, "", "", "", "Broken row", "9999", -1, "", "", ""]);
+  ws.addRow([today, vendor, `HW-${tag}-2`, "Materials", 2100, 100, 160, 2160]);
+  ws.addRow([today, vendor, `HW-${tag}-2`, "Freight & Logistics", 300, "", 24, 324]);
+  ws.addRow([today, `New Shop ${tag}`, "", "Materials", 45.5, "", "", 45.5]);
+  ws.addRow(["someday", vendor, "", "Snacks", -1, "", "", ""]);
   const dir = mkdtempSync(join(tmpdir(), "bills-"));
   const file = join(dir, "bills.xlsx");
   await wb.xlsx.writeFile(file);
@@ -60,15 +60,17 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await page.getByLabel("Filled bills sheet").setInputFiles(file);
   const check = page.getByRole("dialog", { name: "Check the bills before saving" });
   await expect(check).toBeVisible();
-  await expect(check.getByText(/1 with problems/)).toBeVisible();
-  await expect(check.getByRole("button", { name: /Save 2 bills/ })).toBeDisabled();
+  await expect(check.getByText(/2 with problems/)).toBeVisible(); // the bad row, and the shop not on file
+  await expect(check.getByRole("button", { name: /Save 1 bill/ })).toBeDisabled();
 
-  // fix the sheet: drop the bad row, upload again, save
+  // fix the sheet: drop the bad row, upload again; then confirm the shop not on file as new, and save
   ws.spliceRows(ws.rowCount, 1);
   await wb.xlsx.writeFile(file);
   await check.getByRole("button", { name: "Close" }).click();
   await page.getByLabel("Filled bills sheet").setInputFiles(file);
-  await expect(check.getByText("new vendor")).toBeVisible();
+  await expect(check.getByText(/1 with problems/)).toBeVisible();
+  await check.getByLabel(`Shop for New Shop ${tag}`).selectOption("new");
+  await expect(check.getByText("new shop", { exact: true })).toBeVisible(); // the badge on the row, once checked again
   await check.getByRole("button", { name: "Save 2 bills" }).click();
   await expect(page.getByText(/Saved 2 bills/)).toBeVisible();
   const lines = sql(`select count(*) from transaction_lines l join transactions t on t.id = l.transaction_id where t.project_id = '${project}' and t.type = 'bill'`);
@@ -80,13 +82,13 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await expect(check.getByText("Nothing new to save.")).toBeVisible();
   await check.getByRole("button", { name: "Close" }).click();
 
-  // the bills download has every line with its ID, ready to add more
+  // the bills download has every line, ready to add more
   const exp = await request.get(`/projects/${project}/bills/sheet?kind=bills`, { headers: { cookie: cookies } });
   const wb2 = new ExcelJS.Workbook();
   await wb2.xlsx.load(await exp.body() as unknown as ArrayBuffer);
   const ws2 = wb2.getWorksheet("Bills")!;
   expect(ws2.rowCount).toBe(5); // heading + 4 lines
-  ws2.addRow(["", today, "", vendor, "", `HW-${tag}-3`, "", "Paint", "5000", 500, 40, "Y", ""]);
+  ws2.addRow([today, vendor, `HW-${tag}-3`, "Materials", 500, "", 40, 540]);
   const file2 = join(dir, "bills-more.xlsx");
   await wb2.xlsx.writeFile(file2);
   await page.getByLabel("Filled bills sheet").setInputFiles(file2);
