@@ -70,7 +70,7 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await page.getByLabel("Filled bills sheet").setInputFiles(file);
   await expect(check.getByText(/1 with problems/)).toBeVisible();
   await check.getByLabel(`Shop for New Shop ${tag}`).selectOption("new");
-  await expect(check.getByText("new shop")).toBeVisible();
+  await expect(check.getByText("new shop", { exact: true })).toBeVisible(); // the badge on the row, once checked again
   await check.getByRole("button", { name: "Save 2 bills" }).click();
   await expect(page.getByText(/Saved 2 bills/)).toBeVisible();
   const lines = sql(`select count(*) from transaction_lines l join transactions t on t.id = l.transaction_id where t.project_id = '${project}' and t.type = 'bill'`);
