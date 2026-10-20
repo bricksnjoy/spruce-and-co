@@ -32,8 +32,8 @@ export default async function PayrollPage() {
             <thead><tr><Th>Month</Th><Th>Pay date</Th><Th right>Net pay</Th><Th right>Paid</Th><Th right>Status</Th></tr></thead>
             <tbody>
               {(runs ?? []).map((r) => (
-                <tr key={r.id} className="hover:bg-[var(--hover)]">
-                  <Td><Link href={`/payroll/runs/${r.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">
+                <tr key={r.id} className="row-link hover:bg-[var(--hover)]">
+                  <Td><Link href={`/payroll/runs/${r.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">
                     {new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${r.period_month}T00:00:00Z`))}</Link></Td>
                   <Td>{date(r.pay_date)}</Td>
                   <Td right>{m(r.net_total)}</Td>

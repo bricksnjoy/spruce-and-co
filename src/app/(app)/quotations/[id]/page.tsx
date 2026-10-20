@@ -112,9 +112,9 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
                 </thead>
                 <tbody>
                   {invoices.map((i) => (
-                    <tr key={i.id} className="hover:bg-[var(--hover)]">
+                    <tr key={i.id} className="row-link hover:bg-[var(--hover)]">
                       <Td>
-                        <Link href={`/sales/${i.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">
+                        <Link href={`/sales/${i.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">
                           {i.number ?? "Draft"}
                         </Link>
                         {i.is_draft && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">Draft</span>}

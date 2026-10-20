@@ -106,9 +106,9 @@ export default async function QuotationsPage({
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} className="hover:bg-[var(--hover)]">
+                <tr key={r.id} className="row-link hover:bg-[var(--hover)]">
                   <Td className="font-medium">
-                    <Link href={`/quotations/${r.id}`} className="hover:text-[var(--brand)] hover:underline">{r.number}</Link>
+                    <Link href={`/quotations/${r.id}`} className="row-link-main hover:text-[var(--brand)] hover:underline">{r.number}</Link>
                   </Td>
                   <Td className="text-xs text-[var(--muted)]">{date(r.issue_date)}</Td>
                   <Td>

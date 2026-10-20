@@ -32,9 +32,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
             <thead><tr><Th>Name</Th><Th>Role</Th><Th>Where</Th><Th right>Basic salary</Th><Th right>Work permit</Th></tr></thead>
             <tbody>
               {(data ?? []).map((e) => (
-                <tr key={e.id} className={`hover:bg-[var(--hover)] ${e.active ? "" : "text-[var(--muted)]"}`}>
+                <tr key={e.id} className={`row-link hover:bg-[var(--hover)] ${e.active ? "" : "text-[var(--muted)]"}`}>
                   <Td>
-                    <Link href={`/payroll/employees/${e.id}`} className="font-medium hover:text-[var(--brand)] hover:underline">{e.name}</Link>
+                    <Link href={`/payroll/employees/${e.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{e.name}</Link>
                     {e.needs_review && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">Needs details</span>}
                     {!e.active && <span className="ml-2 text-xs">(left)</span>}
                   </Td>

@@ -61,8 +61,8 @@ export default async function TaxesPage() {
               {rows.map((p) => {
                 const adj = dbToLaari(p.prior_output_adjustments) !== 0n || dbToLaari(p.prior_input_adjustments) !== 0n;
                 return (
-                  <tr key={p.id} className="hover:bg-[var(--hover)]">
-                    <Td><Link href={`/taxes/gst/${p.id}`} className="font-medium text-[var(--brand)] hover:underline">{periodLabel(p.start_date, p.end_date)}</Link>
+                  <tr key={p.id} className="row-link hover:bg-[var(--hover)]">
+                    <Td><Link href={`/taxes/gst/${p.id}`} className="row-link-main font-medium text-[var(--brand)] hover:underline">{periodLabel(p.start_date, p.end_date)}</Link>
                       {adj && <span className="ml-2 text-xs text-amber-700" title="Includes documents from earlier, filed periods">adjustments</span>}</Td>
                     <Td><Badge value={p.status} /></Td>
                     <Td right>{m(p.output)}</Td>
