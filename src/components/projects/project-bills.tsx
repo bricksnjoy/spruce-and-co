@@ -4,7 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { primary, small } from "@/components/form-styles";
-import { previewBillSheet, saveBillSheet, type Preview, type SaveResult } from "@/app/actions/project-bills";
+import { previewBillSheet, recheckBillSheet, saveBillSheet, type Preview, type SaveResult } from "@/app/actions/project-bills";
+import { norm, type ShopChoices } from "@/lib/bill-import";
 import type { ExpenseFormData } from "@/server/expense-data";
 import type { ExpenseValues } from "@/lib/expense-doc";
 import { money } from "@/lib/format";
@@ -18,6 +19,7 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
   const [msg, setMsg] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<SaveResult | null>(null);
+  const [choices, setChoices] = useState<ShopChoices>({});
   const [pending, start] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -25,10 +27,18 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
     const fd = new FormData();
     fd.set("file", file);
     setResult(null);
+    setChoices({});
     start(async () => setPreview(await previewBillSheet(projectId, fd)));
   };
+  // a shop picked for a name not on file (a spelling slip), or "new" to add it: the rows are checked again
+  const choose = (name: string, choice: string) => {
+    const next = { ...choices, [norm(name)]: choice };
+    if (!choice) delete next[norm(name)];
+    setChoices(next);
+    start(async () => setPreview(await recheckBillSheet(projectId, preview!.raw!, next)));
+  };
   const save = () => start(async () => {
-    const r = await saveBillSheet(projectId, preview!.raw!);
+    const r = await saveBillSheet(projectId, preview!.raw!, choices);
     setResult(r);
     if (!r.error && !(r.failed ?? []).length) { setPreview(null); router.refresh(); }
     else router.refresh();
@@ -62,7 +72,7 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
       )}
 
       {preview && (
-        <Modal title="Check the bills before saving" onClose={() => { setPreview(null); setResult(null); }}>
+        <Modal title="Check the bills before saving" onClose={() => { setPreview(null); setResult(null); setChoices({}); }}>
           {preview.error ? <p className="text-sm text-red-700">{preview.error}</p> : (
             <div className="space-y-4">
               <p className="text-sm">
@@ -70,27 +80,59 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
                 {counts.saved > 0 && <> · {counts.saved} already saved (skipped)</>}
                 {counts.error > 0 && <> · <span className="font-medium text-red-700">{counts.error} with problems</span></>}
               </p>
+              {(preview.unknownShops ?? []).length > 0 && (
+                <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                  <p className="font-medium">Shops not on file: pick the right one (a spelling slip), or add it as a new shop</p>
+                  {preview.unknownShops!.map((u) => (
+                    <div key={u.name} className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-40">&ldquo;{u.name}&rdquo; <span className="text-xs text-amber-800">row{u.rows.length === 1 ? "" : "s"} {u.rows.join(", ")}</span></span>
+                      <select aria-label={`Shop for ${u.name}`} value={choices[norm(u.name)] ?? ""} disabled={pending}
+                        onChange={(e) => choose(u.name, e.target.value)}
+                        className="rounded-md border border-amber-300 bg-white px-2 py-1 text-sm">
+                        <option value="">Choose…</option>
+                        {u.suggestions.length > 0 && (
+                          <optgroup label="Did you mean">
+                            {u.suggestions.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                          </optgroup>
+                        )}
+                        <optgroup label="Add">
+                          <option value="new">Add &ldquo;{u.name}&rdquo; as a new shop</option>
+                        </optgroup>
+                        <optgroup label="All shops">
+                          {(preview.shops ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </optgroup>
+                      </select>
+                    </div>
+                  ))}
+                  <p className="text-xs text-amber-800">A new shop is added to Vendors marked for review; add its TIN there so its GST can be claimed.</p>
+                </div>
+              )}
               <div className="max-h-[55vh] overflow-auto rounded-lg border border-[var(--border)]">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-[var(--surface)] text-left text-[var(--muted)]">
-                    <tr>{["Row", "Status", "Date", "Vendor", "Invoice no.", "Description", "Account", "Amount", "GST", "Claim"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}</tr>
+                    <tr>{["Row", "Status", "Date", "Shop", "Invoice no.", "Category", "Amount", "Discount", "GST", "Total", "GST claimed"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
                     {rows.map((r) => (
                       <tr key={r.row} className={r.status === "error" ? "bg-red-50" : r.status === "saved" ? "text-[var(--muted)]" : ""}>
                         <td className="px-2 py-1.5 tabular-nums">{r.row}</td>
                         <td className="px-2 py-1.5">
-                          {r.status === "new" ? <span className="text-emerald-700">New</span> : r.status === "saved" ? <span>{r.note}</span>
+                          {r.status === "new" ? <span className="text-emerald-700">New{r.note && <span className="block text-[10px] text-[var(--muted)]">{r.note}</span>}</span>
+                            : r.status === "saved" ? <span>{r.note}</span>
                             : <span className="text-red-700">{r.errors.join("; ")}</span>}
                         </td>
                         <td className="whitespace-nowrap px-2 py-1.5">{r.date}</td>
-                        <td className="px-2 py-1.5">{r.vendor}{r.new_vendor && r.status === "new" && <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">new vendor</span>}</td>
+                        <td className="px-2 py-1.5">
+                          {r.shop}{r.new_vendor && r.status === "new" && <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">new shop</span>}
+                          {r.typed_shop && norm(r.typed_shop) !== norm(r.shop) && <span className="block text-[10px] text-[var(--muted)]">typed &ldquo;{r.typed_shop}&rdquo;</span>}
+                        </td>
                         <td className="px-2 py-1.5">{r.invoice_no ?? ""}</td>
-                        <td className="px-2 py-1.5">{r.description}</td>
-                        <td className="px-2 py-1.5">{r.account}</td>
+                        <td className="px-2 py-1.5">{r.category}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{r.amount}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.discount !== "0.00" ? r.discount : ""}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{r.gst}</td>
-                        <td className="px-2 py-1.5">{r.claimable ? "Y" : "N"}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.total}</td>
+                        <td className="px-2 py-1.5">{r.claimable ? "Yes" : "No"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -102,7 +144,7 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
                 <button type="button" className={primary} disabled={pending || counts.error > 0 || !preview.bills} onClick={save}>
                   {pending ? "Saving…" : `Save ${preview.bills} bill${preview.bills === 1 ? "" : "s"}`}
                 </button>
-                {counts.error > 0 && <span className="text-sm text-[var(--muted)]">Fix the rows in red in the sheet and upload it again.</span>}
+                {counts.error > 0 && <span className="text-sm text-[var(--muted)]">Pick the shops above; fix any other rows in red in the sheet and upload it again.</span>}
                 {counts.error === 0 && !preview.bills && <span className="text-sm text-[var(--muted)]">Nothing new to save.</span>}
               </div>
             </div>

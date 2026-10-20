@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import type { Session } from "@/server/session";
-import { expenseFormData } from "@/server/expense-data";
-import { SHEET_COLUMNS, type Lookups, type RawRow } from "@/lib/bill-import";
+import { expenseFormData, type ExpenseFormData } from "@/server/expense-data";
+import { CATEGORY_CODES, HEADER_ALIASES, SHEET_COLUMNS, type Lookups, type RawRow } from "@/lib/bill-import";
 
 /** Ids of the bills on a project: headed to it, or with a line charged to it. */
 async function projectBillIds(s: Session, projectId: string) {
@@ -13,81 +13,96 @@ async function projectBillIds(s: Session, projectId: string) {
   return new Set([...(byHead ?? []).map((r) => r.id as string), ...(byLine ?? []).map((r) => r.transaction_id as string)]);
 }
 
+/** The categories a sheet row can name, in the order the template lists them. */
+function categories(form: ExpenseFormData) {
+  return CATEGORY_CODES.map((c) => form.accounts.find((a) => a.code === c)).filter((a): a is ExpenseFormData["accounts"][number] => Boolean(a));
+}
+
 /** What an uploaded sheet is checked against. */
 export async function billLookups(s: Session, projectId: string): Promise<Lookups> {
-  const [form, ids, { data: saved }, { data: lines }] = await Promise.all([
+  const [form, { data: saved }, { data: lines }] = await Promise.all([
     expenseFormData(s),
-    projectBillIds(s, projectId),
     s.supabase.from("transactions").select("id, contact_id, tax_invoice_no, number").eq("type", "bill").is("voided_at", null).not("tax_invoice_no", "is", null),
-    s.supabase.from("transaction_lines").select("account_id, amount, description, transactions!inner(contact_id, date, number, type, voided_at, project_id)")
+    s.supabase.from("transaction_lines").select("account_id, amount, transactions!inner(contact_id, date, number, type, voided_at, project_id)")
       .eq("transactions.type", "bill").is("transactions.voided_at", null).eq("transactions.project_id", projectId),
   ]);
   return {
     vendors: form.vendors.map((v) => ({ id: v.id, name: v.name, tin: v.tin, gst_registered: v.gst_registered })),
-    accounts: form.accounts.map((a) => ({ id: a.id, code: a.code, name: a.name })),
-    projectBillIds: ids,
+    accounts: categories(form).map((a) => ({ id: a.id, code: a.code, name: a.name })),
     saved: (saved ?? []).map((b) => ({ id: b.id, contact_id: b.contact_id as string, tax_invoice_no: b.tax_invoice_no as string, number: b.number })),
-    savedLines: ((lines ?? []) as unknown as { account_id: string; amount: number; description: string | null; transactions: { contact_id: string; date: string; number: string | null } }[])
-      .map((l) => ({ contact_id: l.transactions.contact_id, date: l.transactions.date, account_id: l.account_id, amount: String(l.amount), description: l.description, number: l.transactions.number })),
+    savedLines: ((lines ?? []) as unknown as { account_id: string; amount: number; transactions: { contact_id: string; date: string; number: string | null } }[])
+      .map((l) => ({ contact_id: l.transactions.contact_id, date: l.transactions.date, account_id: l.account_id, amount: String(l.amount), number: l.transactions.number })),
   };
 }
 
-type BillLine = { transaction_id: string; description: string | null; amount: number; tax_amount: number; gst_claimable: boolean; accounts: { code: string } | null;
-  transactions: { date: string; due_date: string | null; supplier_tin: string | null; tax_invoice_no: string | null; tax_invoice_date: string | null; reference: string | null; contacts: { name: string } | null } };
+type BillLine = { amount: number; tax_amount: number; accounts: { name: string } | null;
+  transactions: { date: string; tax_invoice_no: string | null; contacts: { name: string } | null } };
 
-/** The workbook: the Bills sheet (blank, or this project's bills), how to fill it, and the accounts and vendors to pick from. */
+/** The workbook: the Bills sheet (blank, or this project's bills), how to fill it, and the categories and shops to copy from. */
 export async function billWorkbook(s: Session, projectId: string, withBills: boolean) {
   const [form, { data: project }] = await Promise.all([
     expenseFormData(s),
     s.supabase.from("projects").select("code, name").eq("id", projectId).maybeSingle(),
   ]);
+  const cats = categories(form);
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Bills");
-  ws.columns = SHEET_COLUMNS.map(([key, header]) => ({ key, header, width: key === "description" ? 36 : key === "vendor" ? 26 : 18 }));
+  ws.columns = SHEET_COLUMNS.map(([key, header]) => ({ key, header, width: key === "shop" ? 30 : key === "category" ? 22 : 16 }));
   ws.getRow(1).font = { bold: true };
   ws.views = [{ state: "frozen", ySplit: 1 }];
   if (withBills) {
     const ids = [...(await projectBillIds(s, projectId))];
     if (ids.length) {
       const { data } = await s.supabase.from("transaction_lines")
-        .select("transaction_id, description, amount, tax_amount, gst_claimable, accounts(code), transactions!inner(date, due_date, supplier_tin, tax_invoice_no, tax_invoice_date, reference, contacts(name))")
+        .select("amount, tax_amount, accounts(name), transactions!inner(date, tax_invoice_no, contacts(name))")
         .in("transaction_id", ids).order("line_no");
       const lines = ((data ?? []) as unknown as BillLine[]).sort((a, b) => a.transactions.date.localeCompare(b.transactions.date));
       for (const l of lines) {
         ws.addRow({
-          id: l.transaction_id, date: l.transactions.date, due_date: l.transactions.due_date ?? "", vendor: l.transactions.contacts?.name ?? "",
-          vendor_tin: l.transactions.supplier_tin ?? "", invoice_no: l.transactions.tax_invoice_no ?? "", invoice_date: l.transactions.tax_invoice_date ?? "",
-          description: l.description ?? "", account: l.accounts?.code ?? "", amount: Number(l.amount), gst: Number(l.tax_amount),
-          claimable: l.gst_claimable ? "Y" : "N", reference: l.transactions.reference ?? "",
+          date: l.transactions.date, shop: l.transactions.contacts?.name ?? "", invoice_no: l.transactions.tax_invoice_no ?? "",
+          category: l.accounts?.name ?? "", amount: Number(l.amount), discount: 0, gst: Number(l.tax_amount),
+          total: Number(l.amount) + Number(l.tax_amount),
         });
       }
     }
   }
-  for (const k of ["amount", "gst"]) ws.getColumn(k).numFmt = "#,##0.00";
+  for (const k of ["amount", "discount", "gst", "total"]) ws.getColumn(k).numFmt = "#,##0.00";
+  // a drop-down of the categories on every row below the heading
+  const catCol = ws.getColumn("category").letter;
+  // on the sheet, not the cells, so the empty rows stay empty and added rows land under the heading
+  // (exceljs has this at runtime; its typings leave it out)
+  const validations = (ws as unknown as { dataValidations: { add(address: string, v: ExcelJS.DataValidation): void } }).dataValidations;
+  for (let r = 2; r <= 1000; r++) {
+    validations.add(`${catCol}${r}`, {
+      type: "list", allowBlank: true, formulae: [`Categories!$A$2:$A$${cats.length + 1}`],
+      showErrorMessage: true, errorTitle: "Category", error: "Pick a category from the list (see the Categories sheet).",
+    });
+  }
 
   const help = wb.addWorksheet("How to fill");
   help.columns = [{ width: 110 }];
   for (const line of [
     `Bills for ${project?.code ?? ""} ${project?.name ?? ""}`,
     "",
-    "One row per bill line. Rows with the same vendor and supplier invoice no. become one bill with several lines.",
-    "ID: leave blank for new bills. Rows with an ID were downloaded from the app and are already saved — they are skipped on upload.",
-    "Dates: YYYY-MM-DD (2026-09-01) or day/month/year (1/9/2026).",
-    "Vendor: the name as in Vendors (see the Vendors sheet), or a new name — new vendors are added and marked for review.",
-    "Account code: from the Accounts sheet (5000 Materials, 5010 Subcontractors …).",
-    "Amount before GST and GST: numbers. GST is the supplier's own figure on their invoice.",
-    "GST claimable: Y only with the vendor's TIN, the supplier invoice no., and a GST-registered vendor; otherwise N (the GST becomes cost).",
-    "A bill already saved (same vendor and invoice no.) is recognised and skipped, so you can upload the same sheet again after adding rows.",
+    "One row per receipt. Rows with the same shop and invoice no. become one bill with several lines.",
+    "Date: YYYY-MM-DD (2026-09-01) or day/month/year (1/9/2026).",
+    "Shop: the name as on the Shops sheet. A name not on file is held on upload so you can pick the right shop (a spelling slip) or add it as new.",
+    "Invoice no.: the number on the shop's receipt. Leave blank if there is none, but GST is only claimed back with it.",
+    "Category: copy one from the Categories sheet (or pick from the drop-down); the account code is chosen for you. Blank means Materials.",
+    "Amount: before discount and GST. Discount: blank if none. GST: as printed on the receipt.",
+    "Total: as printed on the receipt; it is checked against amount − discount + GST. Blank to skip the check.",
+    "GST is claimed back when the shop is GST-registered with a TIN on file and the row has an invoice no.; otherwise it is added to cost.",
+    "Rows already saved (same shop and invoice no.) are recognised and skipped, so you can upload the same sheet again after adding rows.",
   ]) help.addRow([line]);
   help.getRow(1).font = { bold: true, size: 13 };
 
-  const acc = wb.addWorksheet("Accounts");
-  acc.columns = [{ header: "Code", key: "code", width: 10 }, { header: "Account", key: "name", width: 40 }];
-  acc.getRow(1).font = { bold: true };
-  for (const a of form.accounts) acc.addRow({ code: a.code, name: a.name });
+  const cat = wb.addWorksheet("Categories");
+  cat.columns = [{ header: "Category", key: "name", width: 26 }, { header: "Account code (set for you)", key: "code", width: 26 }];
+  cat.getRow(1).font = { bold: true };
+  for (const a of cats) cat.addRow({ name: a.name, code: a.code });
 
-  const ven = wb.addWorksheet("Vendors");
-  ven.columns = [{ header: "Vendor", key: "name", width: 36 }, { header: "TIN", key: "tin", width: 20 }, { header: "GST registered", key: "gst", width: 16 }];
+  const ven = wb.addWorksheet("Shops");
+  ven.columns = [{ header: "Shop", key: "name", width: 36 }, { header: "TIN", key: "tin", width: 20 }, { header: "GST registered", key: "gst", width: 16 }];
   ven.getRow(1).font = { bold: true };
   for (const v of form.vendors) ven.addRow({ name: v.name, tin: v.tin ?? "", gst: v.gst_registered ? "Yes" : "No" });
 
@@ -125,7 +140,10 @@ export async function readBillSheet(file: File): Promise<RawRow[]> {
   const header = Array.from(ws.getRow(1).values as ExcelJS.CellValue[], (v) => cellText(v ?? null).toLowerCase());
   const colOf = new Map<string, number>();
   for (const [key, label] of SHEET_COLUMNS) {
-    const i = header.findIndex((h) => h === label.toLowerCase() || h.startsWith(label.toLowerCase().split(" (")[0]));
+    const names = [label.toLowerCase().split(" (")[0], ...(HEADER_ALIASES[key] ?? [])];
+    // the exact heading first, then one starting with it ("Date (YYYY-MM-DD)"), then the other names it goes by
+    let i = header.findIndex((h, n) => n > 0 && h === label.toLowerCase());
+    for (const name of names) if (i <= 0) i = header.findIndex((h, n) => n > 0 && (h === name || h.startsWith(`${name} (`)));
     if (i > 0) colOf.set(key, i);
   }
   const rows: RawRow[] = [];
