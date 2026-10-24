@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { HELP, guideMarkdown, helpFor } from "@/lib/help";
-import { NAV } from "@/lib/nav";
+import { navPages } from "@/lib/nav";
 
 /** The guide covers every page on the menu, points only at real pages, and docs/USER_GUIDE.md matches it. */
 const APP = join(__dirname, "..", "..", "src", "app");
@@ -16,7 +16,7 @@ const pages = walk(APP).filter((f) => /[/\\]page\.tsx$/.test(f))
 
 describe("user guide", () => {
   it("every page on the menu has a guide entry", () => {
-    const missing = NAV.flatMap((g) => g.items).map((i) => i.href).filter((h) => !helpFor(h));
+    const missing = navPages().map((i) => i.href).filter((h) => !helpFor(h));
     expect(missing).toEqual([]);
   });
 
@@ -28,7 +28,7 @@ describe("user guide", () => {
   });
 
   it("no old screen is on the menu", () => {
-    expect(NAV.flatMap((g) => g.items).filter((i) => /\(old\)/.test(i.label))).toEqual([]);
+    expect(navPages().filter((i) => /\(old\)/.test(i.label))).toEqual([]);
   });
 
   it("docs/USER_GUIDE.md is the same guide (UPDATE_GUIDE=1 rewrites it)", () => {

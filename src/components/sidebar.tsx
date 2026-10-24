@@ -3,11 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import type { NavGroup, NavItem } from "@/lib/nav";
-
-function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
-}
+import { placeOf, type NavGroup, type NavItem } from "@/lib/nav";
 
 /**
  * A tick of feedback on the item just clicked. These pages are rendered on
@@ -33,6 +29,7 @@ export function Sidebar({
   quickActions: NavItem[];
 }) {
   const pathname = usePathname();
+  const here = placeOf(groups, pathname)?.item;
 
   // groups the user has opened or closed; any other group is open when the page is in it
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -61,7 +58,7 @@ export function Sidebar({
 
       <nav className="flex flex-col gap-0.5">
         {groups.map((g) => {
-          const hasActive = g.items.some((i) => isActive(pathname, i.href));
+          const hasActive = g.items.some((i) => i === here);
           const expanded = open[g.group] ?? (Boolean(g.defaultOpen) || hasActive);
           return (
             <div key={g.group}>
@@ -88,9 +85,8 @@ export function Sidebar({
               {expanded && (
                 <ul className="mb-1 space-y-0.5 pl-1">
                   {g.items.map((item) => {
-                    // the closest match wins: /accounting/ledger is not also /accounting
-                    const active = isActive(pathname, item.href) &&
-                      !g.items.some((o) => o.href.length > item.href.length && isActive(pathname, o.href));
+                    // lit on any of its tabs' pages too
+                    const active = item === here;
                     return (
                       <li key={item.href}>
                         {/* the default prefetch stops at the loading screen: a full one would

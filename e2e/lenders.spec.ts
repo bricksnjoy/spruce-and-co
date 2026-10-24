@@ -17,9 +17,10 @@ test("lenders: add one, record a loan from their page, add another from the proj
   const project = sql(`insert into projects (code, name, contract_value, status, start_date) values ('LN-${tag}', 'Villa ${tag}', 100000, 'in_progress', current_date) returning id`);
   await signIn(page, "admin");
 
-  // the menu has Lenders; New lender adds one and opens their page
+  // Lenders is a tab of Partners & financing; New lender adds one and opens their page
   await page.goto("/");
-  await page.getByRole("link", { name: "Lenders", exact: true }).first().click();
+  await page.locator("aside").getByRole("link", { name: "Partners & financing" }).click();
+  await page.getByRole("navigation", { name: "Partners & financing" }).getByRole("link", { name: "Lenders", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Lenders", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: "New lender" }).click();
   await expect(page.getByLabel("Lender", { exact: true })).toBeChecked();

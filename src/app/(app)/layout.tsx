@@ -12,6 +12,8 @@ import { BookGuard } from "@/components/book-guard";
 import type { Book } from "@/lib/books";
 import { NewMenu } from "@/components/new-menu";
 import { PageHelp } from "@/components/page-help";
+import { SectionTabs } from "@/components/section-tabs";
+import Link from "next/link";
 
 export default async function AppLayout({
   children,
@@ -76,6 +78,10 @@ export default async function AppLayout({
           </div>
           <div className="ml-auto flex items-center gap-3">
             <BookSwitch book={book} />
+            <Link href="/help" aria-label="Help" title="Help: how to use each page"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-sm font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--text)]">
+              ?
+            </Link>
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium leading-tight">{name}</p>
               <p className="text-xs text-[var(--muted)]">
@@ -101,7 +107,7 @@ export default async function AppLayout({
             <strong>Test book.</strong> Nothing here is real or reaches the Live books; document numbers start with TEST-.
           </div>
         )}
-        <main className="flex-1 p-4 sm:p-6"><BookGuard book={book}><PageHelp />{children}</BookGuard></main>
+        <main className="flex-1 p-4 sm:p-6"><BookGuard book={book}><SectionTabs groups={groups} /><PageHelp />{children}</BookGuard></main>
       </div>
     </div>
   );
