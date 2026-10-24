@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, Stat, Badge, Table, Th, Td, Empty } from "@/components/ui";
 import { date, today as todayIso } from "@/lib/format";
 import { AddTaskButton, DoneButton } from "./task-controls";
+import { BID_STATUS_LABEL, OPEN_BID, isoToLocal, when, type BidStatus } from "@/lib/bids";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ const DAY = 86400000;
 
 export default async function TasksPage() {
   const supabase = await createClient();
-  const [{ data: tasks }, { data: milestones }, { data: projects }, { data: staff }] = await Promise.all([
+  const [{ data: tasks }, { data: milestones }, { data: projects }, { data: staff }, { data: bids }] = await Promise.all([
     supabase.from("project_tasks")
       .select("*, projects(id, code, name), profiles:assignee_id(full_name)")
       .order("due_date", { ascending: true, nullsFirst: false }),
@@ -19,6 +20,7 @@ export default async function TasksPage() {
       .order("planned_date", { ascending: true, nullsFirst: false }),
     supabase.from("projects").select("id, code, name, status").is("archived_at", null).order("code", { ascending: false }),
     supabase.from("profiles").select("id, full_name, email").eq("is_active", true).order("full_name"),
+    supabase.from("bids").select("id, name, company, status, prebid_meeting_at, prebid_attendance, submission_due_at").in("status", OPEN_BID),
   ]);
   // finished and dropped jobs go to the bottom of the list
   const closed = new Set(["completed", "cancelled"]);
@@ -41,18 +43,32 @@ export default async function TasksPage() {
 
   // simple 14-day calendar strip
   const days = Array.from({ length: 14 }, (_, i) => new Date(start.getTime() + i * DAY));
-  const byDay = new Map<string, { tasks: number; milestones: number }>();
+  const byDay = new Map<string, { tasks: number; milestones: number; bids: number }>();
   for (const t of open) {
     if (!t.due_date) continue;
     const k = String(t.due_date).slice(0, 10);
-    const r = byDay.get(k) ?? { tasks: 0, milestones: 0 };
+    const r = byDay.get(k) ?? { tasks: 0, milestones: 0, bids: 0 };
     r.tasks += 1; byDay.set(k, r);
   }
   for (const m of milestones ?? []) {
     if (!m.planned_date || m.status === "completed") continue;
     const k = String(m.planned_date).slice(0, 10);
-    const r = byDay.get(k) ?? { tasks: 0, milestones: 0 };
+    const r = byDay.get(k) ?? { tasks: 0, milestones: 0, bids: 0 };
     r.milestones += 1; byDay.set(k, r);
+  }
+  // open bids' pre-bid meetings and submission deadlines, on the Maldives date they fall on
+  const bidDates = (bids ?? []).flatMap((b) => [
+    b.prebid_meeting_at && { id: b.id, name: b.name, company: b.company, status: b.status as BidStatus, at: b.prebid_meeting_at as string,
+      what: `Pre-bid meeting${b.prebid_attendance ? ` (${b.prebid_attendance})` : ""}`, compulsory: b.prebid_attendance === "compulsory" },
+    b.submission_due_at && { id: b.id, name: b.name, company: b.company, status: b.status as BidStatus, at: b.submission_due_at as string,
+      what: "Submission deadline", compulsory: true },
+  ].filter((x): x is NonNullable<typeof x> => Boolean(x)))
+    .filter((d) => isoToLocal(d.at).slice(0, 10) >= today)
+    .sort((a, b) => a.at.localeCompare(b.at));
+  for (const d of bidDates) {
+    const k = isoToLocal(d.at).slice(0, 10);
+    const r = byDay.get(k) ?? { tasks: 0, milestones: 0, bids: 0 };
+    r.bids += 1; byDay.set(k, r);
   }
 
   return (
@@ -67,7 +83,7 @@ export default async function TasksPage() {
       </div>
 
       <Card className="mb-4">
-        <CardHeader title="Next 14 days" subtitle="Tasks and milestones falling due" />
+        <CardHeader title="Next 14 days" subtitle="Tasks, milestones and bid dates falling due" />
         <div className="flex gap-1.5 overflow-x-auto px-5 py-4">
           {days.map((d) => {
             const k = iso(d);
@@ -87,6 +103,7 @@ export default async function TasksPage() {
                 <div className="mt-1 flex justify-center gap-1">
                   {r?.tasks ? <span className="rounded bg-[var(--brand)] px-1 text-[10px] font-medium text-white">{r.tasks}</span> : null}
                   {r?.milestones ? <span className="rounded bg-[var(--accent)] px-1 text-[10px] font-medium text-white">{r.milestones}</span> : null}
+                  {r?.bids ? <span className="rounded bg-amber-500 px-1 text-[10px] font-medium text-white">{r.bids}</span> : null}
                 </div>
               </div>
             );
@@ -94,9 +111,33 @@ export default async function TasksPage() {
         </div>
         <p className="border-t border-[var(--border)] px-5 py-2 text-xs text-[var(--muted)]">
           <span className="inline-block h-2 w-2 rounded-sm bg-[var(--brand)]" /> tasks ·{" "}
-          <span className="inline-block h-2 w-2 rounded-sm bg-[var(--accent)]" /> milestones
+          <span className="inline-block h-2 w-2 rounded-sm bg-[var(--accent)]" /> milestones ·{" "}
+          <span className="inline-block h-2 w-2 rounded-sm bg-amber-500" /> bid dates
         </p>
       </Card>
+
+      {bidDates.length > 0 && (
+        <Card className="mb-4">
+          <CardHeader title="Bid dates" subtitle="Pre-bid meetings and submission deadlines of open bids"
+            action={<Link href="/bids" className="text-xs font-medium text-[var(--brand)] hover:underline">Bids →</Link>} />
+          <Table>
+            <thead><tr><Th>When</Th><Th>What</Th><Th>Bid</Th><Th>Stage</Th></tr></thead>
+            <tbody>
+              {bidDates.map((d) => (
+                <tr key={`${d.id}-${d.what}`} className="row-link hover:bg-[var(--hover)]">
+                  <Td className="whitespace-nowrap text-xs">{when(d.at)}</Td>
+                  <Td className={`text-xs ${d.compulsory ? "font-medium" : ""}`}>{d.what}</Td>
+                  <Td>
+                    <Link href={`/bids/${d.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{d.name}</Link>
+                    {d.company && <span className="block text-xs text-[var(--muted)]">{d.company}</span>}
+                  </Td>
+                  <Td className="text-xs">{BID_STATUS_LABEL[d.status as BidStatus]}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
 
       <Card>
         <CardHeader title="All open tasks" />
