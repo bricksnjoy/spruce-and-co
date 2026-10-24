@@ -423,6 +423,24 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Choose who, write the message, send. The history lists what went out.
 
+### Bids
+
+`/bids` — Tenders the company is chasing, from registering to won or lost (Live only).
+
+1. "+ New bid": the bid's name, the company that put it out, the Gazette link, the pre-bid meeting (compulsory or optional) and the submission deadline.
+2. The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.
+3. The meeting and deadline show on Tasks & Calendar.
+
+> When Telegram is set up, the company group is told about each new bid, each stage change, and any change to its dates.
+
+### Bid
+
+`/bids/[id]` — One bid: its details, its stage and its history.
+
+1. Press a stage to move the bid along; a note typed first goes with it, to the history and the Telegram group.
+2. "Add a note" records something on the history only.
+3. "Edit" changes the details and dates.
+
 ### Quotations
 
 `/quotations` — Price the work, win it, then invoice it (Live only for now).

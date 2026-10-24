@@ -396,6 +396,21 @@ export const HELP: Help[] = [
   // ── Other ──
   { path: "/tasks", area: "Other", title: "Tasks & calendar", purpose: "What is due across every project.", steps: ["Add a task with a project and due date; tick it when done."] },
   { path: "/messages", area: "Other", title: "Message center", purpose: "Send an SMS or email to anyone, and see what was sent.", steps: ["Choose who, write the message, send. The history lists what went out."] },
+  {
+    path: "/bids", area: "Other", title: "Bids",
+    purpose: "Tenders the company is chasing, from registering to won or lost (Live only).",
+    steps: [
+      "\"+ New bid\": the bid's name, the company that put it out, the Gazette link, the pre-bid meeting (compulsory or optional) and the submission deadline.",
+      "The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.",
+      "The meeting and deadline show on Tasks & Calendar.",
+    ],
+    tips: ["When Telegram is set up, the company group is told about each new bid, each stage change, and any change to its dates."],
+  },
+  {
+    path: "/bids/[id]", area: "Other", title: "Bid",
+    purpose: "One bid: its details, its stage and its history.",
+    steps: ["Press a stage to move the bid along; a note typed first goes with it, to the history and the Telegram group.", "\"Add a note\" records something on the history only.", "\"Edit\" changes the details and dates."],
+  },
   { path: "/quotations", area: "Other", title: "Quotations", purpose: "Price the work, win it, then invoice it (Live only for now).", steps: ["\"New quotation\", fill in the lines, save; print it with your template and signature.", "Mark it won, then \"Convert to invoice\" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.", "Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices."] },
   { path: "/estimator", area: "Other", title: "Cabinet estimator", purpose: "Price kitchen and cabinet jobs from wall measurements.", steps: ["Enter the walls and units; the cut list, drawings and price follow."] },
   {
