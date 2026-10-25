@@ -45,7 +45,7 @@ export async function recordFinancing(_prev: unknown, fd: FormData): Promise<Res
 }
 
 /**
- * Finance a project from company capital (admin only): the amount is shared
+ * Finance a project from the Capital Pool (admin only): the amount is shared
  * among the directors' released profit shares and the company's own money by
  * what each has, and the directors' parts become their Capital Pool money on
  * the project (migration 030).
@@ -53,7 +53,7 @@ export async function recordFinancing(_prev: unknown, fd: FormData): Promise<Res
 export async function financeFromCompanyCapital(_prev: unknown, fd: FormData): Promise<Result & { parts?: { name: string; amount: number }[] }> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
-  if (w.s.role !== "admin") return { error: "Only an admin can finance from company capital." };
+  if (w.s.role !== "admin") return { error: "Only an admin can finance from the Capital Pool." };
   const project = text(fd, "project_id"), bank = text(fd, "bank_id"), date = text(fd, "date");
   if (!isId(project)) return { error: "Choose the project." };
   if (!isId(bank)) return { error: "Choose the account it goes through." };

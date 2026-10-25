@@ -176,7 +176,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
     s.supabase.from("transactions").select("id, date, number, type, contact_id, total_amount, reference, voided_at")
       .eq("project_id", p.id).in("type", ["loan_receipt", "capital_contribution"]).order("date"),
     s.supabase.rpc("company_funding", { p_project: p.id }),
-    // only an admin finances from company capital, so only an admin is shown what it holds
+    // only an admin finances from the Capital Pool, so only an admin is shown what it holds
     s.role === "admin" ? s.supabase.rpc("company_capital_available") : Promise.resolve({ data: null }),
   ]);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
@@ -202,7 +202,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
               ))}
               {own > 0n && (
                 <tr>
-                  <Td>Company</Td><Td>Company capital</Td><Td right>{money(laariToNumber(own))}</Td><Td right>{pct(Number((own * 1000000n) / total) / 10000, 2)}</Td>
+                  <Td>Company</Td><Td>Capital Pool (company&apos;s own)</Td><Td right>{money(laariToNumber(own))}</Td><Td right>{pct(Number((own * 1000000n) / total) / 10000, 2)}</Td>
                   <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">its share stays as profit</Td>
                 </tr>
               )}
@@ -214,7 +214,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
       </Card>
       {writer && !p.completed_at && (
         <Card>
-          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full. Company capital uses the company's own money and the profit shares directors have left in the company." />
+          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full. Capital Pool (admin) takes the company's own money and everything members have untaken, each in proportion to what they have." />
           <FinancingForm projectId={p.id} banks={banks ?? []} initialLender={lender}
             lenders={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("lender"))}
             partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))}

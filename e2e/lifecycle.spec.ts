@@ -94,7 +94,7 @@ test("a project from customer to payouts, through the screens", async ({ page })
 
   // 6. financing: a Capital Pool contribution and an external loan
   await page.goto(`/projects/${projectId}?tab=financing`);
-  await pick(page, "From", "Capital Pool member");
+  await pick(page, "From", "One member, new money");
   await pick(page, "Member", "Mujahid");
   await pick(page, "Paid into", /1010/);
   await page.getByLabel("Amount (MVR)").fill("200000");

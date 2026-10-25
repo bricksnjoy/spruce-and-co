@@ -60,7 +60,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 2. Variations: raise a variation with its details and amount; only approved ones change the contract value.
 3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download bills (Excel)", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". The sheet comes with the bills already added (blank when there are none); bills already saved are recognised and skipped.
 4. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
-5. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing "External lender" shows "+ New lender" to add one without leaving the page. "Company capital" (admin) puts in the company's own money and the profit shares directors have left in the company, shared by what each has; the most it can be is shown.
+5. Financing: record money for the project and see each source's share of the financing. "Capital Pool" (admin) takes the amount from the company's own money and from everything each member has untaken (released principal, returns and profit shares), each in proportion to what they have — e.g. 100,000 from the company 100,000, Muaz 30,000, Mushahid 20,000 and Mariyam 10,000 (160,000 in all) takes 62,500 from the company, 18,750 from Muaz, 12,500 from Mushahid and 6,250 from Mariyam; the table shows each part as you type. "One member, new money" records fresh money from one member; "External lender" records a loan and shows "+ New lender" to add one without leaving the page.
 6. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
 7. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
 8. Transactions: every document posted to the project.
@@ -265,7 +265,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Tiles: principal still owed, returns and shares owed, ready to pay, and blocked.
 2. Payouts awaiting approval: an admin presses "Approve and pay" (or "Turn down…" with a reason).
-3. People: what each person is owed — principal, financing return and profit share kept apart. Click a name for their statement.
+3. Capital Pool members and Lenders are listed in separate tables: what each is owed — principal, financing return and profit share kept apart — and, for members, what is ready to take (released, and usable to finance another project). Click a name for their statement.
 4. Projects: financing, what is owed and whether payouts are released (and why not).
 
 ### Lenders

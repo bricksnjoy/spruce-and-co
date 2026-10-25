@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { assertHealthy, freshDb, one, q } from "./harness";
 import { balance, contact, contactId, doc, project } from "./books";
 
-/** Financing a project from company capital (migration 030). */
+/** Financing a project from the Capital Pool: members' untaken money and the company's (migration 030). */
 let db: PGlite;
 const ADMIN = "00000000-0000-0000-0000-00000000000a";
 const MANAGER = "00000000-0000-0000-0000-00000000000b";
@@ -79,6 +79,31 @@ describe("financing from company capital", () => {
     const ret = await q<{ name: string; amount: string }>(db,
       `select c.name, s.amount from split_profit($1, 100000) s join contacts c on c.id = s.contact_id where s.component = 'financing_return' order by s.amount desc`, [q2]);
     expect(ret.map((r) => [r.name, Number(r.amount)])).toEqual([["Mujahid", 1250], ["Muaz", 500], ["Mushahid", 500], ["Mariyam Zahir", 250]]);
+  });
+
+  it("counts all a member has untaken — principal and financing return as well as profit share — and pays each back in", async () => {
+    // Mariyam financed A-1 with 40,000; once it is completed and paid, her principal and return are hers to take
+    const p = await project(db, "A-1", client, 400000, { start: "2026-01-01" });
+    const mariyam = await contactId(db, "Mariyam Zahir");
+    await doc(db, { type: "capital_contribution", date: "2026-01-05", contact: mariyam, project: p, bank: "1010", total: 40000 });
+    const inv = await doc(db, { type: "invoice", date: "2026-03-01", dueDate: "2026-12-31", contact: client, project: p, lines: [{ account: "4000", amount: 400000 }] });
+    await doc(db, { type: "bill", date: "2026-02-01", contact: vendor, project: p, lines: [{ account: "5000", amount: 300000 }] });
+    await db.transaction((tx) => tx.query(`select complete_project($1, '2026-04-30')`, [p]));
+    await doc(db, { type: "customer_payment", date: "2026-05-10", contact: client, bank: "1010", total: 400000, apply: [{ to: inv, amount: 400000 }] });
+
+    const owed = async () => Number((await one<{ o: string }>(db, `select coalesce(sum(outstanding), 0) o from partner_statement_v where contact_id = $1`, [mariyam])).o);
+    const before = await owed();
+    expect(before).toBeGreaterThan(40000); // principal 40,000, her return and her profit share
+    expect((await available()).find(([n]) => n === "Mariyam Zahir")?.[1]).toBe(before);
+
+    const q2 = await project(db, "Q-3", client, 300000, { start: "2026-06-01" });
+    const all = (await available()).reduce((t, [, v]) => t + Number(v), 0);
+    const parts = await finance(q2, all); // everything available: each puts in all they have
+    expect(parts.find((x) => x.name === "Mariyam Zahir")?.amount).toBe(before);
+    expect(await owed()).toBe(before); // what she was owed on A-1 is paid out; the same is now her principal in Q-3
+    const principal = await q<{ project_id: string; outstanding: string }>(db,
+      `select project_id, outstanding from partner_statement_v where contact_id = $1 and component = 'principal' and outstanding <> 0`, [mariyam]);
+    expect(principal.map((r) => [r.project_id, Number(r.outstanding)])).toEqual([[q2, before]]);
   });
 
   it("refuses more than is available, and anyone but an admin", async () => {
