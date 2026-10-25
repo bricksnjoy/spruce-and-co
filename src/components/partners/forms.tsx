@@ -117,7 +117,7 @@ function CompanyCapitalForm({ projectId, banks, capital }: {
   return (
     <form onSubmit={submit(action)} className="space-y-4 px-5 py-4">
       <input type="hidden" name="project_id" value={projectId} />
-      <p className="text-sm">From the <strong>Capital Pool</strong>: the company&apos;s own money and everything each member has untaken (principal, returns and profit shares released to them), each putting in their share.</p>
+      <p className="text-sm">From the <strong>Capital Pool</strong>: the company&apos;s own money and each member&apos;s released financing returns and profit shares, each putting in their share. Members&apos; principal is not taken: it is repaid to them.</p>
       <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
         <table className="w-full text-sm">
           <thead className="bg-[var(--hover)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -126,7 +126,7 @@ function CompanyCapitalForm({ projectId, banks, capital }: {
           <tbody className="divide-y divide-[var(--border)] tabular-nums">
             {parts.map((p) => (
               <tr key={p.name}>
-                <td className="px-3 py-2">{p.name}{p.name === "Company" && <span className="block text-xs text-[var(--muted)]">bank, cash and payments not yet banked, less what the members are owed</span>}</td>
+                <td className="px-3 py-2">{p.name}{p.name === "Company" && <span className="block text-xs text-[var(--muted)]">bank, cash and payments not yet banked, less everything released to members</span>}</td>
                 <td className="px-3 py-2 text-right">{money(laariToNumber(p.avail))}</td>
                 <td className="px-3 py-2 text-right">{total > 0n ? `${(Number((p.avail * 10000n) / total) / 100).toFixed(2)}%` : "—"}</td>
                 <td className="px-3 py-2 text-right">{p.share > 0n ? money(laariToNumber(p.share)) : "—"}</td>

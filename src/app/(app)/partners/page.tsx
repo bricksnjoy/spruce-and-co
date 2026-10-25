@@ -42,14 +42,16 @@ export default async function PartnersPage() {
   const isPool = new Set((contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner")).map((c) => c.id));
   const pool = personIds.filter((id) => isPool.has(id));
   const lenders = personIds.filter((id) => !isPool.has(id));
-  const readyFor = (id: string) => rows.filter((r) => r.contact_id === id && blocked.get(r.project_id) === false).reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
+  // released to them; a member's principal came from their own pocket and is repaid, so the pool never takes it
+  const readyFor = (id: string, principal: boolean) => rows.filter((r) => r.contact_id === id && blocked.get(r.project_id) === false && (principal || r.component !== "principal"))
+    .reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
 
   const peopleTable = (title: string, subtitle: string, ids: string[], empty: string, company = false) => (
     <Card>
       <CardHeader title={title} subtitle={subtitle} />
       {ids.length === 0 && !company ? <Empty message={empty} /> : (
         <Table>
-          <thead><tr><Th>Name</Th><Th right>Principal</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total owed</Th><Th right>Ready to take</Th></tr></thead>
+          <thead><tr><Th>Name</Th><Th right>Principal</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total owed</Th><Th right>{company ? "Ready to take" : "Ready to pay"}</Th></tr></thead>
           <tbody>
             {ids.map((id) => {
               const p = people.get(id);
@@ -59,13 +61,13 @@ export default async function PartnersPage() {
                   <Td><Link href={`/partners/${id}`} className="font-medium text-[var(--brand)] hover:underline">{names.get(id) ?? "—"}</Link></Td>
                   {COMPONENTS.map((c) => <Td key={c} right>{m(p?.[c].outstanding ?? 0n)}</Td>)}
                   <Td right className="font-semibold">{m(total)}</Td>
-                  <Td right className={readyFor(id) > 0n ? "text-emerald-700" : "text-[var(--muted)]"}>{m(readyFor(id))}</Td>
+                  <Td right className={readyFor(id, !company) > 0n ? "text-emerald-700" : "text-[var(--muted)]"}>{m(readyFor(id, !company))}</Td>
                 </tr>
               );
             })}
             {company && (
               <tr>
-                <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less what members are owed</span></Td>
+                <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less everything released to members (principal included)</span></Td>
                 <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td>
                 <Td right className={companyMoney > 0n ? "text-emerald-700" : "text-[var(--muted)]"}>{m(companyMoney)}</Td>
               </tr>
@@ -75,7 +77,7 @@ export default async function PartnersPage() {
                 <Td>Total</Td>
                 {COMPONENTS.map((c) => <Td key={c} right>{m(ids.reduce((t, id) => t + (people.get(id)?.[c].outstanding ?? 0n), 0n))}</Td>)}
                 <Td right>{m(ids.reduce((t, id) => t + COMPONENTS.reduce((x, c) => x + (people.get(id)?.[c].outstanding ?? 0n), 0n), 0n))}</Td>
-                <Td right>{m(ids.reduce((t, id) => t + readyFor(id), 0n) + (company ? companyMoney : 0n))}</Td>
+                <Td right>{m(ids.reduce((t, id) => t + readyFor(id, !company), 0n) + (company ? companyMoney : 0n))}</Td>
               </tr>
             )}
           </tbody>
@@ -121,7 +123,7 @@ export default async function PartnersPage() {
         </Card>
       )}
 
-      {peopleTable("Capital Pool", "Each member and the company. What each member is owed, each component kept apart (§5); ready to take is what has been released, and with the company's own money it is what the pool can finance a project with.",
+      {peopleTable("Capital Pool", "Each member and the company. What each member is owed, each component kept apart (§5). Ready to take is their released returns and profit shares — principal is repaid to them, not reinvested — and with the company's own money it is what the pool can finance a project with.",
         pool, "No Capital Pool members yet.", true)}
       {peopleTable("Lenders", "External lenders: their loans and returns, kept apart from the Capital Pool", lenders, "No lenders yet. Add one on the Lenders page.")}
 

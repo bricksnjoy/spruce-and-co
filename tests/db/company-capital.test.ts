@@ -92,8 +92,8 @@ describe("financing from company capital", () => {
     expect(ret.map((r) => [r.name, Number(r.amount)])).toEqual([["Mujahid", 1250], ["Muaz", 500], ["Mushahid", 500], ["Mariyam Zahir", 250]]);
   });
 
-  it("counts all a member has untaken — principal and financing return as well as profit share — and pays each back in", async () => {
-    // Mariyam financed A-1 with 40,000; once it is completed and paid, her principal and return are hers to take
+  it("takes a member's returns and profit shares, never their principal, which stays theirs to be repaid", async () => {
+    // Mariyam financed A-1 with 40,000; once it is completed and paid, her principal, return and share are released
     const p = await project(db, "A-1", client, 400000, { start: "2026-01-01" });
     const mariyam = await contactId(db, "Mariyam Zahir");
     await doc(db, { type: "capital_contribution", date: "2026-01-05", contact: mariyam, project: p, bank: "1010", total: 40000 });
@@ -102,19 +102,25 @@ describe("financing from company capital", () => {
     await db.transaction((tx) => tx.query(`select complete_project($1, '2026-04-30')`, [p]));
     await doc(db, { type: "customer_payment", date: "2026-05-10", contact: client, bank: "1010", total: 400000, apply: [{ to: inv, amount: 400000 }] });
 
-    const owed = async () => Number((await one<{ o: string }>(db, `select coalesce(sum(outstanding), 0) o from partner_statement_v where contact_id = $1`, [mariyam])).o);
-    const before = await owed();
-    expect(before).toBeGreaterThan(40000); // principal 40,000, her return and her profit share
-    expect((await available()).find(([n]) => n === "Mariyam Zahir")?.[1]).toBe(before);
+    const owed = async (component?: string) => Number((await one<{ o: string }>(db,
+      `select coalesce(sum(outstanding), 0) o from partner_statement_v where contact_id = $1 and ($2::text is null or component = $2)`, [mariyam, component ?? null])).o);
+    const earnedBack = (await owed()) - 40000; // her return and her profit share
+    expect(await owed("principal")).toBe(40000);
+    expect(earnedBack).toBeGreaterThan(0);
+    const avail = await available();
+    expect(avail.find(([n]) => n === "Mariyam Zahir")?.[1]).toBe(earnedBack);
+    // the company's money is the bank less everything released to members, her principal included
+    const allOwed = Number((await one<{ o: string }>(db, `select sum(outstanding) o from partner_statement_v`)).o);
+    expect(avail.find(([n]) => n === "Company")?.[1]).toBe(await balance(db, "1010") - allOwed);
 
     const q2 = await project(db, "Q-3", client, 300000, { start: "2026-06-01" });
-    const all = (await available()).reduce((t, [, v]) => t + Number(v), 0);
+    const all = avail.reduce((t, [, v]) => t + Number(v), 0);
     const parts = await finance(q2, all); // everything available: each puts in all they have
-    expect(parts.find((x) => x.name === "Mariyam Zahir")?.amount).toBe(before);
-    expect(await owed()).toBe(before); // what she was owed on A-1 is paid out; the same is now her principal in Q-3
+    expect(parts.find((x) => x.name === "Mariyam Zahir")?.amount).toBe(earnedBack);
+    // her principal on A-1 is untouched, still to be repaid; her return and share are now her money in Q-3
     const principal = await q<{ project_id: string; outstanding: string }>(db,
-      `select project_id, outstanding from partner_statement_v where contact_id = $1 and component = 'principal' and outstanding <> 0`, [mariyam]);
-    expect(principal.map((r) => [r.project_id, Number(r.outstanding)])).toEqual([[q2, before]]);
+      `select project_id, outstanding from partner_statement_v where contact_id = $1 and component = 'principal' and outstanding <> 0 order by project_id = $2`, [mariyam, q2]);
+    expect(principal.map((r) => [r.project_id, Number(r.outstanding)])).toEqual([[p, 40000], [q2, earnedBack]]);
   });
 
   it("refuses more than is available, and anyone but an admin", async () => {
