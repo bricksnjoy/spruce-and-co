@@ -87,6 +87,8 @@ export async function saveSalesDoc(_prev: unknown, fd: FormData): Promise<Result
     id: id ?? undefined, type, date, due_date: type === "invoice" ? (due ?? date) : null, contact_id: contact,
     project_id: text(fd, "project_id"), currency, fx_rate: fx, memo: text(fd, "memo"), reference: text(fd, "reference"),
     agr_no: type === "invoice" ? text(fd, "agr_no") : null, po_no: type === "invoice" ? text(fd, "po_no") : null,
+    signatory_id: isId(text(fd, "signatory_id")) ? text(fd, "signatory_id") : null,
+    show_stamp: fd.get("show_stamp") === "on" ? true : fd.get("stamp_chosen") === "1" ? false : null,
     bank_account_id: type === "sales_receipt" ? text(fd, "bank_account_id") : null,
     is_draft: fd.get("draft") === "on", lines,
   };

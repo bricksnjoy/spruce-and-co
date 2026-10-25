@@ -53,4 +53,6 @@ end $$;
 alter table public.transaction_lines drop column if exists unit;
 alter table public.transaction_lines drop column if exists item_no;
 alter table public.transactions drop column if exists po_no;
+alter table public.transactions drop column if exists show_stamp;
+alter table public.transactions drop column if exists signatory_id;
 alter table public.transactions drop column if exists agr_no;

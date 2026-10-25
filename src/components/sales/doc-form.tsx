@@ -9,6 +9,8 @@ import { addDays, money } from "@/lib/format";
 import { laariToNumber, percentOf, qtyTimesRate, toLaari } from "@/lib/money";
 import type { SalesBranding, SalesFormData } from "@/server/sales-data";
 import { SalesSheet } from "./sales-sheet";
+import { SignerPicker } from "@/app/(app)/quotations/quotation-form";
+import { signerFor } from "@/lib/documents";
 import { DueIn } from "@/components/due-in";
 
 import { TITLES, blankLine, type DocType, type DocValues, type LineValue } from "@/lib/sales-doc";
@@ -52,6 +54,8 @@ export function DocForm({ data, values, branding, number = null }: {
         taxName: taxName.get(l.tax_code_id) ?? "",
       };
     });
+  const signer = branding.tail ? signerFor(branding.kit, branding.tail, v.signatory_id || null, v.show_stamp) : branding.signer;
+  const signatoryId = v.signatory_id || branding.tail?.signatory_id || null;
   const projects = v.contact_id ? data.projects.filter((p) => !p.customer_id || p.customer_id === v.contact_id) : data.projects;
 
   const chooseCustomer = (id: string) => {
@@ -192,6 +196,17 @@ export function DocForm({ data, values, branding, number = null }: {
         <textarea id="d-memo" name="memo" rows={2} value={v.memo} onChange={(e) => set("memo", e.target.value)} className={input} />
       </Card>
 
+      {branding.kit.signatories.length > 0 && (
+        <Card className="px-5 py-5">
+          <p className={label}>Signed by</p>
+          <input type="hidden" name="signatory_id" value={v.signatory_id} />
+          {/* a stamp ticked off is kept as "no stamp", not as the template's default */}
+          {v.show_stamp !== null && <input type="hidden" name="stamp_chosen" value="1" />}
+          <SignerPicker kit={branding.kit} signatoryId={signatoryId} showStamp={v.show_stamp ?? branding.tail?.show_stamp ?? false}
+            onSigner={(id) => set("signatory_id", id ?? "")} onStamp={(x) => set("show_stamp", x)} names={{ signer: "signer-choice", stamp: "show_stamp" }} />
+        </Card>
+      )}
+
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : v.id ? "Save changes" : `Save ${TITLES[v.type].toLowerCase()}`}</button>
         {v.type === "invoice" && (
@@ -216,7 +231,7 @@ export function DocForm({ data, values, branding, number = null }: {
                 date={v.date} due={v.type === "invoice" ? (v.due_date || v.date) : null}
                 projectCode={data.projects.find((p) => p.id === v.project_id)?.code ?? null}
                 reference={v.reference || null} agrNo={v.agr_no || null} poNo={v.po_no || null} lines={sheetLines} currency={v.currency}
-                memo={v.memo || null} signer={branding.signer} terms={branding.terms} footer={branding.footer} />
+                memo={v.memo || null} signer={signer} terms={branding.terms} footer={branding.footer} />
             </div>
           </div>
         </aside>

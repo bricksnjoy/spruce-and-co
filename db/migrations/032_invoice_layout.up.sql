@@ -1,6 +1,9 @@
 -- The printed invoice as Spruce & Co send it: the client's agreement and PO numbers in the
 -- header, and each line's own item number (1.0, 1.1, A …) and unit. Headings are lines with no amount.
+-- An invoice also keeps who signs it and whether it is stamped (null: the invoice template's default).
 alter table public.transactions add column if not exists agr_no text;
+alter table public.transactions add column if not exists signatory_id uuid references public.signatories on delete set null;
+alter table public.transactions add column if not exists show_stamp boolean;
 alter table public.transactions add column if not exists po_no text;
 alter table public.transaction_lines add column if not exists item_no text;
 alter table public.transaction_lines add column if not exists unit text;
@@ -26,18 +29,20 @@ begin
       currency = coalesce(p ->> 'currency', 'MVR'), fx_rate = coalesce((p ->> 'fx_rate')::numeric, 1), memo = p ->> 'memo', reference = p ->> 'reference',
       terms_days = (p ->> 'terms_days')::int, supplier_tin = p ->> 'supplier_tin', tax_invoice_no = p ->> 'tax_invoice_no',
       tax_invoice_date = (p ->> 'tax_invoice_date')::date, customs_ref = p ->> 'customs_ref', is_draft = coalesce((p ->> 'is_draft')::boolean, false),
-      agr_no = p ->> 'agr_no', po_no = p ->> 'po_no', updated_at = now()
+      agr_no = p ->> 'agr_no', po_no = p ->> 'po_no', signatory_id = (p ->> 'signatory_id')::uuid, show_stamp = (p ->> 'show_stamp')::boolean,
+      updated_at = now()
     where id = v_id;
     delete from public.applications where from_transaction_id = v_id;
     delete from public.transaction_lines where transaction_id = v_id;
   else
     insert into public.transactions (type, date, number, due_date, contact_id, project_id, employee_id, bank_account_id, total_amount,
-      currency, fx_rate, memo, reference, terms_days, supplier_tin, tax_invoice_no, tax_invoice_date, customs_ref, is_draft, agr_no, po_no)
+      currency, fx_rate, memo, reference, terms_days, supplier_tin, tax_invoice_no, tax_invoice_date, customs_ref, is_draft, agr_no, po_no, signatory_id, show_stamp)
     values (v_type, v_date, coalesce(nullif(p ->> 'number', ''), public.next_doc_number(v_type::text, v_date)),
       (p ->> 'due_date')::date, (p ->> 'contact_id')::uuid, (p ->> 'project_id')::uuid, (p ->> 'employee_id')::uuid,
       (p ->> 'bank_account_id')::uuid, (p ->> 'total_amount')::numeric, coalesce(p ->> 'currency', 'MVR'), coalesce((p ->> 'fx_rate')::numeric, 1),
       p ->> 'memo', p ->> 'reference', (p ->> 'terms_days')::int, p ->> 'supplier_tin', p ->> 'tax_invoice_no',
-      (p ->> 'tax_invoice_date')::date, p ->> 'customs_ref', coalesce((p ->> 'is_draft')::boolean, false), p ->> 'agr_no', p ->> 'po_no')
+      (p ->> 'tax_invoice_date')::date, p ->> 'customs_ref', coalesce((p ->> 'is_draft')::boolean, false), p ->> 'agr_no', p ->> 'po_no',
+      (p ->> 'signatory_id')::uuid, (p ->> 'show_stamp')::boolean)
     returning id into v_id;
   end if;
   for l in select * from jsonb_array_elements(coalesce(p -> 'lines', '[]')) loop

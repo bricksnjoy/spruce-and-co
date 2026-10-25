@@ -94,7 +94,8 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 4. Add lines: item no. (1.1, 2.1 …), description, quantity, unit and rate (or just an amount), GST code and income account. A line with only an item no. and description is a heading: a letter (A, B) prints on a grey band as a section, 1.0 prints bold. The total with GST shows as you type.
 5. "Note on the document" prints centred at the top of the table, one line per line; the second line prints large and underlined as the job's title.
 6. The printed invoice follows the paper layout: Sub Total, Less Advance Payment, Less Retention Payment, Taxable Amount, GST and the Grand Total in words, then Authorized by / Invoice Received by, the terms and Payment Received by. The terms and the footer line come from the invoice template (Quotations → Templates).
-7. Press "Save invoice" (or credit note / receipt). It is posted to the books at once.
+7. Under "Signed by", pick who signs this invoice and whether the company stamp goes on; it starts from the invoice template's choice. Signatures are uploaded under Quotations → Signatures & stamp.
+8. Press "Save invoice" (or credit note / receipt). It is posted to the books at once.
 
 > Save as draft if it is not final; a draft posts nothing.
 > Foreign currency: choose USD and enter the MVR rate.

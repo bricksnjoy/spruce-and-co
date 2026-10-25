@@ -1,6 +1,6 @@
 import type { Session } from "./session";
 import { today } from "@/lib/format";
-import { signerFor, toTemplate } from "@/lib/documents";
+import { signerFor, toTemplate, type SigningKit, type TemplateTail } from "@/lib/documents";
 import { signingKit } from "@/lib/branding";
 import type { Company } from "@/components/sales/ledger-sheet";
 import type { SheetSigner } from "@/components/sales/sales-sheet";
@@ -48,7 +48,8 @@ export type SalesFormData = Awaited<ReturnType<typeof salesFormData>>;
  * The company block and the signer a printed sales document carries: signed and
  * stamped as the default invoice template says (Quotations → Edit templates).
  */
-export type SalesBranding = { company: Company | null; signer: SheetSigner | null; terms: string; footer: string };
+/** `signer` is the invoice template's default; `kit` and `tail` let a document choose its own. */
+export type SalesBranding = { company: Company | null; signer: SheetSigner | null; terms: string; footer: string; kit: SigningKit; tail: TemplateTail | null };
 export async function salesBranding(s: Session): Promise<SalesBranding> {
   const [{ data: company }, { data: tpl }, kit] = await Promise.all([
     s.supabase.from("company").select("legal_name, trade_name, registration_no, tin, gst_registered, taxable_activity_no, address, phone, email, bank_details").eq("id", true).maybeSingle(),
@@ -56,5 +57,5 @@ export async function salesBranding(s: Session): Promise<SalesBranding> {
     signingKit(s.supabase),
   ]);
   const tail = tpl ? toTemplate(tpl).tail : null;
-  return { company: (company as Company | null) ?? null, signer: tail ? signerFor(kit, tail, null, null) : null, terms: tail?.terms ?? "", footer: tail?.footer_text ?? "" };
+  return { company: (company as Company | null) ?? null, signer: tail ? signerFor(kit, tail, null, null) : null, terms: tail?.terms ?? "", footer: tail?.footer_text ?? "", kit, tail };
 }

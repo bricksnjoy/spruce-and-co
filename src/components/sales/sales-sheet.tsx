@@ -160,21 +160,20 @@ export function SalesSheet({ type, company, number, voided = false, customer, da
       {/* signed and stamped by us; signed for by them */}
       <div className="mt-10 flex items-start justify-between gap-8 text-[10px]">
         <div>
-          <div className="flex items-start gap-2">
-            <p className="pt-2 font-bold">Authorized by:</p>
-            {(signer?.signatureUrl || signer?.stampUrl) && (
-              <div className="relative h-[26mm] w-[52mm]">
-                {signer?.signatureUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={signer.signatureUrl} alt="Signature" className="absolute bottom-0 left-0 z-10 h-[18mm] w-[32mm] object-contain object-bottom" />
-                )}
-                {signer?.stampUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={signer.stampUrl} alt="Company stamp" className="absolute right-0 top-0 h-[24mm] w-[24mm] object-contain" />
-                )}
-              </div>
-            )}
-          </div>
+          <p className="font-bold">Authorized by:</p>
+          {/* the signature sits on the line at the left, the stamp just to its right */}
+          {(signer?.signatureUrl || signer?.stampUrl) && (
+            <div className="relative h-[26mm] w-[60mm]">
+              {signer?.signatureUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={signer.signatureUrl} alt="Signature" className="absolute bottom-0 left-0 z-10 h-[18mm] w-[32mm] object-contain object-bottom object-left" />
+              )}
+              {signer?.stampUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={signer.stampUrl} alt="Company stamp" className="absolute left-[28mm] top-0 h-[24mm] w-[24mm] object-contain" />
+              )}
+            </div>
+          )}
           <p className={signer?.signatureUrl || signer?.stampUrl ? "" : "mt-12"}>…………………………</p>
           {signer?.name && <p>{signer.name}</p>}
           <p className="font-bold">{signer?.title || "Manager Billing & Collection"}</p>
