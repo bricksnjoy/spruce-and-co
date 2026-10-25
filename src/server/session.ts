@@ -17,11 +17,13 @@ export async function getSession(): Promise<Session | null> {
   if (!user) return null;
   const { data } = await supabase.from("profiles").select("role, active_book, can_payroll").eq("id", user.id).maybeSingle();
   const role = (data?.role ?? "viewer") as UserRole;
+  // one set of books for now (migration 031): anyone left in Test is moved back to Live
+  if (data?.active_book === "sandbox") await supabase.rpc("rpc_set_book", { p_book: "live" });
   return {
     supabase,
     userId: user.id,
     role,
-    book: (data?.active_book ?? "live") as Book,
+    book: "live" as Book,
     canPayroll: role === "admin" || role === "finance" || Boolean(data?.can_payroll),
   };
 }

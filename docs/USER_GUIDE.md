@@ -14,7 +14,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 4. The small cards show this quarter's GST and its due date, the next payroll, payouts ready or blocked, and how many accounts need reconciling. Each has a link to its screen.
 5. Active projects lists the biggest jobs with contract value, billed and forecast profit. Click one to open it.
 
-> Everything here comes from the ledger of the book you are in (Live or Test — the switch at the top of every page).
+> Everything here comes from the ledger.
 
 ### Search
 
@@ -61,7 +61,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download template", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". "Download bills (Excel)" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.
 4. Variations: raise a variation; only approved ones change the contract value.
 5. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
-6. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing "External lender" shows "+ New lender" to add one without leaving the page.
+6. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing "External lender" shows "+ New lender" to add one without leaving the page. "Company capital" (admin) puts in the company's own money and the profit shares directors have left in the company, shared by what each has; the most it can be is shown.
 7. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
 8. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
 9. Transactions: every document posted to the project.
@@ -425,7 +425,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 ### Bids
 
-`/bids` — Tenders the company is chasing, from registering to won or lost (Live only).
+`/bids` — Tenders the company is chasing, from registering to won or lost.
 
 1. "+ New bid": the bid's name, the company that put it out, the Gazette link, the pre-bid meeting (compulsory or optional) and the submission deadline.
 2. The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.
@@ -443,7 +443,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 ### Quotations
 
-`/quotations` — Price the work, win it, then invoice it (Live only for now).
+`/quotations` — Price the work, win it, then invoice it.
 
 1. "New quotation", fill in the lines, save; print it with your template and signature.
 2. Mark it won, then "Convert to invoice" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.
@@ -466,7 +466,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 > With a board thickness set, a part thicker than the board — a 2in leg from 18mm board — is cut in layers to glue up, and the cut list says so.
 > Untick "Pieces may be turned to fit" to keep the grain running along every part.
-> The list is saved to your account as you type, so it opens on your phone, PC or any device you sign in on. Each person has their own list. It is not part of the books, so it is the same in Live and Test.
+> The list is saved to your account as you type, so it opens on your phone, PC or any device you sign in on. Each person has their own list. It is not part of the books.
 > If the list was changed on another device while this page was open, you are asked which one to keep.
 
 ## Settings
@@ -485,9 +485,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 2. Opening balance date and the month the financial year starts.
 3. How project revenue is recognised; where partners' profit shares are charged; the bill approval limit.
 4. GST: filed monthly or quarterly, and the day it is due. No-pay days in a month.
-5. "Save settings". Reset Test book (at the bottom) clears everything in the Test book.
-
-> Settings are shared by the Live and Test books.
+5. "Save settings".
 
 ### Taxes & rates
 
@@ -500,8 +498,6 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/settings/numbering` — How each kind of document is numbered.
 
 1. Change the prefix, the next number and digits; "Save".
-
-> Test-book numbers always start with TEST-.
 
 ### Currencies
 

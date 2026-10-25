@@ -51,10 +51,12 @@ export default async function ProjectPage({ params, searchParams }: {
           </div>
         } />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-[var(--border)]">
+      <div className="flex gap-1 overflow-x-auto border-b border-neutral-300">
         {TABS.map(([k, l]) => (
-          <Link key={k} href={`/projects/${id}?tab=${k}`}
-            className={`-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium ${active === k ? "border-[var(--brand)] text-[var(--brand)]" : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
+          <Link key={k} href={`/projects/${id}?tab=${k}`} aria-current={active === k ? "page" : undefined}
+            className={`-mb-px shrink-0 rounded-t-md border-b-[3px] px-3 py-2 text-sm font-medium ${active === k
+              ? "border-neutral-700 bg-neutral-100 font-semibold text-neutral-900"
+              : "border-transparent text-[var(--muted)] hover:border-neutral-300 hover:text-[var(--text)]"}`}>{l}</Link>
         ))}
       </div>
 
@@ -228,22 +230,27 @@ async function Transactions({ s, id }: { s: Session; id: string }) {
 }
 
 async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigures; writer: boolean; lender?: string }) {
-  const [{ data: sources }, { data: contacts }, { data: banks }, { data: txns }] = await Promise.all([
+  const [{ data: sources }, { data: contacts }, { data: banks }, { data: txns }, { data: company }, { data: capital }] = await Promise.all([
     s.supabase.from("project_financing_v").select("contact_id, source_type, received, repaid, outstanding").eq("project_id", p.id),
     s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
     s.supabase.from("transactions").select("id, date, number, type, contact_id, total_amount, reference, voided_at")
       .eq("project_id", p.id).in("type", ["loan_receipt", "capital_contribution"]).order("date"),
+    s.supabase.rpc("company_funding", { p_project: p.id }),
+    // only an admin finances from company capital, so only an admin is shown what it holds
+    s.role === "admin" ? s.supabase.rpc("company_capital_available") : Promise.resolve({ data: null }),
   ]);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
   const rows = (sources ?? []).filter((r) => dbToLaari(r.received) !== 0n).sort((a, b) => Number(dbToLaari(b.received) - dbToLaari(a.received)));
-  const total = rows.reduce((t, r) => t + dbToLaari(r.received), 0n);
+  // the company's own financing shares the pool's return by amount too; its share stays as company profit
+  const own = dbToLaari(company as string | number | null);
+  const total = rows.reduce((t, r) => t + dbToLaari(r.received), 0n) + own;
   const ratio = (v: number | string) => total > 0n ? Number((dbToLaari(v) * 1000000n) / total) / 10000 : 0;
   return (
     <div className="space-y-5">
       <Card>
         <CardHeader title="Financing sources" subtitle="The contribution ratio (amount ÷ total financing) divides the financing pool's share of profit (§5, P4)" />
-        {rows.length === 0 ? <Empty message="No financing recorded. Without financing the pool's share stays with the company (I3)." /> : (
+        {rows.length === 0 && own === 0n ? <Empty message="No financing recorded. Without financing the pool's share stays with the company (I3)." /> : (
           <Table>
             <thead><tr><Th>Source</Th><Th>Type</Th><Th right>Received</Th><Th right>Ratio</Th><Th right>Repaid</Th><Th right>Outstanding</Th></tr></thead>
             <tbody>
@@ -254,6 +261,12 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
                   <Td right>{m(r.received)}</Td><Td right>{pct(ratio(r.received), 2)}</Td><Td right>{m(r.repaid)}</Td><Td right>{m(r.outstanding)}</Td>
                 </tr>
               ))}
+              {own > 0n && (
+                <tr>
+                  <Td>Company</Td><Td>Company capital</Td><Td right>{money(laariToNumber(own))}</Td><Td right>{pct(Number((own * 1000000n) / total) / 10000, 2)}</Td>
+                  <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">its share stays as profit</Td>
+                </tr>
+              )}
               <tr className="font-semibold"><Td>Total</Td><Td> </Td><Td right>{money(laariToNumber(total))}</Td><Td right>100%</Td>
                 <Td right>{m(rows.reduce((t, r) => t + Number(r.repaid), 0))}</Td><Td right>{m(rows.reduce((t, r) => t + Number(r.outstanding), 0))}</Td></tr>
             </tbody>
@@ -262,10 +275,11 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
       </Card>
       {writer && !p.completed_at && (
         <Card>
-          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full." />
+          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full. Company capital uses the company's own money and the profit shares directors have left in the company." />
           <FinancingForm projectId={p.id} banks={banks ?? []} initialLender={lender}
             lenders={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("lender"))}
-            partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))} />
+            partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))}
+            capital={(capital as { name: string; available: string | number }[] | null)?.map((c) => ({ name: c.name, available: String(c.available) })) ?? null} />
         </Card>
       )}
       {(txns ?? []).length > 0 && (

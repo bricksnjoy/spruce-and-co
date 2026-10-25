@@ -17,7 +17,7 @@ export const HELP: Help[] = [
       "The small cards show this quarter's GST and its due date, the next payroll, payouts ready or blocked, and how many accounts need reconciling. Each has a link to its screen.",
       "Active projects lists the biggest jobs with contract value, billed and forecast profit. Click one to open it.",
     ],
-    tips: ["Everything here comes from the ledger of the book you are in (Live or Test — the switch at the top of every page)."],
+    tips: ["Everything here comes from the ledger."],
   },
   {
     path: "/search", area: "Everyday", title: "Search",
@@ -64,7 +64,7 @@ export const HELP: Help[] = [
       "Bills: every bill on the project. \"New bill\" opens the bill form in a pop-up. To add many: \"Download template\", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), \"Upload filled sheet\", pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then \"Save\". \"Download bills (Excel)\" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.",
       "Variations: raise a variation; only approved ones change the contract value.",
       "Billing plan: stages of the contract; turn a stage into an invoice when it is due.",
-      "Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing \"External lender\" shows \"+ New lender\" to add one without leaving the page.",
+      "Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing \"External lender\" shows \"+ New lender\" to add one without leaving the page. \"Company capital\" (admin) puts in the company's own money and the profit shares directors have left in the company, shared by what each has; the most it can be is shown.",
       "Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and \"Complete and post split\" to complete the project.",
       "Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.",
       "Transactions: every document posted to the project.",
@@ -398,7 +398,7 @@ export const HELP: Help[] = [
   { path: "/messages", area: "Other", title: "Message center", purpose: "Send an SMS or email to anyone, and see what was sent.", steps: ["Choose who, write the message, send. The history lists what went out."] },
   {
     path: "/bids", area: "Other", title: "Bids",
-    purpose: "Tenders the company is chasing, from registering to won or lost (Live only).",
+    purpose: "Tenders the company is chasing, from registering to won or lost.",
     steps: [
       "\"+ New bid\": the bid's name, the company that put it out, the Gazette link, the pre-bid meeting (compulsory or optional) and the submission deadline.",
       "The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.",
@@ -411,7 +411,7 @@ export const HELP: Help[] = [
     purpose: "One bid: its details, its stage and its history.",
     steps: ["Press a stage to move the bid along; a note typed first goes with it, to the history and the Telegram group.", "\"Add a note\" records something on the history only.", "\"Edit\" changes the details and dates."],
   },
-  { path: "/quotations", area: "Other", title: "Quotations", purpose: "Price the work, win it, then invoice it (Live only for now).", steps: ["\"New quotation\", fill in the lines, save; print it with your template and signature.", "Mark it won, then \"Convert to invoice\" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.", "Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices."] },
+  { path: "/quotations", area: "Other", title: "Quotations", purpose: "Price the work, win it, then invoice it.", steps: ["\"New quotation\", fill in the lines, save; print it with your template and signature.", "Mark it won, then \"Convert to invoice\" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.", "Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices."] },
   { path: "/estimator", area: "Other", title: "Cabinet estimator", purpose: "Price kitchen and cabinet jobs from wall measurements.", steps: ["Enter the walls and units; the cut list, drawings and price follow."] },
   {
     path: "/cut-planner", area: "Other", title: "Board cut planner",
@@ -425,7 +425,7 @@ export const HELP: Help[] = [
     tips: [
       "With a board thickness set, a part thicker than the board — a 2in leg from 18mm board — is cut in layers to glue up, and the cut list says so.",
       "Untick \"Pieces may be turned to fit\" to keep the grain running along every part.",
-      "The list is saved to your account as you type, so it opens on your phone, PC or any device you sign in on. Each person has their own list. It is not part of the books, so it is the same in Live and Test.",
+      "The list is saved to your account as you type, so it opens on your phone, PC or any device you sign in on. Each person has their own list. It is not part of the books.",
       "If the list was changed on another device while this page was open, you are asked which one to keep.",
     ],
   },
@@ -444,16 +444,15 @@ export const HELP: Help[] = [
       "Opening balance date and the month the financial year starts.",
       "How project revenue is recognised; where partners' profit shares are charged; the bill approval limit.",
       "GST: filed monthly or quarterly, and the day it is due. No-pay days in a month.",
-      "\"Save settings\". Reset Test book (at the bottom) clears everything in the Test book.",
+      "\"Save settings\".",
     ],
-    tips: ["Settings are shared by the Live and Test books."],
   },
   {
     path: "/settings/taxes", area: "Settings", title: "Taxes & rates",
     purpose: "GST, pension, withholding tax and BPT rates, each with the date it starts.",
     steps: ["Add a rate or a set of brackets with its start date. A rate already in force cannot change — add a new one from the new date."],
   },
-  { path: "/settings/numbering", area: "Settings", title: "Numbering", purpose: "How each kind of document is numbered.", steps: ["Change the prefix, the next number and digits; \"Save\"."], tips: ["Test-book numbers always start with TEST-."] },
+  { path: "/settings/numbering", area: "Settings", title: "Numbering", purpose: "How each kind of document is numbered.", steps: ["Change the prefix, the next number and digits; \"Save\"."] },
   { path: "/settings/currencies", area: "Settings", title: "Currencies", purpose: "Currencies and exchange rates.", steps: ["Add a currency, then its rate to MVR for a date."] },
   {
     path: "/settings/profit-share", area: "Settings", title: "Profit-share schemes",

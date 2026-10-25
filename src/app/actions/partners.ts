@@ -44,6 +44,28 @@ export async function recordFinancing(_prev: unknown, fd: FormData): Promise<Res
   return { ok: true, id: data as string };
 }
 
+/**
+ * Finance a project from company capital (admin only): the amount is shared
+ * among the directors' released profit shares and the company's own money by
+ * what each has, and the directors' parts become their Capital Pool money on
+ * the project (migration 030).
+ */
+export async function financeFromCompanyCapital(_prev: unknown, fd: FormData): Promise<Result & { parts?: { name: string; amount: number }[] }> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (w.s.role !== "admin") return { error: "Only an admin can finance from company capital." };
+  const project = text(fd, "project_id"), bank = text(fd, "bank_id"), date = text(fd, "date");
+  if (!isId(project)) return { error: "Choose the project." };
+  if (!isId(bank)) return { error: "Choose the account it goes through." };
+  if (!isDate(date)) return { error: "Enter the date." };
+  const amount = moneyToDb(text(fd, "amount"));
+  if (amount === null || Number(amount) <= 0) return { error: "Enter the amount to finance." };
+  const { data, error } = await w.s.supabase.rpc("rpc_finance_from_company_capital", { p_project: project, p_date: date, p_amount: amount, p_bank: bank });
+  if (error) return { error: dbMessage(error) };
+  refresh();
+  return { ok: true, parts: (data ?? []) as { name: string; amount: number }[] };
+}
+
 /** Complete a project and post its profit split, after the preview is confirmed (§6). */
 export async function completeProject(_prev: unknown, fd: FormData): Promise<Result> {
   const w = await writer();

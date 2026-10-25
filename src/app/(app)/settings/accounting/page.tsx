@@ -3,7 +3,6 @@ import { getSession } from "@/server/session";
 import { redirect } from "next/navigation";
 import { SettingsTabs, SharedNote } from "../tabs";
 import { AccountingForm, type AccountingSettings } from "./accounting-form";
-import { ResetTestBook } from "./reset-test-book";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +34,6 @@ export default async function AccountingSettingsPage() {
       <SettingsTabs active="/settings/accounting" />
       <SharedNote />
       <AccountingForm settings={settings} canEdit={s.role === "admin"} />
-      {s.role === "admin" && <ResetTestBook inTest={s.book === "sandbox"} />}
     </div>
   );
 }
