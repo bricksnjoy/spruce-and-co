@@ -62,9 +62,11 @@ test("lenders: add one, record a loan from their page, add another from the proj
   await bank.getByRole("link", { name: `Bank ${tag}` }).click();
   await expect(page.getByRole("row").filter({ hasText: `LN-${tag}` }).filter({ hasText: "Loan" })).toContainText("250,000.00");
 
-  // Partners & financing lists them as lenders; the lender ledger balances
+  // Partners & financing lists them under Lenders, apart from the Capital Pool; the lender ledger balances
   await page.goto("/partners");
-  await expect(page.getByRole("row").filter({ hasText: `Bank ${tag}` })).toContainText("Lender");
+  const lenders = page.locator("div").filter({ has: page.getByRole("heading", { name: "Lenders", exact: true }) })
+    .filter({ has: page.getByRole("table") }).last();
+  await expect(lenders.getByRole("row").filter({ hasText: `Bank ${tag}` })).toBeVisible();
   expect(sql(`select count(*) filter (where not ok) from health_check('live')`)).toBe("0");
   w.assertNone();
 });
