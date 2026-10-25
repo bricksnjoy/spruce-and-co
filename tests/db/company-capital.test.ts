@@ -48,6 +48,17 @@ describe("financing from company capital", () => {
     ]);
   });
 
+  it("counts a payment received but not yet banked as the company's money", async () => {
+    const p = await project(db, "U-1", client, 400000, { start: "2026-01-01" });
+    const inv = await doc(db, { type: "invoice", date: "2026-03-01", dueDate: "2026-12-31", contact: client, project: p, lines: [{ account: "4000", amount: 400000 }] });
+    await doc(db, { type: "bill", date: "2026-02-01", contact: vendor, project: p, lines: [{ account: "5000", amount: 300000 }] });
+    await db.transaction((tx) => tx.query(`select complete_project($1, '2026-04-30')`, [p]));
+    // paid, but held in Undeposited Funds: the bank has nothing yet
+    await doc(db, { type: "customer_payment", date: "2026-05-10", contact: client, total: 400000, apply: [{ to: inv, amount: 400000 }] });
+    expect(await balance(db, "1010")).toBe(0);
+    expect((await available()).find(([n]) => n === "Company")?.[1]).toBe(350000);
+  });
+
   it("only counts shares that could be paid out today: not while the client still owes", async () => {
     await earned(false);
     expect(await available()).toEqual([["Company", 0]]);

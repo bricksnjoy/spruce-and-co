@@ -126,7 +126,7 @@ function CompanyCapitalForm({ projectId, banks, capital }: {
           <tbody className="divide-y divide-[var(--border)] tabular-nums">
             {parts.map((p) => (
               <tr key={p.name}>
-                <td className="px-3 py-2">{p.name}{p.name === "Company" && <span className="block text-xs text-[var(--muted)]">bank and cash, less what the members are owed</span>}</td>
+                <td className="px-3 py-2">{p.name}{p.name === "Company" && <span className="block text-xs text-[var(--muted)]">bank, cash and payments not yet banked, less what the members are owed</span>}</td>
                 <td className="px-3 py-2 text-right">{money(laariToNumber(p.avail))}</td>
                 <td className="px-3 py-2 text-right">{total > 0n ? `${(Number((p.avail * 10000n) / total) / 100).toFixed(2)}%` : "—"}</td>
                 <td className="px-3 py-2 text-right">{p.share > 0n ? money(laariToNumber(p.share)) : "—"}</td>

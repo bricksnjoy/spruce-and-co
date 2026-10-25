@@ -15,13 +15,16 @@ const m = (v: number | string | bigint | null | undefined) => money(laariToNumbe
 export default async function PartnersPage() {
   const s = await getSession();
   if (!s) redirect("/login");
-  const [{ data: projects }, { data: statement }, { data: contacts }, { data: pending }] = await Promise.all([
+  const [{ data: projects }, { data: statement }, { data: contacts }, { data: pending }, { data: capital }] = await Promise.all([
     s.supabase.from("project_payouts_v").select("*").order("code"),
     s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding"),
     s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").order("name"),
     s.supabase.from("transactions").select("id, date, number, contact_id, total_amount, created_at, transaction_lines(project_id, component, amount)")
       .eq("type", "payout").eq("is_draft", true).is("voided_at", null).order("date"),
+    // the company's own money is part of the Capital Pool too
+    s.supabase.rpc("company_capital_available"),
   ]);
+  const companyMoney = dbToLaari(((capital ?? []) as { contact_id: string | null; available: string | number }[]).find((c) => c.contact_id === null)?.available);
   const proj = (projects ?? []) as ProjectPayout[];
   const rows = (statement ?? []) as StatementRow[];
   const people = byPerson(rows);
@@ -41,10 +44,10 @@ export default async function PartnersPage() {
   const lenders = personIds.filter((id) => !isPool.has(id));
   const readyFor = (id: string) => rows.filter((r) => r.contact_id === id && blocked.get(r.project_id) === false).reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
 
-  const peopleTable = (title: string, subtitle: string, ids: string[], empty: string) => (
+  const peopleTable = (title: string, subtitle: string, ids: string[], empty: string, company = false) => (
     <Card>
       <CardHeader title={title} subtitle={subtitle} />
-      {ids.length === 0 ? <Empty message={empty} /> : (
+      {ids.length === 0 && !company ? <Empty message={empty} /> : (
         <Table>
           <thead><tr><Th>Name</Th><Th right>Principal</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total owed</Th><Th right>Ready to take</Th></tr></thead>
           <tbody>
@@ -60,12 +63,19 @@ export default async function PartnersPage() {
                 </tr>
               );
             })}
-            {ids.length > 1 && (
+            {company && (
+              <tr>
+                <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less what members are owed</span></Td>
+                <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td>
+                <Td right className={companyMoney > 0n ? "text-emerald-700" : "text-[var(--muted)]"}>{m(companyMoney)}</Td>
+              </tr>
+            )}
+            {ids.length + (company ? 1 : 0) > 1 && (
               <tr className="font-semibold">
                 <Td>Total</Td>
                 {COMPONENTS.map((c) => <Td key={c} right>{m(ids.reduce((t, id) => t + (people.get(id)?.[c].outstanding ?? 0n), 0n))}</Td>)}
                 <Td right>{m(ids.reduce((t, id) => t + COMPONENTS.reduce((x, c) => x + (people.get(id)?.[c].outstanding ?? 0n), 0n), 0n))}</Td>
-                <Td right>{m(ids.reduce((t, id) => t + readyFor(id), 0n))}</Td>
+                <Td right>{m(ids.reduce((t, id) => t + readyFor(id), 0n) + (company ? companyMoney : 0n))}</Td>
               </tr>
             )}
           </tbody>
@@ -111,8 +121,8 @@ export default async function PartnersPage() {
         </Card>
       )}
 
-      {peopleTable("Capital Pool members", "What each member is owed, each component kept apart (§5). Ready to take is what has been released and can finance another project.",
-        pool, "No Capital Pool members yet.")}
+      {peopleTable("Capital Pool", "Each member and the company. What each member is owed, each component kept apart (§5); ready to take is what has been released, and with the company's own money it is what the pool can finance a project with.",
+        pool, "No Capital Pool members yet.", true)}
       {peopleTable("Lenders", "External lenders: their loans and returns, kept apart from the Capital Pool", lenders, "No lenders yet. Add one on the Lenders page.")}
 
       <Card>
