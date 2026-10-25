@@ -10,6 +10,7 @@ import { laariToNumber, percentOf, qtyTimesRate, toLaari } from "@/lib/money";
 import type { SalesFormData } from "@/server/sales-data";
 import type { Company } from "./ledger-sheet";
 import { SalesSheet, type SheetSigner } from "./sales-sheet";
+import { DueIn } from "@/components/due-in";
 
 import { TITLES, type DocType, type DocValues, type LineValue } from "@/lib/sales-doc";
 export type { DocType, DocValues, LineValue };
@@ -90,9 +91,8 @@ export function DocForm({ data, values, branding, number = null }: {
         </div>
         {v.type === "invoice" && (
           <div>
-            <label htmlFor="d-due" className={label}>Due</label>
-            <input id="d-due" name="due_date" type="date" value={v.due_date} onChange={(e) => set("due_date", e.target.value)} className={input} />
-            <p className="mt-1 text-xs text-[var(--muted)]">From the customer&apos;s terms; due on receipt when they have none</p>
+            <DueIn id="d-due" name="due_date" label="Due" from={v.date} value={v.due_date} onChange={(d) => set("due_date", d)} />
+            <p className="mt-1 text-xs text-[var(--muted)]">Type the days or pick the date; starts from the customer&apos;s terms</p>
           </div>
         )}
         {v.type === "sales_receipt" && (

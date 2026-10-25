@@ -60,3 +60,8 @@ export function addDays(d: string, n: number) {
   x.setUTCDate(x.getUTCDate() + n);
   return x.toISOString().slice(0, 10);
 }
+
+/** Whole days from one YYYY-MM-DD date to another (negative when `to` is earlier). */
+export function daysBetween(from: string, to: string) {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}

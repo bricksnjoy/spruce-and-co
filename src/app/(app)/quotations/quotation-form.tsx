@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState, type ReactNode } from "react";
 import { DocumentSheet } from "@/components/document-sheet";
+import { DueIn } from "@/components/due-in";
 import { saveQuotation, type DocResult, type LineInput, type QuotationInput } from "@/app/actions/documents";
 import { addDays, docNumber, round2, signerFor, type SigningKit, type Template } from "@/lib/documents";
 import { money } from "@/lib/format";
@@ -181,11 +182,7 @@ export function QuotationForm({
                   }));
                 }} />
             </div>
-            <div>
-              <label htmlFor="q-valid" className={label}>Valid until</label>
-              <input id="q-valid" type="date" value={q.valid_until ?? ""} onChange={(e) => set("valid_until", e.target.value || null)}
-                className={input} />
-            </div>
+            <DueIn id="q-valid" label="Valid until" from={q.issue_date} value={q.valid_until ?? ""} onChange={(d) => set("valid_until", d || null)} />
             <div>
               <label htmlFor="q-duration" className={label}>Duration</label>
               <input id="q-duration" value={q.duration} onChange={(e) => set("duration", e.target.value)}

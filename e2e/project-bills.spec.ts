@@ -37,9 +37,9 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   expect(page.url()).toContain(`/projects/${project}`);
   await expect(page.getByRole("cell", { name: vendor })).toBeVisible();
 
-  // the template downloads with the right columns
+  // the sheet downloads with the right columns and the bill just saved
   const cookies = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join("; ");
-  const tpl = await request.get(`/projects/${project}/bills/sheet?kind=template`, { headers: { cookie: cookies } });
+  const tpl = await request.get(`/projects/${project}/bills/sheet`, { headers: { cookie: cookies } });
   expect(tpl.status()).toBe(200);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await tpl.body() as unknown as ArrayBuffer);
@@ -78,12 +78,12 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
 
   // uploading the same sheet again saves nothing new
   await page.getByLabel("Filled bills sheet").setInputFiles(file);
-  await expect(check.getByText(/3 already saved/)).toBeVisible();
+  await expect(check.getByText(/4 already saved/)).toBeVisible(); // the pop-up bill came down with the sheet
   await expect(check.getByText("Nothing new to save.")).toBeVisible();
   await check.getByRole("button", { name: "Close" }).click();
 
   // the bills download has every line, ready to add more
-  const exp = await request.get(`/projects/${project}/bills/sheet?kind=bills`, { headers: { cookie: cookies } });
+  const exp = await request.get(`/projects/${project}/bills/sheet`, { headers: { cookie: cookies } });
   const wb2 = new ExcelJS.Workbook();
   await wb2.xlsx.load(await exp.body() as unknown as ArrayBuffer);
   const ws2 = wb2.getWorksheet("Bills")!;

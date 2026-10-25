@@ -46,9 +46,9 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/projects/new` — Set up a project so invoices, bills, payroll and financing can be charged to it.
 
 1. Enter the project name; the code is suggested (SC-001, SC-002 …) and can be changed.
-2. Choose the customer (or add one from the form), the start date and the contract value.
+2. Choose the customer (or add one from the form), the start date and the project value. GST is worked out from the value at the standard rate in Settings → Taxes.
 3. Choose how revenue is recognised: as billed, by percentage of completion, or the company default.
-4. Press "Create project". Budget, variations and billing stages are added on the project's own page.
+4. Press "Create project". Variations and billing stages are added on the project's own page.
 
 > The profit-share scheme the project uses is the one in force on its start date.
 
@@ -57,14 +57,13 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/projects/[id]` — One project from start to payout, in tabs.
 
 1. Overview: contract value, billed, collected, cost to date, forecast profit, % complete and over/under-billing.
-2. Value & budget: set budget lines by category; see budget against actual and committed (open purchase orders). Amber/red warnings mean a category is past 80% or 100%.
-3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download template", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". "Download bills (Excel)" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.
-4. Variations: raise a variation; only approved ones change the contract value.
-5. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
-6. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing "External lender" shows "+ New lender" to add one without leaving the page. "Company capital" (admin) puts in the company's own money and the profit shares directors have left in the company, shared by what each has; the most it can be is shown.
-7. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
-8. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
-9. Transactions: every document posted to the project.
+2. Variations: raise a variation with its details and amount; only approved ones change the contract value.
+3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download bills (Excel)", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". The sheet comes with the bills already added (blank when there are none); bills already saved are recognised and skipped.
+4. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
+5. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing "External lender" shows "+ New lender" to add one without leaving the page. "Company capital" (admin) puts in the company's own money and the profit shares directors have left in the company, shared by what each has; the most it can be is shown.
+6. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
+7. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
+8. Transactions: every document posted to the project.
 
 > Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive.
 > Anything posted to a completed project later (a cost, a bad debt) adjusts the split with its own entry and flags the project for review.
@@ -89,7 +88,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 `/sales/new` — Bill a customer (invoice), reduce what they owe (credit note), or record a sale paid on the spot (sales receipt).
 
-1. Choose the customer; the due date follows their payment terms. Choose the project if the work is for one.
+1. Choose the customer; the due date follows their payment terms. Type a number of days to set it from the invoice date (10 days from 26 Oct is 5 Nov), or pick the date. Choose the project if the work is for one.
 2. For a sales receipt, choose the account the money went into (or leave it in Undeposited Funds to bank later).
 3. Add lines: description, quantity and rate (or just an amount), GST code and income account. The total with GST shows as you type.
 4. Press "Save invoice" (or credit note / receipt). It is posted to the books at once.
@@ -445,7 +444,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 `/quotations` — Price the work, win it, then invoice it.
 
-1. "New quotation", fill in the lines, save; print it with your template and signature.
+1. "New quotation", fill in the lines, save (type the days it is valid for, or pick the date); print it with your template and signature.
 2. Mark it won, then "Convert to invoice" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.
 3. Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices.
 

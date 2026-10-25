@@ -15,7 +15,7 @@ export const reportByKey = (k: string) => REPORTS.find((r) => r.key === k);
 
 /** Screens elsewhere that are reports in their own right (§11), listed on the Reports page too. */
 export const ELSEWHERE: { group: string; title: string; href: string; description: string; payroll?: boolean }[] = [
-  { group: "Projects", title: "Project detail P&L and Budget vs Actual", href: "/projects", description: "Open a project: Overview and Value & budget tabs" },
+  { group: "Projects", title: "Project detail P&L and Budget vs Actual", href: "/projects", description: "Open a project: the Overview tab" },
   { group: "Payroll", title: "Payslips", href: "/payroll", description: "Each run's payslips, printable", payroll: true },
   { group: "Tax", title: "GST return worksheet and schedules", href: "/taxes", description: "Each quarter's worksheet, output and input schedules (CSV)" },
   { group: "Partners and financing", title: "Partner statements", href: "/partners", description: "Per person: principal, financing return and profit share" },

@@ -11,7 +11,7 @@ import type { ExpenseValues } from "@/lib/expense-doc";
 import { money } from "@/lib/format";
 import { Modal } from "@/components/modal";
 
-/** The Bills tab's actions: a new bill in a pop-up, the sheet to download, and uploading it back. */
+/** The Bills tab's actions: a new bill in a pop-up, the bills sheet to download, and uploading it back. */
 export function ProjectBills({ projectId, data, blank, openNew }: { projectId: string; data: ExpenseFormData; blank: ExpenseValues; openNew: boolean }) {
   const router = useRouter();
   const [newOpen, setNewOpen] = useState(openNew);
@@ -50,8 +50,7 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={primary} onClick={() => { setFormKey((k) => k + 1); setNewOpen(true); setMsg(null); }}>New bill</button>
-        <a className={small} href={`/projects/${projectId}/bills/sheet?kind=template`}>Download template</a>
-        <a className={small} href={`/projects/${projectId}/bills/sheet?kind=bills`}>Download bills (Excel)</a>
+        <a className={small} href={`/projects/${projectId}/bills/sheet`}>Download bills (Excel)</a>
         <button type="button" className={small} disabled={pending} onClick={() => fileRef.current?.click()}>{pending && !preview ? "Reading…" : "Upload filled sheet"}</button>
         <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" aria-label="Filled bills sheet"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />

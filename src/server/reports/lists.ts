@@ -169,7 +169,7 @@ export const lists: ReportDef[] = [
       const nm = await names(s, "projects", [...by.keys()].filter(Boolean));
       const rows: Row[] = [...by.entries()].map(([id, v]) => ({
         cells: { label: id ? nm.get(id) ?? "—" : "No project", ...Object.fromEntries(cats.map((c) => [c, v[c] ?? 0n])), total: Object.values(v).reduce((t, x) => t + x, 0n) },
-        href: id ? `/projects/${id}?tab=value` : undefined,
+        href: id ? `/projects/${id}` : undefined,
       })).sort((a, b) => String(a.cells.label).localeCompare(String(b.cells.label)));
       rows.push(sumRow(rows, [...cats, "total"]));
       return { title: "Cost by Category", subtitle: rangeLabel(p.range), columns: [text("label", "Project"), ...cats.map((c) => money(c, titleize(c))), money("total", "Total")], rows };
