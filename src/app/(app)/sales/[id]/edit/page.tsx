@@ -29,8 +29,10 @@ export default async function EditSalesDoc({ params }: { params: Promise<{ id: s
       <PageHeader title={`Edit ${TITLES[t.type as DocType].toLowerCase()} ${t.number ?? ""}`} subtitle="Saving posts the new figures in place of the old; the change is kept in the audit trail" />
       <DocForm data={data} branding={branding} number={t.number} values={{
         id, type: t.type, date: t.date, due_date: s2(t.due_date), contact_id: s2(t.contact_id), project_id: s2(t.project_id),
-        currency: t.currency, fx_rate: s2(t.fx_rate), memo: s2(t.memo), reference: s2(t.reference), bank_account_id: s2(t.bank_account_id), is_draft: t.is_draft,
-        lines: (lines ?? []).map((l) => ({ description: s2(l.description), qty: s2(l.qty), rate: s2(l.rate), amount: l.qty == null ? s2(l.amount) : "",
+        currency: t.currency, fx_rate: s2(t.fx_rate), memo: s2(t.memo), reference: s2(t.reference), agr_no: s2(t.agr_no), po_no: s2(t.po_no), bank_account_id: s2(t.bank_account_id), is_draft: t.is_draft,
+        // a heading (no qty and nothing charged) comes back with its amount blank, as it was typed
+        lines: (lines ?? []).map((l) => ({ item_no: s2(l.item_no), description: s2(l.description), qty: s2(l.qty), unit: s2(l.unit), rate: s2(l.rate),
+          amount: l.qty != null || (Number(l.amount) === 0 && !l.tax_code_id) ? "" : s2(l.amount),
           tax_code_id: s2(l.tax_code_id), project_id: s2(l.project_id), account_id: s2(l.account_id) })),
       }} />
     </div>

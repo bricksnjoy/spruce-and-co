@@ -95,7 +95,10 @@ export const HELP: Help[] = [
     steps: [
       "Choose the customer; the due date follows their payment terms. Type a number of days to set it from the invoice date (10 days from 26 Oct is 5 Nov), or pick the date. Choose the project if the work is for one.",
       "For a sales receipt, choose the account the money went into (or leave it in Undeposited Funds to bank later).",
-      "Add lines: description, quantity and rate (or just an amount), GST code and income account. The total with GST shows as you type.",
+      "Fill in the Quotation no., AGR no. and PO no. as they should print in the invoice header.",
+      "Add lines: item no. (1.1, 2.1 …), description, quantity, unit and rate (or just an amount), GST code and income account. A line with only an item no. and description is a heading: a letter (A, B) prints on a grey band as a section, 1.0 prints bold. The total with GST shows as you type.",
+      "\"Note on the document\" prints centred at the top of the table, one line per line; the second line prints large and underlined as the job's title.",
+      "The printed invoice follows the paper layout: Sub Total, Less Advance Payment, Less Retention Payment, Taxable Amount, GST and the Grand Total in words, then Authorized by / Invoice Received by, the terms and Payment Received by. The terms and the footer line come from the invoice template (Quotations → Templates).",
       "Press \"Save invoice\" (or credit note / receipt). It is posted to the books at once.",
     ],
     tips: ["Save as draft if it is not final; a draft posts nothing.", "Foreign currency: choose USD and enter the MVR rate."],

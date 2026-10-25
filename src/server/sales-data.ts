@@ -48,11 +48,13 @@ export type SalesFormData = Awaited<ReturnType<typeof salesFormData>>;
  * The company block and the signer a printed sales document carries: signed and
  * stamped as the default invoice template says (Quotations → Edit templates).
  */
-export async function salesBranding(s: Session): Promise<{ company: Company | null; signer: SheetSigner | null }> {
+export type SalesBranding = { company: Company | null; signer: SheetSigner | null; terms: string; footer: string };
+export async function salesBranding(s: Session): Promise<SalesBranding> {
   const [{ data: company }, { data: tpl }, kit] = await Promise.all([
-    s.supabase.from("company").select("legal_name, trade_name, tin, gst_registered, taxable_activity_no, address, phone, email, bank_details").eq("id", true).maybeSingle(),
+    s.supabase.from("company").select("legal_name, trade_name, registration_no, tin, gst_registered, taxable_activity_no, address, phone, email, bank_details").eq("id", true).maybeSingle(),
     s.supabase.from("document_templates").select("*").eq("kind", "invoice").order("is_default", { ascending: false }).limit(1).maybeSingle(),
     signingKit(s.supabase),
   ]);
-  return { company: (company as Company | null) ?? null, signer: tpl ? signerFor(kit, toTemplate(tpl).tail, null, null) : null };
+  const tail = tpl ? toTemplate(tpl).tail : null;
+  return { company: (company as Company | null) ?? null, signer: tail ? signerFor(kit, tail, null, null) : null, terms: tail?.terms ?? "", footer: tail?.footer_text ?? "" };
 }
