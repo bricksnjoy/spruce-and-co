@@ -370,8 +370,20 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
                   <Td right>{money(laariToNumber(net(cid, "financing_return")))}</Td><Td right>{money(laariToNumber(net(cid, "profit_share")))}</Td>
                 </tr>
               ))}
-              {ownReturn > 0n && (
-                <tr><Td>Company (its own financing, stays with the company)</Td><Td right>{money(laariToNumber(ownReturn))}</Td><Td right>–</Td></tr>
+              {latest && (() => {
+                // the company keeps whatever is not shared out: its financing return on its own money, and the rest of the profit
+                const kept = dbToLaari(latest.profit_amount) - all.reduce((t, l) => t + dbToLaari(l.amount), 0n);
+                return kept > 0n && (
+                  <tr className="font-medium">
+                    <Td>Company (stays in the company, not paid out)</Td>
+                    <Td right>{ownReturn > 0n ? money(laariToNumber(ownReturn)) : "–"}</Td>
+                    <Td right>{money(laariToNumber(kept - ownReturn))}</Td>
+                  </tr>
+                );
+              })()}
+              {latest && (
+                <tr className="font-semibold"><Td>Project profit</Td><Td right> </Td>
+                  <Td right>{m(latest.profit_amount)}</Td></tr>
               )}
             </tbody>
           </Table>
