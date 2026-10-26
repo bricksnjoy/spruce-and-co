@@ -90,6 +90,28 @@ export async function saveBillSheet(projectId: string, raw: RawRow[], choices: S
   return { saved, skipped: rows.filter((r) => r.status === "saved").length, failed, notes };
 }
 
+/**
+ * Mark a project's bills paid in full from one money account, each on its own
+ * date (a receipt is paid the day it is dated). Bills already paid are left as they are.
+ */
+export async function markBillsPaid(projectId: string, billIds: string[], bank: string): Promise<{ error?: string; paid?: number; failed?: string[] }> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (!isId(projectId) || !isId(bank)) return { error: "Choose the account they were paid from." };
+  if (!Array.isArray(billIds) || !billIds.length || billIds.length > 500 || !billIds.every(isId)) return { error: "Choose the bills." };
+  const { data } = await w.s.supabase.from("document_balances_v").select("id, number, date, balance, type").in("id", billIds);
+  let paid = 0;
+  const failed: string[] = [];
+  for (const b of data ?? []) {
+    if (b.type !== "bill" || Number(b.balance) <= 0) continue;
+    const err = await payInFull(w.s, b.id, b.date, bank);
+    if (err) failed.push(`${b.number ?? "A bill"}: ${err}`); else paid++;
+  }
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/expenses");
+  return { paid, failed };
+}
+
 type S = NonNullable<Awaited<ReturnType<typeof getSession>>>;
 
 /** Pay a bill's whole balance from one account on a date; the error, if any. */

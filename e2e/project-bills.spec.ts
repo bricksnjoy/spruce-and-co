@@ -98,6 +98,13 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await check.getByRole("button", { name: "Save 1 bill" }).click();
   await expect(page.getByText(/Saved 1 bill/)).toBeVisible();
 
+  // the pop-up bill was saved unpaid: "Mark all as paid" pays it on its own date
+  await page.reload();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: /Mark all \d+ as paid/ }).click();
+  await expect(page.getByText(/\d+ marked paid/)).toBeVisible();
+  expect(sql(`select count(*) from document_balances_v d join transactions t on t.id = d.id where t.project_id = '${project}' and t.type = 'bill' and d.balance <> 0`)).toBe("0");
+
   expect(sql(`select count(*) filter (where not ok) from health_check('live')`)).toBe("0");
   w.assertNone();
 });

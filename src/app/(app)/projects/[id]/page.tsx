@@ -12,6 +12,7 @@ import { ArchiveButton } from "./archive-button";
 import { CompleteForm, FinancingForm } from "@/components/partners/forms";
 import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
 import { ProjectBills } from "@/components/projects/project-bills";
+import { BillStatusMenu, MarkAllPaid } from "@/components/projects/bill-status";
 import { expenseFormData } from "@/server/expense-data";
 import { standardGstRate } from "@/server/gst-rate";
 import { blankExpense } from "@/lib/expense-doc";
@@ -464,10 +465,11 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
       </div>
       {writer && form && <ProjectBills projectId={p.id} data={form} blank={blankExpense("bill", "", p.id, form)} openNew={openNew} />}
       <Card>
-        <CardHeader title="Bills and other costs" subtitle="Click one to open it, pay it or change it. Overdue: not paid yet and past its due date."
+        <CardHeader title="Bills and other costs" subtitle="Click one to open it. Overdue: not paid yet and past its due date; pick from its status to mark it paid."
           action={writer ? <div className="flex gap-2">
             <Link href={`/expenses/new?type=expense&project=${p.id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--hover)]">+ Other cost (no vendor)</Link>
-            <Link href="/expenses/pay" className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--hover)]">Pay bills</Link>
+            {form && <MarkAllPaid projectId={p.id} payFrom={form.payFrom}
+              billIds={live.filter((r) => r.type === "bill" && Number(r.balance) > 0 && !r.is_draft).map((r) => r.id)} />}
           </div> : undefined} />
         {rows.length === 0 ? <Empty message="No bills or costs on this project yet." /> : (
           <Table>
@@ -481,7 +483,9 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
                   <Td className="whitespace-nowrap">{r.due_date ? date(r.due_date) : ""}</Td>
                   <Td right>{m(r.total)}</Td>
                   <Td right>{Number(r.balance) ? m(r.balance) : ""}</Td>
-                  <Td right><Badge value={docStatus(r, t)} /></Td>
+                  <Td right>{writer && form && !r.voided_at && !r.is_draft && r.type === "bill" && Number(r.balance) > 0
+                    ? <BillStatusMenu projectId={p.id} billId={r.id} label={docStatus(r, t)} payFrom={form.payFrom} />
+                    : <Badge value={docStatus(r, t)} />}</Td>
                 </tr>
               ))}
             </tbody>
