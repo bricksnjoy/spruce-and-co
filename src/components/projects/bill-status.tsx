@@ -41,7 +41,8 @@ export function MarkAllPaid({ projectId, billIds, payFrom }: { projectId: string
   const [pending, start] = useTransition();
   const [bank, setBank] = useState(payFrom[0]?.id ?? "");
   const [msg, setMsg] = useState<string | null>(null);
-  if (!billIds.length) return null;
+  // once all are paid the button goes, but the message of what was done stays
+  if (!billIds.length) return msg ? <span className="text-xs text-[var(--muted)]">{msg}</span> : null;
   return (
     <span className="flex flex-wrap items-center gap-2 text-xs">
       <select aria-label="Mark all paid from" value={bank} onChange={(e) => setBank(e.target.value)}
