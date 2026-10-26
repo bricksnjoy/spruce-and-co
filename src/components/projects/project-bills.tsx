@@ -20,6 +20,8 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<SaveResult | null>(null);
   const [choices, setChoices] = useState<ShopChoices>({});
+  // receipts are entered once paid, so by default they are saved as paid from this account
+  const [paidFrom, setPaidFrom] = useState(data.payFrom[0]?.id ?? "");
   const [pending, start] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -38,7 +40,7 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
     start(async () => setPreview(await recheckBillSheet(projectId, preview!.raw!, next)));
   };
   const save = () => start(async () => {
-    const r = await saveBillSheet(projectId, preview!.raw!, choices);
+    const r = await saveBillSheet(projectId, preview!.raw!, choices, paidFrom || null);
     setResult(r);
     if (!r.error && !(r.failed ?? []).length) { setPreview(null); router.refresh(); }
     else router.refresh();
@@ -140,6 +142,12 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
               {result?.error && <p className="text-sm text-red-700">{result.error}</p>}
               {(result?.failed ?? []).map((f) => <p key={f.rows.join()} className="text-sm text-red-700">Rows {f.rows.join(", ")}: {f.error}</p>)}
               <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-sm">Paid from
+                  <select aria-label="Paid from" value={paidFrom} onChange={(e) => setPaidFrom(e.target.value)} className="rounded-lg border border-[var(--border)] bg-[var(--field)] px-2 py-1.5 text-sm">
+                    {data.payFrom.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    <option value="">Not paid yet</option>
+                  </select>
+                </label>
                 <button type="button" className={primary} disabled={pending || counts.error > 0 || !preview.bills} onClick={save}>
                   {pending ? "Saving…" : `Save ${preview.bills} bill${preview.bills === 1 ? "" : "s"}`}
                 </button>

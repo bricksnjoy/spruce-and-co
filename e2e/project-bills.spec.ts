@@ -75,6 +75,8 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await expect(page.getByText(/Saved 2 bills/)).toBeVisible();
   const lines = sql(`select count(*) from transaction_lines l join transactions t on t.id = l.transaction_id where t.project_id = '${project}' and t.type = 'bill'`);
   expect(lines).toBe("4"); // the pop-up bill's line + 2 + 1
+  // receipts are entered once paid: the sheet's bills are saved paid, from the first money account
+  expect(sql(`select count(*) from document_balances_v d join transactions t on t.id = d.id where t.project_id = '${project}' and t.memo = 'From a bills sheet' and d.balance <> 0`)).toBe("0");
 
   // uploading the same sheet again saves nothing new
   await page.getByLabel("Filled bills sheet").setInputFiles(file);
