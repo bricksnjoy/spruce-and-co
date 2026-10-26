@@ -12,7 +12,7 @@ type Row = { id: string; type: string; number: string | null; date: string; due_
   vendor_name: string | null; project_code: string | null; status: string; voided_at: string | null; tax_invoice_no: string | null };
 const m = (v: number | string | bigint | null | undefined) => money(typeof v === "bigint" ? laariToNumber(v) : laariToNumber(dbToLaari(v)));
 const FILTERS: [string, string][] = [["all", "All"], ["bill", "Bills"], ["unpaid", "Unpaid"], ["overdue", "Overdue"], ["awaiting_approval", "Awaiting approval"],
-  ["expense", "Expenses"], ["bill_payment", "Payments"], ["vendor_credit", "Vendor credits"], ["purchase_order", "Purchase orders"]];
+  ["expense", "Expenses"], ["bill_payment", "Payments made"], ["vendor_credit", "Vendor credits"], ["purchase_order", "Purchase orders"]];
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   const s = await getSession();
@@ -29,7 +29,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const unpaid = open.reduce((a, r) => a + dbToLaari(r.balance), 0n);
   const overdue = open.filter((r) => r.status === "overdue").reduce((a, r) => a + dbToLaari(r.balance), 0n);
   const pending = rows.filter((r) => r.status === "awaiting_approval");
-  const shown = rows.filter((r) => show === "all" ? true : show === "unpaid" ? open.includes(r) : ["overdue", "awaiting_approval"].includes(show) ? r.status === show : r.type === show);
+  // a payment is shown on the bill it pays (its status turns Paid), so "All" leaves payments to their own tab
+  const shown = rows.filter((r) => show === "all" ? r.type !== "bill_payment" : show === "unpaid" ? open.includes(r) : ["overdue", "awaiting_approval"].includes(show) ? r.status === show : r.type === show);
   const writer = canWrite(s.role);
 
   return (
@@ -60,6 +61,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           <Link key={k} href={`/expenses?show=${k}`} className={`rounded-full px-3 py-1 text-xs font-medium ${show === k ? "bg-[var(--brand)] text-white" : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
         ))}
         <Link href="/expenses/vendors" className="ml-auto text-xs text-[var(--muted)] hover:underline">Vendors →</Link>
+        {show === "all" && <p className="w-full text-xs text-[var(--muted)]">Each bill shows whether it is paid; the payments themselves are under “Payments made”.</p>}
       </div>
 
       <Card>
