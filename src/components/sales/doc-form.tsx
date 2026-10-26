@@ -159,7 +159,7 @@ export function DocForm({ data, values, branding, number = null }: {
                     <td className="px-2 py-2">
                       <select aria-label={`Line ${i + 1} GST`} value={l.tax_code_id} onChange={(e) => setLine(i, { tax_code_id: e.target.value })} className={input}>
                         <option value="">None</option>
-                        {data.taxCodes.map((t) => <option key={t.id} value={t.id}>{t.name}{t.rate !== "0" ? ` ${Number(t.rate)}%` : ""}</option>)}
+                        {data.taxCodes.map((t) => <option key={t.id} value={t.id}>{t.rate !== "0" ? `${Number(t.rate)}% · ${t.name}` : `0% · ${t.name}`}</option>)}
                       </select>
                     </td>
                     <td className="px-2 py-2">

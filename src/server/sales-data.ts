@@ -36,7 +36,8 @@ export async function salesFormData(s: Session) {
     customers: (cust.data ?? []) as CustomerOpt[],
     projects: (proj.data ?? []) as ProjectOpt[],
     taxCodes,
-    defaultTaxCode: taxCodes.find((c) => c.code === (gstRegistered ? "STD" : "OOS"))?.id ?? null,
+    // GST at the standard rate (8% today) unless the line is changed
+    defaultTaxCode: taxCodes.find((c) => c.code === "STD")?.id ?? null,
     incomeAccounts: (income.data ?? []) as AccountOpt[],
     banks: (banks.data ?? []) as AccountOpt[],
     gstRegistered,
