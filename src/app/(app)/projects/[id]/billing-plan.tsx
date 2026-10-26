@@ -18,12 +18,18 @@ export type Stage = {
 };
 
 /** The progress-billing plan: stages that become invoices (in the Sales module). */
-export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId: string; revised: string; stages: Stage[]; canEdit: boolean }) {
+export function BillingPlan({ projectId, revised, stages, canEdit, gstRate = "0" }: {
+  projectId: string; revised: string; stages: Stage[]; canEdit: boolean;
+  // the GST added on top of each stage when invoiced ("0" when none)
+  gstRate?: string;
+}) {
   const contract = dbToLaari(revised);
   const plannedOf = (st: Stage) => (st.basis === "percent" ? percentOf(contract, String(st.value)) : dbToLaari(st.value));
   // an invoiced stage counts at its invoice's amount
   const amountOf = (st: Stage) => (st.invoice_total != null ? dbToLaari(st.invoice_total) : plannedOf(st));
   const planned = stages.reduce((t, st) => t + amountOf(st), 0n);
+  const gstOf = (v: bigint) => percentOf(v, gstRate);
+  const hasGst = gstRate !== "0";
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [state, action, saving] = useActionState(saveBillingStage, null as Result | null);
@@ -36,7 +42,7 @@ export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId
 
   return (
     <Card>
-      <CardHeader title="Billing plan" subtitle={`Planned ${money(laariToNumber(planned))} of a ${money(laariToNumber(contract))} contract`} />
+      <CardHeader title="Billing plan" subtitle={`Planned ${money(laariToNumber(planned))} of a ${money(laariToNumber(contract))} contract${hasGst ? `, before GST · with ${Number(gstRate)}% GST the client pays ${money(laariToNumber(contract + gstOf(contract)))}` : ""}`} />
       {planned !== contract && stages.length > 0 && (
         <p className={`mx-5 mt-4 rounded-lg px-4 py-2 text-sm ${planned > contract ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"}`}>
           {planned > contract ? `The plan bills ${money(laariToNumber(planned - contract))} more than the contract.` : `${money(laariToNumber(contract - planned))} of the contract is not in the plan yet.`}
@@ -44,7 +50,7 @@ export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId
       )}
       {stages.length === 0 ? <Empty message="No billing stages yet." /> : (
         <Table>
-          <thead><tr><Th>Stage</Th><Th>When</Th><Th right>Share</Th><Th right>Amount</Th><Th right>Invoiced</Th>{canEdit && <Th right> </Th>}</tr></thead>
+          <thead><tr><Th>Stage</Th><Th>When</Th><Th right>Share</Th><Th right>{hasGst ? "Before GST" : "Amount"}</Th>{hasGst && <><Th right>GST {Number(gstRate)}%</Th><Th right>With GST</Th></>}<Th right>Invoiced</Th>{canEdit && <Th right> </Th>}</tr></thead>
           <tbody>
             {stages.map((st) => (
               <tr key={st.id}>
@@ -53,6 +59,7 @@ export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId
                 <Td right>{st.basis === "percent" ? `${Number(st.value)}%` : "Fixed"}</Td>
                 <Td right>{money(laariToNumber(amountOf(st)))}
                   {amountOf(st) !== plannedOf(st) && <span className="block text-xs text-[var(--muted)]">planned {money(laariToNumber(plannedOf(st)))}</span>}</Td>
+                {hasGst && <><Td right>{money(laariToNumber(gstOf(amountOf(st))))}</Td><Td right className="font-medium">{money(laariToNumber(amountOf(st) + gstOf(amountOf(st))))}</Td></>}
                 <Td right>{st.invoice_id ? <Link href={`/sales/${st.invoice_id}`} className="font-medium text-[var(--brand)] hover:underline">View invoice</Link>
                   : canEdit ? <button type="button" disabled={pending} onClick={() => invoice(st.id)} className="text-xs font-medium text-[var(--brand)] hover:underline">Create invoice</button>
                   : <span className="text-[var(--muted)]">Not yet</span>}</Td>

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession, type Session } from "@/server/session";
 import { date, money, pct, titleize, today } from "@/lib/format";
-import { dbToLaari, laariToNumber } from "@/lib/money";
+import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
 import { STAGE_LABEL, type ProjectFigures } from "@/lib/project-figures";
 import { VariationRows, NewVariation, type VariationRow } from "./variation-forms";
@@ -13,6 +13,7 @@ import { CompleteForm, FinancingForm } from "@/components/partners/forms";
 import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
 import { ProjectBills } from "@/components/projects/project-bills";
 import { expenseFormData } from "@/server/expense-data";
+import { standardGstRate } from "@/server/gst-rate";
 import { blankExpense } from "@/lib/expense-doc";
 
 export const dynamic = "force-dynamic";
@@ -130,7 +131,14 @@ async function Variations({ s, p, writer }: { s: Session; p: ProjectFigures; wri
 }
 
 async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
-  const { data } = await s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order");
+  const [{ data }, { data: proj }, { data: settings }, rate] = await Promise.all([
+    s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order"),
+    s.supabase.from("projects").select("gst_amount").eq("id", p.id).maybeSingle(),
+    s.supabase.from("settings").select("gst_registered").maybeSingle(),
+    standardGstRate(s.supabase),
+  ]);
+  // stages are invoiced with GST on top when the project carries GST or the company is registered (036)
+  const gstRate = settings?.gst_registered || dbToLaari(proj?.gst_amount) > 0n ? rate : "0";
   // an invoiced stage counts at what its invoice actually says, which may have been changed after it was raised
   const ids = (data ?? []).map((st) => st.invoice_id).filter(Boolean) as string[];
   // before GST, as the stage itself is
@@ -140,17 +148,19 @@ async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer
     String(laariToNumber(((i.transaction_lines ?? []) as { amount: string }[]).reduce((t, l) => t + dbToLaari(l.amount), 0n)))]));
   const stages = ((data ?? []) as Stage[]).map((st) => ({ ...st, invoice_total: st.invoice_id ? invoiced.get(st.invoice_id) ?? null : null }));
   // how much of the contract is still to come from the client: to invoice, and to receive
-  // still to come = what is not invoiced yet (before GST) + what the client owes on invoices (with their GST)
-  const toReceive = dbToLaari(p.remaining_to_bill) + dbToLaari(p.client_balance);
+  // still to come = what is not invoiced yet (with its GST) + what the client owes on invoices (with theirs)
+  const withGst = (v: bigint) => v + percentOf(v, gstRate);
+  const toReceive = withGst(dbToLaari(p.remaining_to_bill)) + dbToLaari(p.client_balance);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Figure label="Contract value" value={m(p.revised)} hint={dbToLaari(p.variations) ? `incl. variations ${m(p.variations)}` : undefined} />
-        <Figure label="Invoiced" value={m(p.billed)} hint={`Still to invoice ${m(p.remaining_to_bill)}`} />
+        <Figure label="Contract value" value={m(p.revised)} hint={[dbToLaari(p.variations) ? `incl. variations ${m(p.variations)}` : "",
+          gstRate !== "0" ? `+ GST ${Number(gstRate)}% ${money(laariToNumber(percentOf(dbToLaari(p.revised), gstRate)))} = ${money(laariToNumber(withGst(dbToLaari(p.revised))))}` : ""].filter(Boolean).join(" · ") || undefined} />
+        <Figure label="Invoiced (before GST)" value={m(p.billed)} hint={`Still to invoice ${m(p.remaining_to_bill)}`} />
         <Figure label="Received from client" value={m(p.collected)} hint={`Payments, GST included · client owes ${m(p.client_balance)} on invoices`} />
-        <Figure label="Still to receive" value={money(laariToNumber(toReceive))} hint="Not invoiced yet, plus what the client owes on invoices (with GST)" />
+        <Figure label="Still to receive" value={money(laariToNumber(toReceive))} hint={`Not invoiced yet${gstRate !== "0" ? " with its GST" : ""}, plus what the client owes on invoices`} />
       </div>
-      <BillingPlan projectId={p.id} revised={String(p.revised)} stages={stages} canEdit={writer} />
+      <BillingPlan projectId={p.id} revised={String(p.revised)} stages={stages} canEdit={writer} gstRate={gstRate} />
     </div>
   );
 }

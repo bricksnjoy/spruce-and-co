@@ -42,6 +42,17 @@ describe("billing stages become invoices", () => {
     await assertHealthy(db);
   });
 
+  it("adds GST to a stage of a project that carries GST, even while the company is not registered (036)", async () => {
+    await db.query(`update settings set gst_registered = false`);
+    const plain = (await one<{ id: string }>(db, `insert into billing_stages (project_id, name, basis, value) values ($1, 'Advance', 'amount', 10000) returning id`, [project])).id;
+    const total = async (inv: string) => (await one<{ t: string }>(db, `select doc_total($1)::text t`, [inv])).t;
+    expect(await total(await id(`select rpc_invoice_stage($1, '2026-02-01') id`, [plain]))).toBe("10000.00");
+    await db.query(`update projects set gst_amount = 9600 where id = $1`, [project]);
+    const taxed = (await one<{ id: string }>(db, `insert into billing_stages (project_id, name, basis, value) values ($1, 'Final', 'amount', 20000) returning id`, [project])).id;
+    expect(await total(await id(`select rpc_invoice_stage($1, '2026-02-02') id`, [taxed]))).toBe("21600.00");
+    await assertHealthy(db);
+  });
+
   it("refuses a project with no customer", async () => {
     const p2 = (await one<{ id: string }>(db, `insert into projects (code, name, contract_value) values ('P-2', 'No client', 5000) returning id`)).id;
     const st = (await one<{ id: string }>(db, `insert into billing_stages (project_id, name, basis, value) values ($1, 'All', 'amount', 5000) returning id`, [p2])).id;
