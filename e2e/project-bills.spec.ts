@@ -99,7 +99,7 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await expect(page.getByText(/Saved 1 bill/)).toBeVisible();
 
   // the pop-up bill was saved unpaid: "Mark all as paid" pays it on its own date
-  await page.reload();
+  await page.goto(`/projects/${project}?tab=bills`);
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: /Mark all \d+ as paid/ }).click();
   await expect(page.getByText(/\d+ marked paid/)).toBeVisible();
