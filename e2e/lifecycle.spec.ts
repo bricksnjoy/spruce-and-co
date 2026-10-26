@@ -113,7 +113,7 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await page.goto("/sales/payments/new");
   await pick(page, "Customer", CUSTOMER);
   await page.getByLabel("Amount received").fill("100000");
-  await pick(page, "Paid into", /1010/);
+  await pick(page, "Where the money is", /1010/);
   await page.getByLabel(`Apply to ${invoiceNo}`).fill("100000");
   await page.getByRole("button", { name: "Save payment" }).click();
   await page.waitForURL((u) => !u.pathname.endsWith("/new"));
@@ -132,7 +132,7 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await pick(page, "Customer", CUSTOMER);
   const rest = (invTotal - 100000).toFixed(2);
   await page.getByLabel("Amount received").fill(rest);
-  await pick(page, "Paid into", /1010/);
+  await pick(page, "Where the money is", /1010/);
   await page.getByLabel(`Apply to ${invoiceNo}`).fill(rest);
   await page.getByRole("button", { name: "Save payment" }).click();
   await page.waitForURL((u) => !u.pathname.endsWith("/new"));
