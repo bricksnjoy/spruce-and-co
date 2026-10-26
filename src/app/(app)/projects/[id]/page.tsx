@@ -140,16 +140,15 @@ async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer
     String(laariToNumber(((i.transaction_lines ?? []) as { amount: string }[]).reduce((t, l) => t + dbToLaari(l.amount), 0n)))]));
   const stages = ((data ?? []) as Stage[]).map((st) => ({ ...st, invoice_total: st.invoice_id ? invoiced.get(st.invoice_id) ?? null : null }));
   // how much of the contract is still to come from the client: to invoice, and to receive
-  const contract = dbToLaari(p.revised), collected = dbToLaari(p.collected);
-  // paid by the client but not yet set against an invoice (e.g. the invoice it paid was voided)
-  const unapplied = collected - (dbToLaari(p.billed) - dbToLaari(p.client_balance));
+  // still to come = what is not invoiced yet (before GST) + what the client owes on invoices (with their GST)
+  const toReceive = dbToLaari(p.remaining_to_bill) + dbToLaari(p.client_balance);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Figure label="Contract value" value={m(p.revised)} hint={dbToLaari(p.variations) ? `incl. variations ${m(p.variations)}` : undefined} />
         <Figure label="Invoiced" value={m(p.billed)} hint={`Still to invoice ${m(p.remaining_to_bill)}`} />
-        <Figure label="Received from client" value={m(p.collected)} hint={`Client owes ${m(p.client_balance)} on invoices${unapplied > 0n ? ` · ${money(laariToNumber(unapplied))} paid but not yet applied to an invoice` : ""}`} />
-        <Figure label="Still to receive" value={money(laariToNumber(contract - collected))} hint="Contract value less what the client has paid" />
+        <Figure label="Received from client" value={m(p.collected)} hint={`Payments, GST included · client owes ${m(p.client_balance)} on invoices`} />
+        <Figure label="Still to receive" value={money(laariToNumber(toReceive))} hint="Not invoiced yet, plus what the client owes on invoices (with GST)" />
       </div>
       <BillingPlan projectId={p.id} revised={String(p.revised)} stages={stages} canEdit={writer} />
     </div>
