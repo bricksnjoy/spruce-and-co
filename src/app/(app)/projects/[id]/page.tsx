@@ -143,10 +143,16 @@ async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer
   const ids = (data ?? []).map((st) => st.invoice_id).filter(Boolean) as string[];
   // before GST, as the stage itself is
   const { data: invs } = ids.length
-    ? await s.supabase.from("transactions").select("id, voided_at, transaction_lines(amount)").in("id", ids) : { data: [] };
-  const invoiced = new Map((invs ?? []).filter((i) => !i.voided_at).map((i) => [i.id as string,
-    String(laariToNumber(((i.transaction_lines ?? []) as { amount: string }[]).reduce((t, l) => t + dbToLaari(l.amount), 0n)))]));
-  const stages = ((data ?? []) as Stage[]).map((st) => ({ ...st, invoice_total: st.invoice_id ? invoiced.get(st.invoice_id) ?? null : null }));
+    ? await s.supabase.from("transactions").select("id, voided_at, transaction_lines(amount, tax_amount)").in("id", ids) : { data: [] };
+  const sumOf = (ls: { amount: string; tax_amount: string | null }[], k: "amount" | "tax_amount") => String(laariToNumber(ls.reduce((t, l) => t + dbToLaari(l[k]), 0n)));
+  const invoiced = new Map((invs ?? []).filter((i) => !i.voided_at).map((i) => {
+    const ls = (i.transaction_lines ?? []) as { amount: string; tax_amount: string | null }[];
+    return [i.id as string, { net: sumOf(ls, "amount"), gst: sumOf(ls, "tax_amount") }];
+  }));
+  const stages = ((data ?? []) as Stage[]).map((st) => {
+    const inv = st.invoice_id ? invoiced.get(st.invoice_id) : undefined;
+    return { ...st, invoice_total: inv?.net ?? null, invoice_gst: inv?.gst ?? null };
+  });
   // how much of the contract is still to come from the client: to invoice, and to receive
   // still to come = what is not invoiced yet (with its GST) + what the client owes on invoices (with theirs)
   const withGst = (v: bigint) => v + percentOf(v, gstRate);

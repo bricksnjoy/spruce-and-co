@@ -15,6 +15,8 @@ export type Stage = {
   id: string; name: string; basis: "percent" | "amount"; value: number | string; due_event: string | null; invoice_id: string | null;
   // what its invoice says, once invoiced (and not voided)
   invoice_total?: string | null;
+  // the GST its invoice actually charged
+  invoice_gst?: string | null;
 };
 
 /** The progress-billing plan: stages that become invoices (in the Sales module). */
@@ -29,6 +31,8 @@ export function BillingPlan({ projectId, revised, stages, canEdit, gstRate = "0"
   const amountOf = (st: Stage) => (st.invoice_total != null ? dbToLaari(st.invoice_total) : plannedOf(st));
   const planned = stages.reduce((t, st) => t + amountOf(st), 0n);
   const gstOf = (v: bigint) => percentOf(v, gstRate);
+  // an invoiced stage shows the GST its invoice charged; a planned one, the GST it will carry
+  const stageGst = (st: Stage) => (st.invoice_gst != null ? dbToLaari(st.invoice_gst) : gstOf(amountOf(st)));
   const hasGst = gstRate !== "0";
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +63,13 @@ export function BillingPlan({ projectId, revised, stages, canEdit, gstRate = "0"
                 <Td right>{st.basis === "percent" ? `${Number(st.value)}%` : "Fixed"}</Td>
                 <Td right>{money(laariToNumber(amountOf(st)))}
                   {amountOf(st) !== plannedOf(st) && <span className="block text-xs text-[var(--muted)]">planned {money(laariToNumber(plannedOf(st)))}</span>}</Td>
-                {hasGst && <><Td right>{money(laariToNumber(gstOf(amountOf(st))))}</Td><Td right className="font-medium">{money(laariToNumber(amountOf(st) + gstOf(amountOf(st))))}</Td></>}
+                {hasGst && <>
+                  <Td right>{money(laariToNumber(stageGst(st)))}
+                    {st.invoice_gst != null && stageGst(st) !== gstOf(amountOf(st)) && (
+                      <span className="block text-xs font-medium text-amber-700">should be {money(laariToNumber(gstOf(amountOf(st))))}: fix the invoice&apos;s GST code</span>
+                    )}</Td>
+                  <Td right className="font-medium">{money(laariToNumber(amountOf(st) + stageGst(st)))}</Td>
+                </>}
                 <Td right>{st.invoice_id ? <Link href={`/sales/${st.invoice_id}`} className="font-medium text-[var(--brand)] hover:underline">View invoice</Link>
                   : canEdit ? <button type="button" disabled={pending} onClick={() => invoice(st.id)} className="text-xs font-medium text-[var(--brand)] hover:underline">Create invoice</button>
                   : <span className="text-[var(--muted)]">Not yet</span>}</Td>
