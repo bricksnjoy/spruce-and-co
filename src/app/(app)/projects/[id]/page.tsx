@@ -131,7 +131,19 @@ async function Variations({ s, p, writer }: { s: Session; p: ProjectFigures; wri
 
 async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
   const { data } = await s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order");
-  return <BillingPlan projectId={p.id} revised={String(p.revised)} stages={(data ?? []) as Stage[]} canEdit={writer} />;
+  // how much of the contract is still to come from the client: to invoice, and to receive
+  const contract = dbToLaari(p.revised), collected = dbToLaari(p.collected);
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Figure label="Contract value" value={m(p.revised)} hint={dbToLaari(p.variations) ? `incl. variations ${m(p.variations)}` : undefined} />
+        <Figure label="Invoiced" value={m(p.billed)} hint={`Still to invoice ${m(p.remaining_to_bill)}`} />
+        <Figure label="Received from client" value={m(p.collected)} hint={`Client owes ${m(p.client_balance)} on invoices`} />
+        <Figure label="Still to receive" value={money(laariToNumber(contract - collected))} hint="Contract value less what the client has paid" />
+      </div>
+      <BillingPlan projectId={p.id} revised={String(p.revised)} stages={(data ?? []) as Stage[]} canEdit={writer} />
+    </div>
+  );
 }
 
 async function Transactions({ s, id }: { s: Session; id: string }) {
@@ -181,8 +193,9 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
   ]);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
   const rows = (sources ?? []).filter((r) => dbToLaari(r.received) !== 0n).sort((a, b) => Number(dbToLaari(b.received) - dbToLaari(a.received)));
-  // the company's own financing shares the pool's return by amount too; its share stays as company profit
+  // the company's own financing shares the pool's return by amount too, and comes back to it once the client has paid in full
   const own = dbToLaari(company as string | number | null);
+  const ownBack = p.completed_at && dbToLaari(p.client_balance) === 0n ? own : 0n;
   const total = rows.reduce((t, r) => t + dbToLaari(r.received), 0n) + own;
   const ratio = (v: number | string) => total > 0n ? Number((dbToLaari(v) * 1000000n) / total) / 10000 : 0;
   return (
@@ -203,11 +216,12 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
               {own > 0n && (
                 <tr>
                   <Td>Company</Td><Td>Capital Pool (company&apos;s own)</Td><Td right>{money(laariToNumber(own))}</Td><Td right>{pct(Number((own * 1000000n) / total) / 10000, 2)}</Td>
-                  <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">its share stays as profit</Td>
+                  <Td right>{money(laariToNumber(ownBack))}</Td><Td right>{money(laariToNumber(own - ownBack))}</Td>
                 </tr>
               )}
               <tr className="font-semibold"><Td>Total</Td><Td> </Td><Td right>{money(laariToNumber(total))}</Td><Td right>100%</Td>
-                <Td right>{m(rows.reduce((t, r) => t + Number(r.repaid), 0))}</Td><Td right>{m(rows.reduce((t, r) => t + Number(r.outstanding), 0))}</Td></tr>
+                <Td right>{money(laariToNumber(rows.reduce((t, r) => t + dbToLaari(r.repaid), 0n) + ownBack))}</Td>
+                <Td right>{money(laariToNumber(rows.reduce((t, r) => t + dbToLaari(r.outstanding), 0n) + own - ownBack))}</Td></tr>
             </tbody>
           </Table>
         )}
@@ -243,14 +257,18 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
 
 async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
   if (!p.completed_at) {
-    const [{ data: profit }, { data: preview }, { data: proj }] = await Promise.all([
+    const [{ data: profit }, { data: preview }, { data: proj }, { data: company }] = await Promise.all([
       s.supabase.rpc("project_profit", { p_project: p.id }),
       s.supabase.rpc("preview_split", { p_project: p.id }),
       s.supabase.from("projects").select("profit_schemes(name, effective_from)").eq("id", p.id).maybeSingle(),
+      s.supabase.rpc("company_funding", { p_project: p.id }),
     ]);
     const lines = (preview ?? []) as { contact_id: string; name: string; component: string; amount: string; principal: string }[];
     const shared = lines.reduce((t, l) => t + dbToLaari(l.amount), 0n);
     const profitL = dbToLaari(profit as string | number | null);
+    const own = dbToLaari(company as string | number | null);
+    const ownReturn = own > 0n && profitL > 0n
+      ? dbToLaari((await s.supabase.rpc("company_financing_return", { p_project: p.id, p_profit: laariToNumber(profitL) })).data as string | number | null) : 0n;
     const scheme = (proj?.profit_schemes ?? null) as unknown as { name: string; effective_from: string } | null;
     const people = [...new Set(lines.map((l) => l.contact_id))];
     return (
@@ -274,7 +292,13 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
                     </tr>
                   );
                 })}
-                <tr><Td>Company keeps</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL - shared))}</Td><Td right> </Td></tr>
+                {own > 0n && (
+                  <tr>
+                    <Td>Company (its own financing)</Td><Td right>{money(laariToNumber(own))}</Td><Td right>{money(laariToNumber(ownReturn))}</Td>
+                    <Td right>–</Td><Td right className="font-medium">{money(laariToNumber(own + ownReturn))}</Td>
+                  </tr>
+                )}
+                <tr><Td>Company keeps</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL - shared - ownReturn))}</Td><Td right> </Td></tr>
                 <tr className="font-semibold"><Td>Project profit</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL))}</Td><Td right> </Td></tr>
               </tbody>
             </Table>
@@ -289,23 +313,28 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
       </div>
     );
   }
-  const [{ data: dists }, { data: flag }, { data: contacts }] = await Promise.all([
+  const [{ data: dists }, { data: flag }, { data: contacts }, { data: company }] = await Promise.all([
     s.supabase.from("distributions").select("id, created_at, reason, profit_amount, distribution_lines(contact_id, component, amount)").eq("project_id", p.id).order("created_at"),
     s.supabase.from("projects").select("review_flag").eq("id", p.id).maybeSingle(),
     s.supabase.from("contacts").select("id, name"),
+    s.supabase.rpc("company_funding", { p_project: p.id }),
   ]);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
   const all = (dists ?? []).flatMap((d) => (d.distribution_lines ?? []) as { contact_id: string; component: string; amount: string }[]);
   const people = [...new Set(all.map((l) => l.contact_id))].sort((a, b) => (names.get(a) ?? "").localeCompare(names.get(b) ?? ""));
   const net = (cid: string, c: string) => all.filter((l) => l.contact_id === cid && l.component === c).reduce((t, l) => t + dbToLaari(l.amount), 0n);
   const latest = (dists ?? []).at(-1);
+  // the company's own financing earns its share of the pool like everyone's; it is not posted, it stays with the company
+  const own = dbToLaari(company as string | number | null);
+  const ownReturn = own > 0n && latest
+    ? dbToLaari((await s.supabase.rpc("company_financing_return", { p_project: p.id, p_profit: latest.profit_amount })).data as string | number | null) : 0n;
   const REASON: Record<string, string> = { completion: "On completion", bad_debt: "Bad debt", late_entry: "Late entry", manual: "Adjustment" };
   return (
     <div className="space-y-5">
       {flag?.review_flag && <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">For review: {flag.review_flag}.</p>}
       <Card>
         <CardHeader title="Profit split" subtitle={`Completed ${date(p.completed_at)} · current profit ${m(latest?.profit_amount)} · net of every adjustment`} />
-        {people.length === 0 ? <Empty message="Nothing shared: the project made no profit." /> : (
+        {people.length === 0 && ownReturn === 0n ? <Empty message="Nothing shared: the project made no profit." /> : (
           <Table>
             <thead><tr><Th>Person</Th><Th right>Financing return</Th><Th right>Profit share</Th></tr></thead>
             <tbody>
@@ -315,6 +344,9 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
                   <Td right>{money(laariToNumber(net(cid, "financing_return")))}</Td><Td right>{money(laariToNumber(net(cid, "profit_share")))}</Td>
                 </tr>
               ))}
+              {ownReturn > 0n && (
+                <tr><Td>Company (its own financing, stays with the company)</Td><Td right>{money(laariToNumber(ownReturn))}</Td><Td right>–</Td></tr>
+              )}
             </tbody>
           </Table>
         )}

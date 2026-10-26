@@ -90,6 +90,9 @@ describe("financing from company capital", () => {
     const ret = await q<{ name: string; amount: string }>(db,
       `select c.name, s.amount from split_profit($1, 100000) s join contacts c on c.id = s.contact_id where s.component = 'financing_return' order by s.amount desc`, [q2]);
     expect(ret.map((r) => [r.name, Number(r.amount)])).toEqual([["Mujahid", 1250], ["Muaz", 500], ["Mushahid", 500], ["Mariyam Zahir", 250]]);
+    // and the company's own 35,000 earns its 35/40 of the pool's 20,000 (035)
+    expect(Number((await one<{ r: string }>(db, `select company_financing_return($1, 100000) r`, [q2])).r)).toBe(17500);
+    expect(Number((await one<{ r: string }>(db, `select company_financing_return($1, 0) r`, [q2])).r)).toBe(0);
   });
 
   it("takes a member's returns and profit shares, never their principal, which stays theirs to be repaid", async () => {
