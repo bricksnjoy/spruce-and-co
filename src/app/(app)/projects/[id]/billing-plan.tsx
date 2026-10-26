@@ -11,12 +11,18 @@ import { today } from "@/lib/format";
 import { money } from "@/lib/format";
 import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 
-export type Stage = { id: string; name: string; basis: "percent" | "amount"; value: number | string; due_event: string | null; invoice_id: string | null };
+export type Stage = {
+  id: string; name: string; basis: "percent" | "amount"; value: number | string; due_event: string | null; invoice_id: string | null;
+  // what its invoice says, once invoiced (and not voided)
+  invoice_total?: string | null;
+};
 
 /** The progress-billing plan: stages that become invoices (in the Sales module). */
 export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId: string; revised: string; stages: Stage[]; canEdit: boolean }) {
   const contract = dbToLaari(revised);
-  const amountOf = (st: Stage) => (st.basis === "percent" ? percentOf(contract, String(st.value)) : dbToLaari(st.value));
+  const plannedOf = (st: Stage) => (st.basis === "percent" ? percentOf(contract, String(st.value)) : dbToLaari(st.value));
+  // an invoiced stage counts at its invoice's amount
+  const amountOf = (st: Stage) => (st.invoice_total != null ? dbToLaari(st.invoice_total) : plannedOf(st));
   const planned = stages.reduce((t, st) => t + amountOf(st), 0n);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +51,8 @@ export function BillingPlan({ projectId, revised, stages, canEdit }: { projectId
                 <Td>{st.name}</Td>
                 <Td className="text-xs text-[var(--muted)]">{st.due_event ?? ""}</Td>
                 <Td right>{st.basis === "percent" ? `${Number(st.value)}%` : "Fixed"}</Td>
-                <Td right>{money(laariToNumber(amountOf(st)))}</Td>
+                <Td right>{money(laariToNumber(amountOf(st)))}
+                  {amountOf(st) !== plannedOf(st) && <span className="block text-xs text-[var(--muted)]">planned {money(laariToNumber(plannedOf(st)))}</span>}</Td>
                 <Td right>{st.invoice_id ? <Link href={`/sales/${st.invoice_id}`} className="font-medium text-[var(--brand)] hover:underline">View invoice</Link>
                   : canEdit ? <button type="button" disabled={pending} onClick={() => invoice(st.id)} className="text-xs font-medium text-[var(--brand)] hover:underline">Create invoice</button>
                   : <span className="text-[var(--muted)]">Not yet</span>}</Td>

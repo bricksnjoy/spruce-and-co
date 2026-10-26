@@ -131,17 +131,27 @@ async function Variations({ s, p, writer }: { s: Session; p: ProjectFigures; wri
 
 async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
   const { data } = await s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order");
+  // an invoiced stage counts at what its invoice actually says, which may have been changed after it was raised
+  const ids = (data ?? []).map((st) => st.invoice_id).filter(Boolean) as string[];
+  // before GST, as the stage itself is
+  const { data: invs } = ids.length
+    ? await s.supabase.from("transactions").select("id, voided_at, transaction_lines(amount)").in("id", ids) : { data: [] };
+  const invoiced = new Map((invs ?? []).filter((i) => !i.voided_at).map((i) => [i.id as string,
+    String(laariToNumber(((i.transaction_lines ?? []) as { amount: string }[]).reduce((t, l) => t + dbToLaari(l.amount), 0n)))]));
+  const stages = ((data ?? []) as Stage[]).map((st) => ({ ...st, invoice_total: st.invoice_id ? invoiced.get(st.invoice_id) ?? null : null }));
   // how much of the contract is still to come from the client: to invoice, and to receive
   const contract = dbToLaari(p.revised), collected = dbToLaari(p.collected);
+  // paid by the client but not yet set against an invoice (e.g. the invoice it paid was voided)
+  const unapplied = collected - (dbToLaari(p.billed) - dbToLaari(p.client_balance));
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Figure label="Contract value" value={m(p.revised)} hint={dbToLaari(p.variations) ? `incl. variations ${m(p.variations)}` : undefined} />
         <Figure label="Invoiced" value={m(p.billed)} hint={`Still to invoice ${m(p.remaining_to_bill)}`} />
-        <Figure label="Received from client" value={m(p.collected)} hint={`Client owes ${m(p.client_balance)} on invoices`} />
+        <Figure label="Received from client" value={m(p.collected)} hint={`Client owes ${m(p.client_balance)} on invoices${unapplied > 0n ? ` · ${money(laariToNumber(unapplied))} paid but not yet applied to an invoice` : ""}`} />
         <Figure label="Still to receive" value={money(laariToNumber(contract - collected))} hint="Contract value less what the client has paid" />
       </div>
-      <BillingPlan projectId={p.id} revised={String(p.revised)} stages={(data ?? []) as Stage[]} canEdit={writer} />
+      <BillingPlan projectId={p.id} revised={String(p.revised)} stages={stages} canEdit={writer} />
     </div>
   );
 }
