@@ -1,0 +1,30 @@
+# Brings the live Supabase database up to date when migrations reach the
+# default branch: runs db/apply-live.sh, which applies each new
+# db/migrations/*.up.sql once, in order. Needs the SUPABASE_DB_URL secret
+# (the Session pooler connection string). Can also be run by hand from the
+# Actions tab.
+name: Apply database migrations
+
+on:
+  push:
+    branches: [claude/jolly-cannon-i4y7vh]
+    paths:
+      - db/migrations/*.up.sql
+      - db/apply-live.sh
+  workflow_dispatch:
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply new migrations to Live
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply
+        run: ./db/apply-live.sh
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
