@@ -122,7 +122,7 @@ function CapitalPoolForm({ projectId, capital }: { projectId: string; capital: C
                   {!r.contact_id && <span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less what it owes directors and lenders and has in unfinished projects</span>}</td>
                 <td className="px-3 py-2 text-right">{money(laariToNumber(r.avail))}</td>
                 <td className="px-3 py-2 text-right">
-                  <input aria-label={`From ${r.contact_id ? r.name : "the company"}`} name={`amt:${r.key}`} inputMode="decimal" value={amounts[r.key] ?? ""}
+                  <input aria-label={`${r.contact_id ? r.name : "Company"} puts in`} name={`amt:${r.key}`} inputMode="decimal" value={amounts[r.key] ?? ""}
                     onChange={(e) => setAmounts((a) => ({ ...a, [r.key]: e.target.value }))} disabled={r.avail <= 0n}
                     className={`${input} w-36 text-right tabular-nums ${want(r.key) > r.avail ? "border-red-500" : ""}`} />
                   {want(r.key) > r.avail && <span className="block text-xs text-red-700">More than {money(laariToNumber(r.avail))}</span>}
