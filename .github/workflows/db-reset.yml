@@ -1,0 +1,24 @@
+# One-time reset of the live database's test data (27 Oct 2026): runs
+# db/maintenance/reset-business-data.sql in one transaction. Only when started by
+# hand from the Actions tab with the words below; removed again once it has run.
+name: Reset business data (one time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DELETE ALL BUSINESS DATA to run it"
+        required: true
+
+jobs:
+  reset:
+    name: Reset business data in Live
+    if: inputs.confirm == 'DELETE ALL BUSINESS DATA'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reset
+        run: psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 --single-transaction -f db/maintenance/reset-business-data.sql
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
