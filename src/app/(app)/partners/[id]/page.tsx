@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Stat, Table, Th, Td } from "@/components/ui";
-import { PayoutForm, type OwedRow } from "@/components/partners/forms";
+import { DirectorAccountForms, PayoutForm, type OwedRow } from "@/components/partners/forms";
 import { RecordLoan } from "@/components/partners/record-loan";
 import { EditContact } from "@/components/contacts/edit-contact";
 import { ReviewButtons } from "@/components/contacts/review-buttons";
@@ -24,7 +24,7 @@ export default async function PartnerStatementPage({ params }: { params: Promise
     s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding").eq("contact_id", id),
     s.supabase.from("project_payouts_v").select("id, code, name, stage, blocked, blocked_reason"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
-    s.supabase.from("transactions").select("id, date, number, total_amount, is_draft, voided_at, void_reason, approval_status, reference, transaction_lines(project_id, component, amount)")
+    s.supabase.from("transactions").select("id, date, number, total_amount, is_draft, voided_at, void_reason, approval_status, reference, bank_account_id, transaction_lines(project_id, component, amount)")
       .eq("type", "payout").eq("contact_id", id).order("date", { ascending: false }),
     s.supabase.from("transactions").select("id, date, number, type, project_id, total_amount, reference, voided_at")
       .eq("contact_id", id).in("type", ["loan_receipt", "capital_contribution"]).order("date", { ascending: false }),
@@ -32,6 +32,14 @@ export default async function PartnerStatementPage({ params }: { params: Promise
   ]);
   if (!person) notFound();
   const kinds = person.kinds as string[];
+  const isMember = kinds.includes("partner");
+  // their director's account (039): what they keep in the company, and its history
+  const { data: fundsParent } = isMember ? await s.supabase.from("accounts").select("id").eq("subtype", "members_funds").is("parent_id", null).maybeSingle() : { data: null };
+  const { data: fundsAcct } = fundsParent ? await s.supabase.from("accounts").select("id").eq("parent_id", fundsParent.id).eq("contact_id", id).maybeSingle() : { data: null };
+  const { data: fundsLines } = fundsAcct
+    ? await s.supabase.from("journal_lines").select("id, date, home_debit, home_credit, transactions(number, memo, type, project_id)").eq("account_id", fundsAcct.id).order("date")
+    : { data: [] };
+  const inAccount = (fundsLines ?? []).reduce((t, l) => t + dbToLaari(l.home_credit) - dbToLaari(l.home_debit), 0n);
   const isLender = kinds.includes("lender");
   const writer = canWrite(s.role);
   const projName = new Map((projects ?? []).map((p) => [p.id, p]));
@@ -40,6 +48,10 @@ export default async function PartnerStatementPage({ params }: { params: Promise
   const projectIds = [...new Set(rows.map((r) => r.project_id))].sort((a, b) => (proj.get(a)?.code ?? "").localeCompare(proj.get(b)?.code ?? ""));
   const cell = (pid: string, c: string) => rows.find((r) => r.project_id === pid && r.component === c);
   const sum = (c: string, k: "accrued" | "paid" | "outstanding") => rows.filter((r) => r.component === c).reduce((t, r) => t + dbToLaari(r[k]), 0n);
+  // released (completed and paid by the client) waits for their choice; principal in unfinished projects is invested
+  const released = (pid: string) => proj.get(pid)?.blocked === false;
+  const waiting = rows.filter((r) => released(r.project_id)).reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
+  const invested = rows.filter((r) => !released(r.project_id) && r.component === "principal").reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
   const owed: OwedRow[] = rows.filter((r) => dbToLaari(r.outstanding) > 0n).map((r) => ({
     project_id: r.project_id, code: proj.get(r.project_id)?.code ?? "—", component: r.component, outstanding: String(r.outstanding),
     blocked: proj.get(r.project_id)?.blocked ?? true, reason: proj.get(r.project_id)?.blocked_reason ?? null,
@@ -63,6 +75,44 @@ export default async function PartnerStatementPage({ params }: { params: Promise
           <Stat key={c} label={`${COMPONENT_LABEL[c]} owed`} value={m(sum(c, "outstanding"))} hint={`${m(sum(c, "accrued"))} accrued · ${m(sum(c, "paid"))} paid`} />
         ))}
       </div>
+
+      {isMember && (
+        <Card>
+          <CardHeader title="Director's account" subtitle="Once a project is completed and paid for, their principal, financing return and profit share from it wait for their choice: keep it in the company, where it can finance the next project, or take it out." />
+          <div className="grid gap-4 px-5 py-4 sm:grid-cols-3">
+            <Stat label="Waiting for a choice" value={m(waiting)} hint="From projects completed and paid for" tone={waiting > 0n ? "warn" : "default"} />
+            <Stat label="In the director's account" value={m(inAccount)} hint="Kept in the company; can finance a project" tone={inAccount > 0n ? "good" : "default"} />
+            <Stat label="Invested in projects" value={m(invested)} hint="Their principal in projects not yet completed and paid for" />
+          </div>
+          {s.role === "admin" && person.active && (
+            <DirectorAccountForms contactId={id} name={person.name} waiting={laariToNumber(waiting).toFixed(2)} inAccount={laariToNumber(inAccount).toFixed(2)} banks={banks ?? []} />
+          )}
+          {(fundsLines ?? []).length > 0 && (
+            <Table>
+              <thead><tr><Th>Date</Th><Th>No.</Th><Th>What</Th><Th right>In</Th><Th right>Out</Th><Th right>Balance</Th></tr></thead>
+              <tbody>
+                {(() => {
+                  let bal = 0n;
+                  return (fundsLines ?? []).map((l) => {
+                    const t = l.transactions as unknown as { number: string | null; memo: string | null; type: string; project_id: string | null } | null;
+                    const inn = dbToLaari(l.home_credit), out = dbToLaari(l.home_debit);
+                    bal += inn - out;
+                    const p = t?.project_id ? projName.get(t.project_id) ?? proj.get(t.project_id) : undefined;
+                    return (
+                      <tr key={l.id}>
+                        <Td className="whitespace-nowrap">{date(l.date)}</Td>
+                        <Td className="font-mono text-xs">{t?.number ?? ""}</Td>
+                        <Td className="text-xs">{t?.type === "capital_contribution" ? `Reinvested in ${p ? `${p.code} ${p.name}` : "a project"}` : t?.memo ?? ""}</Td>
+                        <Td right>{inn ? m(inn) : ""}</Td><Td right>{out ? m(out) : ""}</Td><Td right className="font-medium">{m(bal)}</Td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
 
       <Card>
         <CardHeader title="By project" subtitle="The three components are never merged" />
@@ -139,7 +189,9 @@ export default async function PartnerStatementPage({ params }: { params: Promise
                     <div key={i}>{proj.get(l.project_id!)?.code ?? "—"} · {COMPONENT_LABEL[l.component!] ?? l.component} · {m(l.amount)}</div>))}
                     {t.voided_at && t.void_reason && <div className="text-[var(--muted)]">Not paid: {t.void_reason}</div>}</Td>
                   <Td right>{m(t.total_amount)}</Td>
-                  <Td right><Badge value={t.voided_at ? "void" : t.is_draft ? "awaiting_approval" : "paid"} /></Td>
+                  <Td right>{!t.voided_at && !t.is_draft && fundsAcct && t.bank_account_id === fundsAcct.id
+                    ? <span className="text-xs font-medium text-emerald-700">Kept in the company</span>
+                    : <Badge value={t.voided_at ? "void" : t.is_draft ? "awaiting_approval" : "paid"} />}</Td>
                 </tr>
               ))}
             </tbody>

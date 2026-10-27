@@ -258,11 +258,11 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
       </Card>
       {writer && !p.completed_at && (
         <Card>
-          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full. Capital Pool (admin) takes the company's own money and everything members have untaken, each in proportion to what they have." />
+          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full. Capital Pool (admin) takes the amount you enter from each director's account and from the company's own money." />
           <FinancingForm projectId={p.id} banks={banks ?? []} initialLender={lender}
             lenders={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("lender"))}
             partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))}
-            capital={(capital as { name: string; available: string | number }[] | null)?.map((c) => ({ name: c.name, available: String(c.available) })) ?? null} />
+            capital={(capital as { contact_id: string | null; name: string; available: string | number }[] | null)?.map((c) => ({ contact_id: c.contact_id, name: c.name, available: String(c.available) })) ?? null} />
         </Card>
       )}
       {(txns ?? []).length > 0 && (
