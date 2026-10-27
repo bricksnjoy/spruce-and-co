@@ -54,7 +54,7 @@ export default async function ProjectPage({ params, searchParams }: {
         ))}
       </div>
 
-      {active === "overview" && <Overview p={p} />}
+      {active === "overview" && <Overview s={s} p={p} />}
       {active === "variations" && <Variations s={s} p={p} writer={writer} />}
       {active === "billing" && <Billing s={s} p={p} writer={writer} />}
       {active === "financing" && <Financing s={s} p={p} writer={writer} lender={lender} />}
@@ -76,29 +76,34 @@ function Figure({ label, value, hint, tone }: { label: string; value: string; hi
   );
 }
 
-function Overview({ p }: { p: ProjectFigures }) {
-  const oub = dbToLaari(p.over_under_billing);
+async function Overview({ s, p }: { s: Session; p: ProjectFigures }) {
+  const [rate, { data: lines }] = await Promise.all([
+    projectGstRate(s, p.id),
+    // the GST charged on the project's invoices (less credit notes), to show billing as the client sees it
+    s.supabase.from("transaction_lines").select("tax_amount, transactions!inner(type, voided_at, is_draft)").eq("project_id", p.id)
+      .in("transactions.type", ["invoice", "sales_receipt", "credit_note"]).is("transactions.voided_at", null).eq("transactions.is_draft", false),
+  ]);
+  const gstBilled = ((lines ?? []) as unknown as { tax_amount: string | null; transactions: { type: string } }[])
+    .reduce((t, l) => t + dbToLaari(l.tax_amount) * (l.transactions.type === "credit_note" ? -1n : 1n), 0n);
+  const withGst = (v: number) => laariToNumber(dbToLaari(v) + percentOf(dbToLaari(v), rate));
+  const gst = rate !== "0";
+  const beforeGst = (v: number) => gst ? `${m(v)} before GST` : "No GST on this project";
+  const profit = dbToLaari(p.actual_profit);
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Figure label="Contract value" value={m(p.revised)} hint={`${m(p.original)} original · ${m(p.variations)} variations`} />
-        <Figure label="Billed" value={m(p.billed)} hint={`${pct(Number(p.billed_pct), 1)} · ${m(p.remaining_to_bill)} left to bill`} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Figure label={gst ? "Contract value (incl. GST)" : "Contract value"} value={money(withGst(p.revised))} hint={beforeGst(p.revised)} />
+        <Figure label="Profit" value={m(p.actual_profit)} tone={profit < 0n ? "bad" : undefined}
+          hint={`Billed before GST, less cost to date${dbToLaari(p.bad_debts) ? ` and ${m(p.bad_debts)} written off` : ""}`} />
+        <Figure label="Cost to date" value={m(p.cost_to_date)} hint="Bills and costs on this project" />
+        <Figure label={gst ? "Variations (incl. GST)" : "Variations"} value={money(withGst(p.variations))} hint={`Original contract ${money(withGst(p.original))}`} />
+        <Figure label={gst ? "Billed (incl. GST)" : "Billed"} value={money(laariToNumber(dbToLaari(p.billed) + gstBilled))}
+          hint={`${pct(Number(p.billed_pct), 1)} of the contract · ${beforeGst(p.billed)}`} />
         <Figure label="Collected" value={m(p.collected)} hint={`Client owes ${m(p.client_balance)}${dbToLaari(p.retention_held) ? ` · retention ${m(p.retention_held)}` : ""}`} />
-        <Figure label="Cost to date" value={m(p.cost_to_date)} />
-        <Figure label="Forecast final cost" value={m(p.forecast_final_cost)} hint={`${m(p.forecast_to_complete)} still to spend`} />
-        <Figure label="Forecast profit" value={m(p.forecast_profit)} hint={`Margin ${pct(Number(p.margin_pct), 1)}`} tone={dbToLaari(p.forecast_profit) < 0n ? "bad" : undefined} />
-        <Figure label="Complete" value={pct(Number(p.pct_complete), 1)} hint={`Cost to date ÷ forecast final cost · earned ${m(p.earned)}`} />
-        <Figure label={oub >= 0n ? "Billed ahead of work" : "Work ahead of billing"} value={m(laariToNumber(oub < 0n ? -oub : oub))}
-          hint={oub >= 0n ? "Over-billing (a liability until earned)" : "Under-billing (earned, not yet invoiced)"} />
       </div>
-      <Card className="px-5 py-4 text-sm">
-        <p><span className="text-[var(--muted)]">Actual profit so far</span> <strong className="tabular-nums">{m(p.actual_profit)}</strong>
-          <span className="text-xs text-[var(--muted)]"> — revenue less direct job costs{dbToLaari(p.bad_debts) ? ` and ${m(p.bad_debts)} written off` : ""}</span></p>
-        <p className="mt-1 text-xs text-[var(--muted)]">
-          Revenue is recognised {p.recognition_method === "poc" ? "by percentage of completion" : p.recognition_method === "billing" ? "as it is billed" : "by the company default"}.
-          {p.start_date ? ` Started ${date(p.start_date)}.` : ""}{p.end_date ? ` Due to finish ${date(p.end_date)}.` : ""}
-        </p>
-      </Card>
+      {(p.start_date || p.end_date) && (
+        <p className="text-xs text-[var(--muted)]">{p.start_date ? `Started ${date(p.start_date)}.` : ""}{p.end_date ? ` Due to finish ${date(p.end_date)}.` : ""}</p>
+      )}
     </div>
   );
 }
@@ -124,15 +129,21 @@ async function Variations({ s, p, writer }: { s: Session; p: ProjectFigures; wri
   );
 }
 
-async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
-  const [{ data }, { data: proj }, { data: settings }, rate] = await Promise.all([
-    s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order"),
-    s.supabase.from("projects").select("gst_amount").eq("id", p.id).maybeSingle(),
+/** The GST rate the project's work is invoiced at: standard when the project carries GST or the company is registered (036), else 0. */
+async function projectGstRate(s: Session, projectId: string) {
+  const [{ data: proj }, { data: settings }, rate] = await Promise.all([
+    s.supabase.from("projects").select("gst_amount").eq("id", projectId).maybeSingle(),
     s.supabase.from("settings").select("gst_registered").maybeSingle(),
     standardGstRate(s.supabase),
   ]);
-  // stages are invoiced with GST on top when the project carries GST or the company is registered (036)
-  const gstRate = settings?.gst_registered || dbToLaari(proj?.gst_amount) > 0n ? rate : "0";
+  return settings?.gst_registered || dbToLaari(proj?.gst_amount) > 0n ? rate : "0";
+}
+
+async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
+  const [{ data }, gstRate] = await Promise.all([
+    s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order"),
+    projectGstRate(s, p.id),
+  ]);
   // an invoiced stage counts at what its invoice actually says, which may have been changed after it was raised
   const ids = (data ?? []).map((st) => st.invoice_id).filter(Boolean) as string[];
   // before GST, as the stage itself is
