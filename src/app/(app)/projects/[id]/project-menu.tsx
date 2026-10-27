@@ -2,17 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { setProjectArchived } from "@/app/actions/projects";
+import { deleteProject, setProjectArchived } from "@/app/actions/projects";
 import { undoCompletion } from "@/app/actions/partners";
+import { Modal } from "@/components/modal";
 
 /**
  * The project's ⋯ menu: edit it, archive it out of the working lists (or bring it back), and for an
- * admin, undo its completion. Nothing is deleted.
+ * admin, undo its completion or delete it with all its information (restorable for 30 days).
  */
-export function ProjectMenu({ id, archived, canUndoCompletion }: { id: string; archived: boolean; canUndoCompletion: boolean }) {
+export function ProjectMenu({ id, code, archived, canUndoCompletion, canDelete }: {
+  id: string; code: string; archived: boolean; canUndoCompletion: boolean; canDelete: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [typed, setTyped] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -60,7 +65,39 @@ export function ProjectMenu({ id, archived, canUndoCompletion }: { id: string; a
               Undo completion
             </button>
           )}
+          {canDelete && (
+            <button type="button" role="menuitem" disabled={pending} className={`${item} text-red-700`}
+              onClick={() => { setOpen(false); setTyped(""); setError(null); setDeleting(true); }}>
+              Delete project…
+            </button>
+          )}
         </div>
+      )}
+      {deleting && (
+        <Modal title="Delete project" size="md" onClose={() => setDeleting(false)}>
+          <div className="space-y-4 p-5 text-sm">
+            <h2 className="text-lg font-semibold">Delete {code} and all its information?</h2>
+            <p>Every invoice, bill, expense, payment, financing entry and payout of this project is taken out of the books, its profit split is reversed, and the project leaves every list and report. Your bank balances change to match.</p>
+            <p className="text-[var(--muted)]">You can restore it, exactly as it was, from Projects → Deleted for 30 days.</p>
+            <div>
+              <label htmlFor="del-code" className="mb-1 block text-xs font-medium text-[var(--muted)]">Type the project code <span className="font-mono">{code}</span> to confirm</label>
+              <input id="del-code" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-2 font-mono text-sm" />
+            </div>
+            {error && <p className="text-sm text-red-700">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setDeleting(false)} className="rounded-lg border border-[var(--border)] px-3.5 py-2 font-medium hover:bg-[var(--hover)]">Cancel</button>
+              <button type="button" disabled={pending || typed.trim() !== code}
+                onClick={() => start(async () => {
+                  const r = await deleteProject(id, typed.trim());
+                  if (r?.error) setError(r.error);
+                })}
+                className="rounded-lg bg-red-600 px-3.5 py-2 font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                {pending ? "Deleting…" : "Delete project"}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

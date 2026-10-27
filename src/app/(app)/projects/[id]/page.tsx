@@ -5,10 +5,11 @@ import { canWrite, getSession, type Session } from "@/server/session";
 import { addDays, date, money, pct, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
-import { STAGE_LABEL, type ProjectFigures } from "@/lib/project-figures";
+import { type ProjectFigures } from "@/lib/project-figures";
 import { VariationRows, NewVariation, type VariationRow } from "./variation-forms";
 import { BillingPlan, type Stage } from "./billing-plan";
 import { ProjectMenu } from "./project-menu";
+import { StageBadge } from "@/components/projects/stage-badge";
 import { CompleteForm, FinancingForm } from "@/components/partners/forms";
 import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
 import { ProjectBills } from "@/components/projects/project-bills";
@@ -42,8 +43,8 @@ export default async function ProjectPage({ params, searchParams }: {
         <Link href="/projects" className="text-xs text-[var(--muted)] hover:underline">← Projects</Link>
       </div>
       <PageHeader title={p.name}
-        subtitle={`${p.code}${p.customer_name ? ` · ${p.customer_name}` : ""} · ${STAGE_LABEL[p.stage] ?? p.stage}`}
-        action={writer ? <ProjectMenu id={id} archived={Boolean(p.archived_at)} canUndoCompletion={s.role === "admin" && Boolean(p.completed_at)} /> : undefined} />
+        subtitle={<span className="inline-flex flex-wrap items-center gap-2">{`${p.code}${p.customer_name ? ` · ${p.customer_name}` : ""}`}<StageBadge stage={p.stage} /></span>}
+        action={writer ? <ProjectMenu id={id} code={p.code} archived={Boolean(p.archived_at)} canUndoCompletion={s.role === "admin" && Boolean(p.completed_at)} canDelete={s.role === "admin"} /> : undefined} />
 
       <div className="flex gap-1 overflow-x-auto border-b border-neutral-300">
         {TABS.map(([k, l]) => (

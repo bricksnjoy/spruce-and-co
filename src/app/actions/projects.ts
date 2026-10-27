@@ -190,3 +190,35 @@ export async function setProjectArchived(id: string, archived: boolean): Promise
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/**
+ * Delete a project with all its information (admin only, after typing its code):
+ * its documents are voided and hidden with it and its profit split reversed.
+ * It can be restored for 30 days (migration 040).
+ */
+export async function deleteProject(id: string, code: string): Promise<Result> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+  const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if (me?.role !== "admin") return { error: "Only an admin can delete a project." };
+  const { error } = await supabase.rpc("rpc_delete_project", { p_project: id, p_confirm: code });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  redirect("/projects");
+}
+
+/** Put a deleted project back as it was, within 30 days of deleting it (admin only). */
+export async function restoreProject(id: string): Promise<Result> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+  const { error } = await supabase.rpc("rpc_restore_project", { p_project: id });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
