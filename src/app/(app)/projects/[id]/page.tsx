@@ -8,7 +8,7 @@ import { docStatus, type DocBalance } from "@/lib/doc-status";
 import { STAGE_LABEL, type ProjectFigures } from "@/lib/project-figures";
 import { VariationRows, NewVariation, type VariationRow } from "./variation-forms";
 import { BillingPlan, type Stage } from "./billing-plan";
-import { ArchiveButton } from "./archive-button";
+import { ProjectMenu } from "./project-menu";
 import { CompleteForm, FinancingForm } from "@/components/partners/forms";
 import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
 import { ProjectBills } from "@/components/projects/project-bills";
@@ -43,15 +43,7 @@ export default async function ProjectPage({ params, searchParams }: {
       </div>
       <PageHeader title={p.name}
         subtitle={`${p.code}${p.customer_name ? ` · ${p.customer_name}` : ""} · ${STAGE_LABEL[p.stage] ?? p.stage}`}
-        action={
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            {p.customer_id && <Link href={`/sales/customers/${p.customer_id}`} className="font-medium text-[var(--brand)] hover:underline">Customer</Link>}
-            {writer && <Link href={`/projects/${id}?tab=bills&new=bill`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">New bill</Link>}
-            {writer && p.customer_id && <Link href={`/sales/new?type=invoice&project=${id}`} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 font-medium text-white hover:bg-[var(--brand-hover)]">New invoice</Link>}
-            {writer && <Link href={`/projects/${id}/edit`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--brand-soft)]">Edit</Link>}
-            {writer && <ArchiveButton id={id} archived={Boolean(p.archived_at)} />}
-          </div>
-        } />
+        action={writer ? <ProjectMenu id={id} archived={Boolean(p.archived_at)} /> : undefined} />
 
       <div className="flex gap-1 overflow-x-auto border-b border-neutral-300">
         {TABS.map(([k, l]) => (
