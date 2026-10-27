@@ -18,7 +18,7 @@ export default async function SalesDocPage({ params }: { params: Promise<{ id: s
   const { data: d } = await s.supabase.from("sales_list_v").select("*").eq("id", id).maybeSingle();
   if (!d) notFound();
   const [{ data: t }, { data: lines }, { data: appliedTo }, { data: appliedFrom }, { data: dep }] = await Promise.all([
-    s.supabase.from("transactions").select("memo, reference, currency, fx_rate, void_reason, bank_account_id, accounts:bank_account_id(code, name), created_at").eq("id", id).maybeSingle(),
+    s.supabase.from("transactions").select("memo, reference, project_id, currency, fx_rate, void_reason, bank_account_id, accounts:bank_account_id(code, name), created_at").eq("id", id).maybeSingle(),
     s.supabase.from("transaction_lines").select("id, description, qty, rate, amount, tax_amount, tax_codes(code), projects(code), accounts(code, name)").eq("transaction_id", id).order("line_no"),
     s.supabase.from("applications").select("amount, from:from_transaction_id(id, type, number, date, voided_at)").eq("to_transaction_id", id),
     s.supabase.from("applications").select("amount, to:to_transaction_id(id, type, number, date)").eq("from_transaction_id", id),
@@ -32,7 +32,10 @@ export default async function SalesDocPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="max-w-5xl space-y-5">
-      <Link href="/sales" className="text-xs text-[var(--muted)] hover:underline">← Sales</Link>
+      <div className="flex gap-4">
+        <Link href="/sales" className="text-xs text-[var(--muted)] hover:underline">← Sales</Link>
+        {t?.project_id && <Link href={`/projects/${t.project_id}?tab=billing`} className="text-xs text-[var(--muted)] hover:underline">← {d.project_code ?? "Project"}</Link>}
+      </div>
       <PageHeader title={`${titleize(d.type)} ${d.number ?? ""}`}
         subtitle={`${d.customer_name ?? ""}${d.project_code ? ` · ${d.project_code}` : ""} · ${date(d.date)}`}
         action={<div className="flex items-center gap-3"><Badge value={d.status} />

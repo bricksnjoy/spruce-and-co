@@ -68,6 +68,8 @@ Environment variables:
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase publishable key |
 | `ANTHROPIC_API_KEY` | no | Enables automatic bill reading |
+| `TELEGRAM_BOT_TOKEN` | no | Bot token from @BotFather; with `TELEGRAM_CHAT_ID`, bid updates are posted to the company group |
+| `TELEGRAM_CHAT_ID` | no | The Telegram group's id (starts with `-100`) |
 
 ## Database
 

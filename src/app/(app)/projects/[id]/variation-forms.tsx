@@ -25,8 +25,8 @@ export function NewVariation({ projectId }: { projectId: string }) {
       <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); startTransition(() => action(fd)); }}
         className="grid gap-4 px-5 py-5 sm:grid-cols-3">
         <input type="hidden" name="project_id" value={projectId} />
-        <div className="sm:col-span-2"><label className="mb-1.5 block text-sm font-medium" htmlFor="vo-title">What changes</label>
-          <input id="vo-title" name="title" required className={input} placeholder="Extra partition wall, level 2" /></div>
+        <div className="sm:col-span-2"><label className="mb-1.5 block text-sm font-medium" htmlFor="vo-title">Variation details</label>
+          <textarea id="vo-title" name="title" required rows={2} className={input} placeholder="Extra partition wall, level 2" /></div>
         <div><label className="mb-1.5 block text-sm font-medium" htmlFor="vo-amount">Amount (MVR)</label>
           <input id="vo-amount" name="amount" inputMode="decimal" required className={`${input} tabular-nums`} placeholder="Negative for an omission" /></div>
         <div><label className="mb-1.5 block text-sm font-medium" htmlFor="vo-date">Raised on</label>
@@ -35,8 +35,6 @@ export function NewVariation({ projectId }: { projectId: string }) {
           <input id="vo-days" name="time_impact_days" inputMode="numeric" className={input} placeholder="0" /></div>
         <div><label className="mb-1.5 block text-sm font-medium" htmlFor="vo-ref">Client&apos;s reference</label>
           <input id="vo-ref" name="client_reference" className={input} /></div>
-        <div className="sm:col-span-3"><label className="mb-1.5 block text-sm font-medium" htmlFor="vo-desc">Details</label>
-          <textarea id="vo-desc" name="description" rows={2} className={input} /></div>
         <div className="flex items-center gap-3 sm:col-span-3">
           <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : "Raise variation"}</button>
           <button type="button" onClick={() => setOpen(false)} className="text-sm text-[var(--muted)] hover:underline">Cancel</button>
@@ -90,7 +88,7 @@ export function VariationRows({ projectId, rows, canEdit }: { projectId: string;
         {rows.map((v) => (
           <tr key={v.id}>
             <Td className="font-mono text-xs">{v.ref}</Td>
-            <Td>
+            <Td className="whitespace-pre-line">
               {v.title}
               {(v.description || v.client_reference || v.time_impact_days) ? (
                 <p className="text-xs text-[var(--muted)]">{[v.description, v.client_reference && `Client ref ${v.client_reference}`, v.time_impact_days ? `${v.time_impact_days} days` : null].filter(Boolean).join(" · ")}</p>

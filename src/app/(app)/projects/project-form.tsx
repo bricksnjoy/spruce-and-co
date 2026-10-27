@@ -6,6 +6,8 @@ import Link from "next/link";
 import { createProject, updateProject } from "@/app/actions/projects";
 import type { Result } from "@/app/actions/projects";
 import { ClientModal } from "@/components/client-modal";
+import { money } from "@/lib/format";
+import { laariToNumber, percentOf, toLaari } from "@/lib/money";
 
 export interface ProjectFormValues {
   id?: string;
@@ -16,7 +18,6 @@ export interface ProjectFormValues {
   description?: string | null;
   site_address?: string | null;
   contract_value?: number;
-  gst_amount?: number;
   start_date?: string | null;
   duration_days?: number | null;
   progress_pct?: number;
@@ -42,11 +43,14 @@ export function ProjectForm({
   customers,
   values = {},
   nextCode,
+  gstRate,
 }: {
   mode: "create" | "edit";
   customers: { id: string; name: string }[];
   values?: ProjectFormValues;
   nextCode?: string;
+  /** the standard rate in force (Settings → Taxes); GST is worked out from the value */
+  gstRate: string;
 }) {
   const action = mode === "create" ? createProject : updateProject;
   const [state, formAction, pending] = useActionState(
@@ -67,6 +71,9 @@ export function ProjectForm({
       ? ""
       : String(values.duration_days),
   );
+  const [value, setValue] = useState(values.contract_value === undefined ? "" : String(values.contract_value));
+  const gst = percentOf(toLaari(value) ?? 0n, gstRate);
+
   const end = (() => {
     const n = parseInt(days, 10);
     if (!start || !Number.isFinite(n)) return null;
@@ -151,13 +158,13 @@ export function ProjectForm({
         <div>
           <label htmlFor="contract_value" className={label}>Project value (MVR)</label>
           <input id="contract_value" name="contract_value" type="number" step="0.01"
-            defaultValue={values.contract_value ?? ""} className={input} />
+            value={value} onChange={(e) => setValue(e.target.value)} className={input} />
         </div>
         <div>
-          <label htmlFor="gst_amount" className={label}>GST</label>
-          <input id="gst_amount" name="gst_amount" type="number" step="0.01"
-            defaultValue={values.gst_amount ?? ""} placeholder="Leave blank for 8%" className={input} />
-          <p className="mt-1 text-xs text-[var(--muted)]">Blank calculates 8% of value + variations.</p>
+          <span className={label}>GST</span>
+          <p className="rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-sm tabular-nums">
+            {money(laariToNumber(gst))}
+          </p>
         </div>
         <div>
           <label htmlFor="progress_pct" className={label}>Progress (%)</label>

@@ -40,6 +40,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/sales", label: "Sales & invoices", roles: MONEY },
       { href: "/sales/customers", label: "Customers", roles: MONEY },
+      { href: "/bids", label: "Bids", roles: ALL },
       { href: "/quotations", label: "Quotations", roles: MONEY },
       { href: "/estimator", label: "Cabinet Estimator", roles: MONEY },
       { href: "/cut-planner", label: "Board cut planner", roles: ALL },

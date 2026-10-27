@@ -27,7 +27,7 @@ function refresh(id?: string) {
   if (id) revalidatePath(`/print/sales/${id}`);
 }
 
-type LineIn = { description?: string; qty?: string; rate?: string; amount?: string; tax_code_id?: string; project_id?: string; account_id?: string };
+type LineIn = { item_no?: string; description?: string; qty?: string; unit?: string; rate?: string; amount?: string; tax_code_id?: string; project_id?: string; account_id?: string };
 
 /**
  * Save an invoice, credit note or sales receipt and post it, in one database
@@ -60,7 +60,11 @@ export async function saveSalesDoc(_prev: unknown, fd: FormData): Promise<Result
     if (!l.description?.trim()) return { error: `Line ${i + 1} needs a description.` };
     let amount: string | null;
     let qty: string | null = null, rate: string | null = null;
-    if (hasQty) {
+    // words with no qty, rate or amount: a heading on the printed invoice, charging nothing
+    const heading = !hasQty && !(l.qty ?? "").trim() && !(l.rate ?? "").trim() && !(l.amount ?? "").trim();
+    if (heading) {
+      amount = "0.00";
+    } else if (hasQty) {
       if (!/^\d+(\.\d{1,4})?$/.test(String(l.qty)) || !/^-?\d+(\.\d{1,4})?$/.test(String(l.rate))) return { error: `Line ${i + 1}: quantity and rate must be numbers (up to 4 decimals).` };
       qty = String(l.qty); rate = String(l.rate);
       amount = "0";   // the database works it out as qty × rate, to the laari
@@ -71,16 +75,20 @@ export async function saveSalesDoc(_prev: unknown, fd: FormData): Promise<Result
     if (amount.startsWith("-") || (rate ?? "").startsWith("-")) return { error: `Line ${i + 1}: amounts are positive; use a credit note to reduce what is owed.` };
     lines.push({
       description: l.description.trim(), qty, rate, amount,
-      tax_code_id: isId(l.tax_code_id) ? l.tax_code_id : null,
+      item_no: l.item_no?.trim() || null, unit: l.unit?.trim() || null,
+      tax_code_id: !heading && isId(l.tax_code_id) ? l.tax_code_id : null,
       project_id: isId(l.project_id) ? l.project_id : (text(fd, "project_id") ?? null),
       account_id: isId(l.account_id) ? l.account_id : null,
     });
   }
-  if (!lines.length) return { error: "Add at least one line." };
+  if (!lines.some((l) => l.qty !== null || l.amount !== "0.00")) return { error: "Add at least one line with an amount." };
 
   const payload = {
     id: id ?? undefined, type, date, due_date: type === "invoice" ? (due ?? date) : null, contact_id: contact,
     project_id: text(fd, "project_id"), currency, fx_rate: fx, memo: text(fd, "memo"), reference: text(fd, "reference"),
+    agr_no: type === "invoice" ? text(fd, "agr_no") : null, po_no: type === "invoice" ? text(fd, "po_no") : null,
+    signatory_id: isId(text(fd, "signatory_id")) ? text(fd, "signatory_id") : null,
+    show_stamp: fd.get("show_stamp") === "on" ? true : fd.get("stamp_chosen") === "1" ? false : null,
     bank_account_id: type === "sales_receipt" ? text(fd, "bank_account_id") : null,
     is_draft: fd.get("draft") === "on", lines,
   };

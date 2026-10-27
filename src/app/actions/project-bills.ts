@@ -56,12 +56,13 @@ async function check(s: S, projectId: string, raw: RawRow[], choices: ShopChoice
  * only what the preview showed as new is saved; anything already saved is
  * skipped, which makes uploading the same sheet twice harmless.
  */
-export async function saveBillSheet(projectId: string, raw: RawRow[], choices: ShopChoices = {}): Promise<SaveResult> {
+export async function saveBillSheet(projectId: string, raw: RawRow[], choices: ShopChoices = {}, paidFrom: string | null = null): Promise<SaveResult> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
   const s = w.s;
   if (!isId(projectId)) return { error: "No project." };
   if (!Array.isArray(raw) || raw.length > 1000) return { error: "Nothing to save." };
+  if (paidFrom !== null && !isId(paidFrom)) return { error: "Choose the account they were paid from." };
   const { rows, bills } = checkRows(raw, await billLookups(s, projectId), choices ?? {});
   if (rows.some((r) => r.status === "error")) return { error: "Some rows still have problems. Pick the shops above, or fix the rows in the sheet and upload it again." };
 
@@ -74,6 +75,11 @@ export async function saveBillSheet(projectId: string, raw: RawRow[], choices: S
       const contact = b.vendor_id ?? (await newVendor(s, b, vendorIds));
       const id = await saveOne(s, projectId, b, contact);
       if (id.note) notes.push(`Rows ${b.rows.join(", ")}: ${id.note}`);
+      // a receipt is entered once paid: record the payment on its date, unless it waits for approval
+      if (paidFrom && !id.pending) {
+        const paid = await payInFull(s, id.id, b.date, paidFrom);
+        if (paid) notes.push(`Rows ${b.rows.join(", ")}: saved, but not marked paid: ${paid}`);
+      }
       saved++;
     } catch (e) {
       failed.push({ rows: b.rows, error: (e as Error).message });
@@ -84,7 +90,37 @@ export async function saveBillSheet(projectId: string, raw: RawRow[], choices: S
   return { saved, skipped: rows.filter((r) => r.status === "saved").length, failed, notes };
 }
 
+/**
+ * Mark a project's bills paid in full from one money account, each on its own
+ * date (a receipt is paid the day it is dated). Bills already paid are left as they are.
+ */
+export async function markBillsPaid(projectId: string, billIds: string[], bank: string): Promise<{ error?: string; paid?: number; failed?: string[] }> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (!isId(projectId) || !isId(bank)) return { error: "Choose the account they were paid from." };
+  if (!Array.isArray(billIds) || !billIds.length || billIds.length > 500 || !billIds.every(isId)) return { error: "Choose the bills." };
+  const { data } = await w.s.supabase.from("document_balances_v").select("id, number, date, balance, type").in("id", billIds);
+  let paid = 0;
+  const failed: string[] = [];
+  for (const b of data ?? []) {
+    if (b.type !== "bill" || Number(b.balance) <= 0) continue;
+    const err = await payInFull(w.s, b.id, b.date, bank);
+    if (err) failed.push(`${b.number ?? "A bill"}: ${err}`); else paid++;
+  }
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/expenses");
+  return { paid, failed };
+}
+
 type S = NonNullable<Awaited<ReturnType<typeof getSession>>>;
+
+/** Pay a bill's whole balance from one account on a date; the error, if any. */
+async function payInFull(s: S, bill: string, date: string, bank: string): Promise<string | null> {
+  const { data } = await s.supabase.from("document_balances_v").select("balance").eq("id", bill).maybeSingle();
+  if (!data || Number(data.balance) <= 0) return null;
+  const { error } = await s.supabase.rpc("rpc_pay_bills", { p_bank: bank, p_date: date, p_items: [{ bill, amount: String(data.balance) }], p_reference: null });
+  return error ? dbMessage(error) : null;
+}
 
 /** A shop named in the sheet, not on file and confirmed as new: added once, marked for review. */
 async function newVendor(s: S, b: BillGroup, made: Map<string, string>) {
@@ -100,7 +136,7 @@ async function newVendor(s: S, b: BillGroup, made: Map<string, string>) {
 }
 
 /** One bill, posted the way the bill form posts it (over the approval limit: to an admin). */
-async function saveOne(s: S, projectId: string, b: BillGroup, contact: string): Promise<{ id: string; note?: string }> {
+async function saveOne(s: S, projectId: string, b: BillGroup, contact: string): Promise<{ id: string; note?: string; pending?: boolean }> {
   const payload = {
     type: "bill", date: b.date, due_date: b.date, contact_id: contact, project_id: projectId, currency: "MVR", fx_rate: "1",
     reference: null, supplier_tin: b.vendor_tin, tax_invoice_no: b.invoice_no, tax_invoice_date: b.invoice_date, is_draft: false,
@@ -115,7 +151,7 @@ async function saveOne(s: S, projectId: string, b: BillGroup, contact: string): 
       ? await s.supabase.rpc("rpc_approve_bill", { p_id: data })
       : await s.supabase.rpc("rpc_request_approval", { p_id: data });
     if (r.error) throw new Error(`Saved as a draft, but: ${dbMessage(r.error)}`);
-    return { id: data as string, note: s.role === "admin" ? "over the approval limit: approved by you" : "over the approval limit: sent for approval" };
+    return { id: data as string, note: s.role === "admin" ? "over the approval limit: approved by you" : "over the approval limit: sent for approval", pending: s.role !== "admin" };
   }
   if (error) throw new Error(dbMessage(error));
   return { id: data as string };

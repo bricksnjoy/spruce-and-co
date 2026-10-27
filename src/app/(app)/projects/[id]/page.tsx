@@ -3,23 +3,24 @@ import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession, type Session } from "@/server/session";
 import { date, money, pct, titleize, today } from "@/lib/format";
-import { dbToLaari, laariToNumber } from "@/lib/money";
+import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
 import { STAGE_LABEL, type ProjectFigures } from "@/lib/project-figures";
-import { BudgetEditor, type BudgetLine } from "./budget-editor";
 import { VariationRows, NewVariation, type VariationRow } from "./variation-forms";
 import { BillingPlan, type Stage } from "./billing-plan";
 import { ArchiveButton } from "./archive-button";
 import { CompleteForm, FinancingForm } from "@/components/partners/forms";
 import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
 import { ProjectBills } from "@/components/projects/project-bills";
+import { BillStatusMenu, MarkAllPaid } from "@/components/projects/bill-status";
 import { expenseFormData } from "@/server/expense-data";
+import { standardGstRate } from "@/server/gst-rate";
 import { blankExpense } from "@/lib/expense-doc";
 
 export const dynamic = "force-dynamic";
 
 const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
-const TABS: [string, string][] = [["overview", "Overview"], ["value", "Value & budget"], ["bills", "Bills"], ["variations", "Variations"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
+const TABS: [string, string][] = [["overview", "Overview"], ["variations", "Variations"], ["bills", "Bills"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
 
 export default async function ProjectPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; new?: string; lender?: string }>;
@@ -51,15 +52,16 @@ export default async function ProjectPage({ params, searchParams }: {
           </div>
         } />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-[var(--border)]">
+      <div className="flex gap-1 overflow-x-auto border-b border-neutral-300">
         {TABS.map(([k, l]) => (
-          <Link key={k} href={`/projects/${id}?tab=${k}`}
-            className={`-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium ${active === k ? "border-[var(--brand)] text-[var(--brand)]" : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
+          <Link key={k} href={`/projects/${id}?tab=${k}`} aria-current={active === k ? "page" : undefined}
+            className={`-mb-px shrink-0 rounded-t-md border-b-[3px] px-3 py-2 text-sm font-medium ${active === k
+              ? "border-neutral-700 bg-neutral-100 font-semibold text-neutral-900"
+              : "border-transparent text-[var(--muted)] hover:border-neutral-300 hover:text-[var(--text)]"}`}>{l}</Link>
         ))}
       </div>
 
       {active === "overview" && <Overview p={p} />}
-      {active === "value" && <Value s={s} p={p} writer={writer} />}
       {active === "variations" && <Variations s={s} p={p} writer={writer} />}
       {active === "billing" && <Billing s={s} p={p} writer={writer} />}
       {active === "financing" && <Financing s={s} p={p} writer={writer} lender={lender} />}
@@ -89,7 +91,7 @@ function Overview({ p }: { p: ProjectFigures }) {
         <Figure label="Contract value" value={m(p.revised)} hint={`${m(p.original)} original · ${m(p.variations)} variations`} />
         <Figure label="Billed" value={m(p.billed)} hint={`${pct(Number(p.billed_pct), 1)} · ${m(p.remaining_to_bill)} left to bill`} />
         <Figure label="Collected" value={m(p.collected)} hint={`Client owes ${m(p.client_balance)}${dbToLaari(p.retention_held) ? ` · retention ${m(p.retention_held)}` : ""}`} />
-        <Figure label="Cost to date" value={m(p.cost_to_date)} hint={`Budget ${m(p.revised_budget)}`} />
+        <Figure label="Cost to date" value={m(p.cost_to_date)} />
         <Figure label="Forecast final cost" value={m(p.forecast_final_cost)} hint={`${m(p.forecast_to_complete)} still to spend`} />
         <Figure label="Forecast profit" value={m(p.forecast_profit)} hint={`Margin ${pct(Number(p.margin_pct), 1)}`} tone={dbToLaari(p.forecast_profit) < 0n ? "bad" : undefined} />
         <Figure label="Complete" value={pct(Number(p.pct_complete), 1)} hint={`Cost to date ÷ forecast final cost · earned ${m(p.earned)}`} />
@@ -104,65 +106,6 @@ function Overview({ p }: { p: ProjectFigures }) {
           {p.start_date ? ` Started ${date(p.start_date)}.` : ""}{p.end_date ? ` Due to finish ${date(p.end_date)}.` : ""}
         </p>
       </Card>
-    </div>
-  );
-}
-
-async function Value({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
-  const [{ data }, { data: committedRows }] = await Promise.all([
-    s.supabase.from("budget_lines").select("id, description, budget_category, budget_amount, revised_amount, forecast_to_complete").eq("project_id", p.id).order("created_at"),
-    s.supabase.from("committed_cost_v").select("budget_category, committed").eq("project_id", p.id),
-  ]);
-  const committed = new Map<string, bigint>((committedRows ?? []).map((r) => [r.budget_category, dbToLaari(r.committed)]));
-  const costs = [...(p.costs ?? [])].sort((a, b) => a.category.localeCompare(b.category));
-  for (const cat of committed.keys()) if (!costs.some((c) => c.category === cat)) costs.push({ category: cat, actual: 0, budget: 0, revised: 0, forecast_to_complete: 0 });
-  // budget alerts: a category past 80% or 100% of its revised budget, counting open orders
-  const alerts = costs.map((c) => {
-    const used = dbToLaari(c.actual) + (committed.get(c.category) ?? 0n);
-    const rev = dbToLaari(c.revised);
-    return { cat: c.category, used, rev, level: rev > 0n ? (used * 100n >= rev * 100n ? 100 : used * 100n >= rev * 80n ? 80 : 0) : used > 0n ? 100 : 0 };
-  }).filter((a) => a.level > 0);
-  return (
-    <div className="space-y-5">
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.map((a) => (
-            <p key={a.cat} className={`rounded-lg px-4 py-2 text-sm ${a.level === 100 ? "border border-red-200 bg-red-50 text-red-800" : "border border-amber-300 bg-amber-50 text-amber-900"}`}>
-              {titleize(a.cat)}: {money(laariToNumber(a.used))} spent or ordered {a.rev > 0n ? `of a ${money(laariToNumber(a.rev))} budget (${a.level === 100 ? "over budget" : "past 80%"})` : "with no budget set"}.
-            </p>
-          ))}
-        </div>
-      )}
-      <Card>
-        <CardHeader title="Budget against actual" subtitle="Actual cost from the ledger; committed is open purchase orders; forecast to complete is your estimate, or what is left of the budget" />
-        {costs.length === 0 ? <Empty message="No budget or costs yet." /> : (
-          <Table>
-            <thead><tr><Th>Category</Th><Th right>Budget</Th><Th right>Revised</Th><Th right>Actual</Th><Th right>Committed</Th><Th right>To complete</Th><Th right>Forecast final</Th><Th right>Variance</Th></tr></thead>
-            <tbody>
-              {costs.map((c) => {
-                const final = dbToLaari(c.actual) + dbToLaari(c.forecast_to_complete);
-                const variance = dbToLaari(c.revised) - final;
-                return (
-                  <tr key={c.category}>
-                    <Td>{titleize(c.category)}</Td>
-                    <Td right>{m(c.budget)}</Td><Td right>{m(c.revised)}</Td><Td right>{m(c.actual)}</Td>
-                    <Td right>{committed.get(c.category) ? money(laariToNumber(committed.get(c.category)!)) : ""}</Td>
-                    <Td right>{m(c.forecast_to_complete)}</Td><Td right>{money(laariToNumber(final))}</Td>
-                    <Td right className={variance < 0n ? "text-red-700" : ""}>{money(laariToNumber(variance))}</Td>
-                  </tr>
-                );
-              })}
-              <tr className="font-semibold">
-                <Td>Total</Td><Td right>{m(p.budget)}</Td><Td right>{m(p.revised_budget)}</Td><Td right>{m(p.cost_to_date)}</Td>
-                <Td right>{money(laariToNumber([...committed.values()].reduce((a, v) => a + v, 0n)))}</Td>
-                <Td right>{m(p.forecast_to_complete)}</Td><Td right>{m(p.forecast_final_cost)}</Td>
-                <Td right>{money(laariToNumber(dbToLaari(p.revised_budget) - dbToLaari(p.forecast_final_cost)))}</Td>
-              </tr>
-            </tbody>
-          </Table>
-        )}
-      </Card>
-      <BudgetEditor projectId={p.id} lines={(data ?? []) as BudgetLine[]} canEdit={writer} />
     </div>
   );
 }
@@ -189,8 +132,44 @@ async function Variations({ s, p, writer }: { s: Session; p: ProjectFigures; wri
 }
 
 async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
-  const { data } = await s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order");
-  return <BillingPlan projectId={p.id} revised={String(p.revised)} stages={(data ?? []) as Stage[]} canEdit={writer} />;
+  const [{ data }, { data: proj }, { data: settings }, rate] = await Promise.all([
+    s.supabase.from("billing_stages").select("id, name, basis, value, due_event, invoice_id, sort_order").eq("project_id", p.id).order("sort_order"),
+    s.supabase.from("projects").select("gst_amount").eq("id", p.id).maybeSingle(),
+    s.supabase.from("settings").select("gst_registered").maybeSingle(),
+    standardGstRate(s.supabase),
+  ]);
+  // stages are invoiced with GST on top when the project carries GST or the company is registered (036)
+  const gstRate = settings?.gst_registered || dbToLaari(proj?.gst_amount) > 0n ? rate : "0";
+  // an invoiced stage counts at what its invoice actually says, which may have been changed after it was raised
+  const ids = (data ?? []).map((st) => st.invoice_id).filter(Boolean) as string[];
+  // before GST, as the stage itself is
+  const { data: invs } = ids.length
+    ? await s.supabase.from("transactions").select("id, voided_at, transaction_lines(amount, tax_amount)").in("id", ids) : { data: [] };
+  const sumOf = (ls: { amount: string; tax_amount: string | null }[], k: "amount" | "tax_amount") => String(laariToNumber(ls.reduce((t, l) => t + dbToLaari(l[k]), 0n)));
+  const invoiced = new Map((invs ?? []).filter((i) => !i.voided_at).map((i) => {
+    const ls = (i.transaction_lines ?? []) as { amount: string; tax_amount: string | null }[];
+    return [i.id as string, { net: sumOf(ls, "amount"), gst: sumOf(ls, "tax_amount") }];
+  }));
+  const stages = ((data ?? []) as Stage[]).map((st) => {
+    const inv = st.invoice_id ? invoiced.get(st.invoice_id) : undefined;
+    return { ...st, invoice_total: inv?.net ?? null, invoice_gst: inv?.gst ?? null };
+  });
+  // how much of the contract is still to come from the client: to invoice, and to receive
+  // still to come = what is not invoiced yet (with its GST) + what the client owes on invoices (with theirs)
+  const withGst = (v: bigint) => v + percentOf(v, gstRate);
+  const toReceive = withGst(dbToLaari(p.remaining_to_bill)) + dbToLaari(p.client_balance);
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Figure label="Contract value" value={m(p.revised)} hint={[dbToLaari(p.variations) ? `incl. variations ${m(p.variations)}` : "",
+          gstRate !== "0" ? `+ GST ${Number(gstRate)}% ${money(laariToNumber(percentOf(dbToLaari(p.revised), gstRate)))} = ${money(laariToNumber(withGst(dbToLaari(p.revised))))}` : ""].filter(Boolean).join(" · ") || undefined} />
+        <Figure label="Invoiced (before GST)" value={m(p.billed)} hint={`Still to invoice ${m(p.remaining_to_bill)}`} />
+        <Figure label="Received from client" value={m(p.collected)} hint={`Payments, GST included · client owes ${m(p.client_balance)} on invoices`} />
+        <Figure label="Still to receive" value={money(laariToNumber(toReceive))} hint={`Not invoiced yet${gstRate !== "0" ? " with its GST" : ""}, plus what the client owes on invoices`} />
+      </div>
+      <BillingPlan projectId={p.id} revised={String(p.revised)} stages={stages} canEdit={writer} gstRate={gstRate} />
+    </div>
+  );
 }
 
 async function Transactions({ s, id }: { s: Session; id: string }) {
@@ -228,22 +207,28 @@ async function Transactions({ s, id }: { s: Session; id: string }) {
 }
 
 async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigures; writer: boolean; lender?: string }) {
-  const [{ data: sources }, { data: contacts }, { data: banks }, { data: txns }] = await Promise.all([
+  const [{ data: sources }, { data: contacts }, { data: banks }, { data: txns }, { data: company }, { data: capital }] = await Promise.all([
     s.supabase.from("project_financing_v").select("contact_id, source_type, received, repaid, outstanding").eq("project_id", p.id),
     s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
     s.supabase.from("transactions").select("id, date, number, type, contact_id, total_amount, reference, voided_at")
       .eq("project_id", p.id).in("type", ["loan_receipt", "capital_contribution"]).order("date"),
+    s.supabase.rpc("company_funding", { p_project: p.id }),
+    // only an admin finances from the Capital Pool, so only an admin is shown what it holds
+    s.role === "admin" ? s.supabase.rpc("company_capital_available") : Promise.resolve({ data: null }),
   ]);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
   const rows = (sources ?? []).filter((r) => dbToLaari(r.received) !== 0n).sort((a, b) => Number(dbToLaari(b.received) - dbToLaari(a.received)));
-  const total = rows.reduce((t, r) => t + dbToLaari(r.received), 0n);
+  // the company's own financing shares the pool's return by amount too, and comes back to it once the client has paid in full
+  const own = dbToLaari(company as string | number | null);
+  const ownBack = p.completed_at && dbToLaari(p.client_balance) === 0n ? own : 0n;
+  const total = rows.reduce((t, r) => t + dbToLaari(r.received), 0n) + own;
   const ratio = (v: number | string) => total > 0n ? Number((dbToLaari(v) * 1000000n) / total) / 10000 : 0;
   return (
     <div className="space-y-5">
       <Card>
         <CardHeader title="Financing sources" subtitle="The contribution ratio (amount ÷ total financing) divides the financing pool's share of profit (§5, P4)" />
-        {rows.length === 0 ? <Empty message="No financing recorded. Without financing the pool's share stays with the company (I3)." /> : (
+        {rows.length === 0 && own === 0n ? <Empty message="No financing recorded. Without financing the pool's share stays with the company (I3)." /> : (
           <Table>
             <thead><tr><Th>Source</Th><Th>Type</Th><Th right>Received</Th><Th right>Ratio</Th><Th right>Repaid</Th><Th right>Outstanding</Th></tr></thead>
             <tbody>
@@ -254,18 +239,26 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
                   <Td right>{m(r.received)}</Td><Td right>{pct(ratio(r.received), 2)}</Td><Td right>{m(r.repaid)}</Td><Td right>{m(r.outstanding)}</Td>
                 </tr>
               ))}
+              {own > 0n && (
+                <tr>
+                  <Td>Company</Td><Td>Capital Pool (company&apos;s own)</Td><Td right>{money(laariToNumber(own))}</Td><Td right>{pct(Number((own * 1000000n) / total) / 10000, 2)}</Td>
+                  <Td right>{money(laariToNumber(ownBack))}</Td><Td right>{money(laariToNumber(own - ownBack))}</Td>
+                </tr>
+              )}
               <tr className="font-semibold"><Td>Total</Td><Td> </Td><Td right>{money(laariToNumber(total))}</Td><Td right>100%</Td>
-                <Td right>{m(rows.reduce((t, r) => t + Number(r.repaid), 0))}</Td><Td right>{m(rows.reduce((t, r) => t + Number(r.outstanding), 0))}</Td></tr>
+                <Td right>{money(laariToNumber(rows.reduce((t, r) => t + dbToLaari(r.repaid), 0n) + ownBack))}</Td>
+                <Td right>{money(laariToNumber(rows.reduce((t, r) => t + dbToLaari(r.outstanding), 0n) + own - ownBack))}</Td></tr>
             </tbody>
           </Table>
         )}
       </Card>
       {writer && !p.completed_at && (
         <Card>
-          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full." />
+          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full. Capital Pool (admin) takes the company's own money and everything members have untaken, each in proportion to what they have." />
           <FinancingForm projectId={p.id} banks={banks ?? []} initialLender={lender}
             lenders={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("lender"))}
-            partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))} />
+            partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))}
+            capital={(capital as { name: string; available: string | number }[] | null)?.map((c) => ({ name: c.name, available: String(c.available) })) ?? null} />
         </Card>
       )}
       {(txns ?? []).length > 0 && (
@@ -290,14 +283,18 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
 
 async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
   if (!p.completed_at) {
-    const [{ data: profit }, { data: preview }, { data: proj }] = await Promise.all([
+    const [{ data: profit }, { data: preview }, { data: proj }, { data: company }] = await Promise.all([
       s.supabase.rpc("project_profit", { p_project: p.id }),
       s.supabase.rpc("preview_split", { p_project: p.id }),
       s.supabase.from("projects").select("profit_schemes(name, effective_from)").eq("id", p.id).maybeSingle(),
+      s.supabase.rpc("company_funding", { p_project: p.id }),
     ]);
     const lines = (preview ?? []) as { contact_id: string; name: string; component: string; amount: string; principal: string }[];
     const shared = lines.reduce((t, l) => t + dbToLaari(l.amount), 0n);
     const profitL = dbToLaari(profit as string | number | null);
+    const own = dbToLaari(company as string | number | null);
+    const ownReturn = own > 0n && profitL > 0n
+      ? dbToLaari((await s.supabase.rpc("company_financing_return", { p_project: p.id, p_profit: laariToNumber(profitL) })).data as string | number | null) : 0n;
     const scheme = (proj?.profit_schemes ?? null) as unknown as { name: string; effective_from: string } | null;
     const people = [...new Set(lines.map((l) => l.contact_id))];
     return (
@@ -321,7 +318,13 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
                     </tr>
                   );
                 })}
-                <tr><Td>Company keeps</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL - shared))}</Td><Td right> </Td></tr>
+                {own > 0n && (
+                  <tr>
+                    <Td>Company (its own financing)</Td><Td right>{money(laariToNumber(own))}</Td><Td right>{money(laariToNumber(ownReturn))}</Td>
+                    <Td right>–</Td><Td right className="font-medium">{money(laariToNumber(own + ownReturn))}</Td>
+                  </tr>
+                )}
+                <tr><Td>Company keeps</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL - shared - ownReturn))}</Td><Td right> </Td></tr>
                 <tr className="font-semibold"><Td>Project profit</Td><Td right> </Td><Td right> </Td><Td right>{money(laariToNumber(profitL))}</Td><Td right> </Td></tr>
               </tbody>
             </Table>
@@ -336,23 +339,28 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
       </div>
     );
   }
-  const [{ data: dists }, { data: flag }, { data: contacts }] = await Promise.all([
+  const [{ data: dists }, { data: flag }, { data: contacts }, { data: company }] = await Promise.all([
     s.supabase.from("distributions").select("id, created_at, reason, profit_amount, distribution_lines(contact_id, component, amount)").eq("project_id", p.id).order("created_at"),
     s.supabase.from("projects").select("review_flag").eq("id", p.id).maybeSingle(),
     s.supabase.from("contacts").select("id, name"),
+    s.supabase.rpc("company_funding", { p_project: p.id }),
   ]);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
   const all = (dists ?? []).flatMap((d) => (d.distribution_lines ?? []) as { contact_id: string; component: string; amount: string }[]);
   const people = [...new Set(all.map((l) => l.contact_id))].sort((a, b) => (names.get(a) ?? "").localeCompare(names.get(b) ?? ""));
   const net = (cid: string, c: string) => all.filter((l) => l.contact_id === cid && l.component === c).reduce((t, l) => t + dbToLaari(l.amount), 0n);
   const latest = (dists ?? []).at(-1);
+  // the company's own financing earns its share of the pool like everyone's; it is not posted, it stays with the company
+  const own = dbToLaari(company as string | number | null);
+  const ownReturn = own > 0n && latest
+    ? dbToLaari((await s.supabase.rpc("company_financing_return", { p_project: p.id, p_profit: latest.profit_amount })).data as string | number | null) : 0n;
   const REASON: Record<string, string> = { completion: "On completion", bad_debt: "Bad debt", late_entry: "Late entry", manual: "Adjustment" };
   return (
     <div className="space-y-5">
       {flag?.review_flag && <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">For review: {flag.review_flag}.</p>}
       <Card>
         <CardHeader title="Profit split" subtitle={`Completed ${date(p.completed_at)} · current profit ${m(latest?.profit_amount)} · net of every adjustment`} />
-        {people.length === 0 ? <Empty message="Nothing shared: the project made no profit." /> : (
+        {people.length === 0 && ownReturn === 0n ? <Empty message="Nothing shared: the project made no profit." /> : (
           <Table>
             <thead><tr><Th>Person</Th><Th right>Financing return</Th><Th right>Profit share</Th></tr></thead>
             <tbody>
@@ -362,6 +370,21 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
                   <Td right>{money(laariToNumber(net(cid, "financing_return")))}</Td><Td right>{money(laariToNumber(net(cid, "profit_share")))}</Td>
                 </tr>
               ))}
+              {latest && (() => {
+                // the company keeps whatever is not shared out: its financing return on its own money, and the rest of the profit
+                const kept = dbToLaari(latest.profit_amount) - all.reduce((t, l) => t + dbToLaari(l.amount), 0n);
+                return kept > 0n && (
+                  <tr className="font-medium">
+                    <Td>Company (stays in the company, not paid out)</Td>
+                    <Td right>{ownReturn > 0n ? money(laariToNumber(ownReturn)) : "–"}</Td>
+                    <Td right>{money(laariToNumber(kept - ownReturn))}</Td>
+                  </tr>
+                );
+              })()}
+              {latest && (
+                <tr className="font-semibold"><Td>Project profit</Td><Td right> </Td>
+                  <Td right>{m(latest.profit_amount)}</Td></tr>
+              )}
             </tbody>
           </Table>
         )}
@@ -425,43 +448,56 @@ async function Payouts({ s, p }: { s: Session; p: ProjectFigures }) {
 async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures; writer: boolean; openNew: boolean }) {
   // bills headed to the project, and bills with a line charged to it
   const [{ data: byHead }, { data: byLine }] = await Promise.all([
-    s.supabase.from("transactions").select("id").eq("project_id", p.id).in("type", ["bill", "vendor_credit"]),
-    s.supabase.from("transaction_lines").select("transaction_id, transactions!inner(type)").eq("project_id", p.id).in("transactions.type", ["bill", "vendor_credit"]),
+    s.supabase.from("transactions").select("id").eq("project_id", p.id).in("type", ["bill", "vendor_credit", "expense"]),
+    s.supabase.from("transaction_lines").select("transaction_id, transactions!inner(type)").eq("project_id", p.id).in("transactions.type", ["bill", "vendor_credit", "expense"]),
   ]);
   const ids = [...new Set([...(byHead ?? []).map((r) => r.id), ...(byLine ?? []).map((r) => r.transaction_id)])];
-  const [{ data }, form] = await Promise.all([
+  const [{ data }, { data: what }, form] = await Promise.all([
     ids.length ? s.supabase.from("document_balances_v").select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at, contact_id").in("id", ids).order("date", { ascending: false })
       : Promise.resolve({ data: [] }),
+    // what each cost was for, for those with no vendor (transport, salary, …)
+    ids.length ? s.supabase.from("transactions").select("id, memo, transaction_lines(description, accounts(name))").in("id", ids) : Promise.resolve({ data: [] }),
     writer ? expenseFormData(s) : Promise.resolve(null),
   ]);
   const rows = (data ?? []) as (DocBalance & { id: string; type: string; number: string | null; date: string; total: number; balance: number; contact_id: string | null })[];
   const { data: vendors } = rows.length ? await s.supabase.from("contacts").select("id, name").in("id", [...new Set(rows.map((r) => r.contact_id).filter(Boolean))] as string[]) : { data: [] };
   const vn = new Map((vendors ?? []).map((v) => [v.id, v.name]));
+  const forWhat = new Map((what ?? []).map((w) => {
+    const l = ((w.transaction_lines ?? []) as unknown as { description: string | null; accounts: { name: string } | null }[])[0];
+    return [w.id as string, [l?.accounts?.name, l?.description || w.memo].filter(Boolean).join(" · ")];
+  }));
   const live = rows.filter((r) => !r.voided_at);
   const t = today();
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Figure label="Bills on this project" value={String(live.length)} />
-        <Figure label="Total billed to the project" value={m(live.reduce((x, r) => x + Number(r.total) * (r.type === "vendor_credit" ? -1 : 1), 0))} hint="Including GST" />
+        <Figure label="Bills and costs on this project" value={String(live.length)} />
+        <Figure label="Total cost to the project" value={m(live.reduce((x, r) => x + Number(r.total) * (r.type === "vendor_credit" ? -1 : 1), 0))} hint="Including GST" />
         <Figure label="Still to pay" value={m(live.filter((r) => r.type === "bill").reduce((x, r) => x + Number(r.balance), 0))} />
       </div>
       {writer && form && <ProjectBills projectId={p.id} data={form} blank={blankExpense("bill", "", p.id, form)} openNew={openNew} />}
       <Card>
-        <CardHeader title="Bills" subtitle="Click a bill to open it, pay it or change it" />
-        {rows.length === 0 ? <Empty message="No bills on this project yet." /> : (
+        <CardHeader title="Bills and other costs" subtitle="Click one to open it. Overdue: not paid yet and past its due date; pick from its status to mark it paid."
+          action={writer ? <div className="flex gap-2">
+            <Link href={`/expenses/new?type=expense&project=${p.id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--hover)]">+ Other cost (no vendor)</Link>
+            {form && <MarkAllPaid projectId={p.id} payFrom={form.payFrom}
+              billIds={live.filter((r) => r.type === "bill" && Number(r.balance) > 0 && !r.is_draft).map((r) => r.id)} />}
+          </div> : undefined} />
+        {rows.length === 0 ? <Empty message="No bills or costs on this project yet." /> : (
           <Table>
-            <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor</Th><Th>Due</Th><Th right>Total</Th><Th right>To pay</Th><Th right>Status</Th></tr></thead>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor / for</Th><Th>Due</Th><Th right>Total</Th><Th right>To pay</Th><Th right>Status</Th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className={r.voided_at ? "text-[var(--muted)] line-through" : ""}>
                   <Td className="whitespace-nowrap">{date(r.date)}</Td>
                   <Td><Link href={`/expenses/${r.id}`} className="font-mono text-xs text-[var(--brand)] hover:underline">{r.number ?? "—"}</Link>{r.type === "vendor_credit" && <span className="ml-1 text-xs text-[var(--muted)]">credit</span>}</Td>
-                  <Td>{vn.get(r.contact_id ?? "") ?? "—"}</Td>
+                  <Td>{vn.get(r.contact_id ?? "") ?? <span className="text-[var(--muted)]">{forWhat.get(r.id) || "—"}</span>}</Td>
                   <Td className="whitespace-nowrap">{r.due_date ? date(r.due_date) : ""}</Td>
                   <Td right>{m(r.total)}</Td>
                   <Td right>{Number(r.balance) ? m(r.balance) : ""}</Td>
-                  <Td right><Badge value={docStatus(r, t)} /></Td>
+                  <Td right>{writer && form && !r.voided_at && !r.is_draft && r.type === "bill" && Number(r.balance) > 0
+                    ? <BillStatusMenu projectId={p.id} billId={r.id} label={docStatus(r, t)} payFrom={form.payFrom} />
+                    : <Badge value={docStatus(r, t)} />}</Td>
                 </tr>
               ))}
             </tbody>

@@ -15,19 +15,20 @@ const m = (v: number | string | bigint | null | undefined) => money(laariToNumbe
 export default async function PartnersPage() {
   const s = await getSession();
   if (!s) redirect("/login");
-  const [{ data: projects }, { data: statement }, { data: contacts }, { data: pending }] = await Promise.all([
+  const [{ data: projects }, { data: statement }, { data: contacts }, { data: pending }, { data: capital }] = await Promise.all([
     s.supabase.from("project_payouts_v").select("*").order("code"),
     s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding"),
     s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").order("name"),
     s.supabase.from("transactions").select("id, date, number, contact_id, total_amount, created_at, transaction_lines(project_id, component, amount)")
       .eq("type", "payout").eq("is_draft", true).is("voided_at", null).order("date"),
+    // the company's own money is part of the Capital Pool too
+    s.supabase.rpc("company_capital_available"),
   ]);
+  const companyMoney = dbToLaari(((capital ?? []) as { contact_id: string | null; available: string | number }[]).find((c) => c.contact_id === null)?.available);
   const proj = (projects ?? []) as ProjectPayout[];
   const rows = (statement ?? []) as StatementRow[];
   const people = byPerson(rows);
   const names = new Map((contacts ?? []).map((c) => [c.id, c.name]));
-  const kindOf = new Map((contacts ?? []).map((c) => [c.id, (c.kinds as string[]).filter((k) => k === "partner" || k === "lender")
-    .map((k) => (k === "partner" ? "Capital Pool" : "Lender")).join(", ")]));
   const code = new Map(proj.map((p) => [p.id, p.code]));
   const blocked = new Map(proj.map((p) => [p.id, p.blocked]));
   const involved = proj.filter((p) => dbToLaari(p.financed) || dbToLaari(p.returns_outstanding) || p.completed_at);
@@ -37,6 +38,53 @@ export default async function PartnersPage() {
   const ready = rows.filter((r) => blocked.get(r.project_id) === false).reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
   const waiting = rows.filter((r) => blocked.get(r.project_id) !== false).reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
   const personIds = [...new Set([...(contacts ?? []).map((c) => c.id), ...people.keys()])];
+  // Capital Pool members and external lenders are listed apart; a member who also lends is listed with the pool
+  const isPool = new Set((contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner")).map((c) => c.id));
+  const pool = personIds.filter((id) => isPool.has(id));
+  const lenders = personIds.filter((id) => !isPool.has(id));
+  // released to them; a member's principal came from their own pocket and is repaid, so the pool never takes it
+  const readyFor = (id: string, principal: boolean) => rows.filter((r) => r.contact_id === id && blocked.get(r.project_id) === false && (principal || r.component !== "principal"))
+    .reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
+
+  const peopleTable = (title: string, subtitle: string, ids: string[], empty: string, company = false) => (
+    <Card>
+      <CardHeader title={title} subtitle={subtitle} />
+      {ids.length === 0 && !company ? <Empty message={empty} /> : (
+        <Table>
+          <thead><tr><Th>Name</Th><Th right>Principal</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total owed</Th><Th right>{company ? "Ready to take" : "Ready to pay"}</Th></tr></thead>
+          <tbody>
+            {ids.map((id) => {
+              const p = people.get(id);
+              const total = p ? COMPONENTS.reduce((t, c) => t + p[c].outstanding, 0n) : 0n;
+              return (
+                <tr key={id}>
+                  <Td><Link href={`/partners/${id}`} className="font-medium text-[var(--brand)] hover:underline">{names.get(id) ?? "—"}</Link></Td>
+                  {COMPONENTS.map((c) => <Td key={c} right>{m(p?.[c].outstanding ?? 0n)}</Td>)}
+                  <Td right className="font-semibold">{m(total)}</Td>
+                  <Td right className={readyFor(id, !company) > 0n ? "text-emerald-700" : "text-[var(--muted)]"}>{m(readyFor(id, !company))}</Td>
+                </tr>
+              );
+            })}
+            {company && (
+              <tr>
+                <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less everything released to members (principal included)</span></Td>
+                <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td>
+                <Td right className={companyMoney > 0n ? "text-emerald-700" : "text-[var(--muted)]"}>{m(companyMoney)}</Td>
+              </tr>
+            )}
+            {ids.length + (company ? 1 : 0) > 1 && (
+              <tr className="font-semibold">
+                <Td>Total</Td>
+                {COMPONENTS.map((c) => <Td key={c} right>{m(ids.reduce((t, id) => t + (people.get(id)?.[c].outstanding ?? 0n), 0n))}</Td>)}
+                <Td right>{m(ids.reduce((t, id) => t + COMPONENTS.reduce((x, c) => x + (people.get(id)?.[c].outstanding ?? 0n), 0n), 0n))}</Td>
+                <Td right>{m(ids.reduce((t, id) => t + readyFor(id, !company), 0n) + (company ? companyMoney : 0n))}</Td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
+      )}
+    </Card>
+  );
 
   return (
     <div className="max-w-6xl space-y-5">
@@ -75,28 +123,9 @@ export default async function PartnersPage() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader title="People" subtitle="Outstanding amounts, each component kept apart (§5)" />
-        {personIds.length === 0 ? <Empty message="No partners or lenders yet. Add a lender on the Lenders page." /> : (
-          <Table>
-            <thead><tr><Th>Name</Th><Th>Type</Th><Th right>Principal</Th><Th right>Financing return</Th><Th right>Profit share</Th><Th right>Total owed</Th></tr></thead>
-            <tbody>
-              {personIds.map((id) => {
-                const p = people.get(id);
-                const total = p ? COMPONENTS.reduce((t, c) => t + p[c].outstanding, 0n) : 0n;
-                return (
-                  <tr key={id}>
-                    <Td><Link href={`/partners/${id}`} className="font-medium text-[var(--brand)] hover:underline">{names.get(id) ?? "—"}</Link></Td>
-                    <Td className="text-xs text-[var(--muted)]">{kindOf.get(id) ?? ""}</Td>
-                    {COMPONENTS.map((c) => <Td key={c} right>{m(p?.[c].outstanding ?? 0n)}</Td>)}
-                    <Td right className="font-semibold">{m(total)}</Td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-        )}
-      </Card>
+      {peopleTable("Capital Pool", "Each member and the company. What each member is owed, each component kept apart (§5). Ready to take is their released returns and profit shares — principal is repaid to them, not reinvested — and with the company's own money it is what the pool can finance a project with.",
+        pool, "No Capital Pool members yet.", true)}
+      {peopleTable("Lenders", "External lenders: their loans and returns, kept apart from the Capital Pool", lenders, "No lenders yet. Add one on the Lenders page.")}
 
       <Card>
         <CardHeader title="Projects" subtitle="Financing received, what is still owed, and whether payouts are released" />

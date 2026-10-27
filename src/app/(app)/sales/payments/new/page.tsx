@@ -16,8 +16,9 @@ export default async function ReceivePayment({ searchParams }: { searchParams: P
   const [{ customer, invoice }, data, invoices] = await Promise.all([searchParams, salesFormData(s), openInvoices(s)]);
   return (
     <div className="max-w-5xl">
-      <Link href="/sales" className="text-xs text-[var(--muted)] hover:underline">← Sales</Link>
-      <PageHeader title="Receive payment" subtitle="Share one payment across a customer's invoices; anything not applied is held as their credit" />
+      <Link href={invoice && /^[0-9a-f-]{36}$/i.test(invoice) ? `/sales/${invoice}` : "/sales"} className="text-xs text-[var(--muted)] hover:underline">
+        ← {invoice ? "Back to the invoice" : "Sales"}</Link>
+      <PageHeader title="Receive payment" subtitle="Record money a customer paid and the invoices it settles" />
       <ApplyForm mode="payment" action={receivePayment} customers={data.customers} invoices={invoices} banks={data.banks}
         initialCustomer={customer} initialInvoice={invoice} />
     </div>

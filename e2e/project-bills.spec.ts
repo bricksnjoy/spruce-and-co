@@ -37,9 +37,9 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   expect(page.url()).toContain(`/projects/${project}`);
   await expect(page.getByRole("cell", { name: vendor })).toBeVisible();
 
-  // the template downloads with the right columns
+  // the sheet downloads with the right columns and the bill just saved
   const cookies = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join("; ");
-  const tpl = await request.get(`/projects/${project}/bills/sheet?kind=template`, { headers: { cookie: cookies } });
+  const tpl = await request.get(`/projects/${project}/bills/sheet`, { headers: { cookie: cookies } });
   expect(tpl.status()).toBe(200);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await tpl.body() as unknown as ArrayBuffer);
@@ -75,15 +75,17 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await expect(page.getByText(/Saved 2 bills/)).toBeVisible();
   const lines = sql(`select count(*) from transaction_lines l join transactions t on t.id = l.transaction_id where t.project_id = '${project}' and t.type = 'bill'`);
   expect(lines).toBe("4"); // the pop-up bill's line + 2 + 1
+  // receipts are entered once paid: the sheet's bills are saved paid, from the first money account
+  expect(sql(`select count(*) from document_balances_v d join transactions t on t.id = d.id where t.project_id = '${project}' and t.memo = 'From a bills sheet' and d.balance <> 0`)).toBe("0");
 
   // uploading the same sheet again saves nothing new
   await page.getByLabel("Filled bills sheet").setInputFiles(file);
-  await expect(check.getByText(/3 already saved/)).toBeVisible();
+  await expect(check.getByText(/4 already saved/)).toBeVisible(); // the pop-up bill came down with the sheet
   await expect(check.getByText("Nothing new to save.")).toBeVisible();
   await check.getByRole("button", { name: "Close" }).click();
 
   // the bills download has every line, ready to add more
-  const exp = await request.get(`/projects/${project}/bills/sheet?kind=bills`, { headers: { cookie: cookies } });
+  const exp = await request.get(`/projects/${project}/bills/sheet`, { headers: { cookie: cookies } });
   const wb2 = new ExcelJS.Workbook();
   await wb2.xlsx.load(await exp.body() as unknown as ArrayBuffer);
   const ws2 = wb2.getWorksheet("Bills")!;
@@ -95,6 +97,13 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await expect(check.getByText(/4 already saved/)).toBeVisible();
   await check.getByRole("button", { name: "Save 1 bill" }).click();
   await expect(page.getByText(/Saved 1 bill/)).toBeVisible();
+
+  // the pop-up bill was saved unpaid: "Mark all as paid" pays it on its own date
+  await page.goto(`/projects/${project}?tab=bills`);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: /Mark all \d+ as paid/ }).click();
+  await expect(page.getByText(/\d+ marked paid/)).toBeVisible();
+  expect(sql(`select count(*) from document_balances_v d join transactions t on t.id = d.id where t.project_id = '${project}' and t.type = 'bill' and d.balance <> 0`)).toBe("0");
 
   expect(sql(`select count(*) filter (where not ok) from health_check('live')`)).toBe("0");
   w.assertNone();

@@ -38,8 +38,8 @@ export async function billLookups(s: Session, projectId: string): Promise<Lookup
 type BillLine = { amount: number; tax_amount: number; accounts: { name: string } | null;
   transactions: { date: string; tax_invoice_no: string | null; contacts: { name: string } | null } };
 
-/** The workbook: the Bills sheet (blank, or this project's bills), how to fill it, and the categories and shops to copy from. */
-export async function billWorkbook(s: Session, projectId: string, withBills: boolean) {
+/** The workbook: the Bills sheet with this project's bills, how to fill it, and the categories and shops to copy from. */
+export async function billWorkbook(s: Session, projectId: string) {
   const [form, { data: project }] = await Promise.all([
     expenseFormData(s),
     s.supabase.from("projects").select("code, name").eq("id", projectId).maybeSingle(),
@@ -50,20 +50,18 @@ export async function billWorkbook(s: Session, projectId: string, withBills: boo
   ws.columns = SHEET_COLUMNS.map(([key, header]) => ({ key, header, width: key === "shop" ? 30 : key === "category" ? 22 : 16 }));
   ws.getRow(1).font = { bold: true };
   ws.views = [{ state: "frozen", ySplit: 1 }];
-  if (withBills) {
-    const ids = [...(await projectBillIds(s, projectId))];
-    if (ids.length) {
-      const { data } = await s.supabase.from("transaction_lines")
-        .select("amount, tax_amount, accounts(name), transactions!inner(date, tax_invoice_no, contacts(name))")
-        .in("transaction_id", ids).order("line_no");
-      const lines = ((data ?? []) as unknown as BillLine[]).sort((a, b) => a.transactions.date.localeCompare(b.transactions.date));
-      for (const l of lines) {
-        ws.addRow({
-          date: l.transactions.date, shop: l.transactions.contacts?.name ?? "", invoice_no: l.transactions.tax_invoice_no ?? "",
-          category: l.accounts?.name ?? "", amount: Number(l.amount), discount: 0, gst: Number(l.tax_amount),
-          total: Number(l.amount) + Number(l.tax_amount),
-        });
-      }
+  const ids = [...(await projectBillIds(s, projectId))];
+  if (ids.length) {
+    const { data } = await s.supabase.from("transaction_lines")
+      .select("amount, tax_amount, accounts(name), transactions!inner(date, tax_invoice_no, contacts(name))")
+      .in("transaction_id", ids).order("line_no");
+    const lines = ((data ?? []) as unknown as BillLine[]).sort((a, b) => a.transactions.date.localeCompare(b.transactions.date));
+    for (const l of lines) {
+      ws.addRow({
+        date: l.transactions.date, shop: l.transactions.contacts?.name ?? "", invoice_no: l.transactions.tax_invoice_no ?? "",
+        category: l.accounts?.name ?? "", amount: Number(l.amount), discount: 0, gst: Number(l.tax_amount),
+        total: Number(l.amount) + Number(l.tax_amount),
+      });
     }
   }
   for (const k of ["amount", "discount", "gst", "total"]) ws.getColumn(k).numFmt = "#,##0.00";

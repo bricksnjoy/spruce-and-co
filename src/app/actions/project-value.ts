@@ -6,13 +6,11 @@ import { moneyToDb, percentToDb } from "@/lib/money";
 
 export type Result = { error?: string; ok?: boolean };
 
-const CATEGORIES = ["materials", "subcontractors", "labour", "equipment", "freight", "site", "other"];
 const text = (fd: FormData, k: string) => {
   const v = String(fd.get(k) ?? "").trim();
   return v === "" ? null : v;
 };
 const isDate = (v: string | null) => v !== null && /^\d{4}-\d{2}-\d{2}$/.test(v);
-const nonNeg = (v: string | null) => v !== null && !v.startsWith("-");
 
 async function writer() {
   const s = await getSession();
@@ -21,44 +19,6 @@ async function writer() {
   return { s } as const;
 }
 const done = (projectId: string) => { revalidatePath(`/projects/${projectId}`, "layout"); revalidatePath("/projects"); };
-
-/** Add or change a budget line: original budget, revised budget and forecast to complete. */
-export async function saveBudgetLine(_prev: unknown, fd: FormData): Promise<Result> {
-  const w = await writer();
-  if ("error" in w) return { error: w.error };
-  const project_id = text(fd, "project_id");
-  const id = text(fd, "id");
-  const description = text(fd, "description");
-  const category = text(fd, "budget_category");
-  const budget = moneyToDb(text(fd, "budget_amount"));
-  const revisedRaw = text(fd, "revised_amount");
-  const revised = revisedRaw === null ? null : moneyToDb(revisedRaw);
-  const ftcRaw = text(fd, "forecast_to_complete");
-  const ftc = ftcRaw === null ? null : moneyToDb(ftcRaw);
-  if (!project_id) return { error: "No project." };
-  if (!description) return { error: "Describe the budget line." };
-  if (!category || !CATEGORIES.includes(category)) return { error: "Choose the cost category." };
-  if (!nonNeg(budget)) return { error: "Enter the budget as an amount of 0 or more." };
-  if (revisedRaw !== null && !nonNeg(revised)) return { error: "Enter the revised budget as an amount, or leave it blank." };
-  if (ftcRaw !== null && !nonNeg(ftc)) return { error: "Enter the forecast to complete as an amount, or leave it blank." };
-
-  const row = { project_id, description, budget_category: category, budget_amount: budget, revised_amount: revised, forecast_to_complete: ftc };
-  const { error } = id
-    ? await w.s.supabase.from("budget_lines").update(row).eq("id", id).eq("project_id", project_id)
-    : await w.s.supabase.from("budget_lines").insert(row);
-  if (error) return { error: dbMessage(error) };
-  done(project_id);
-  return { ok: true };
-}
-
-export async function deleteBudgetLine(projectId: string, id: string): Promise<Result> {
-  const w = await writer();
-  if ("error" in w) return { error: w.error };
-  const { error } = await w.s.supabase.from("budget_lines").delete().eq("id", id).eq("project_id", projectId);
-  if (error) return { error: dbMessage(error) };
-  done(projectId);
-  return { ok: true };
-}
 
 /** Raise a variation. It moves the contract value only once approved. */
 export async function addVariation(_prev: unknown, fd: FormData): Promise<Result> {

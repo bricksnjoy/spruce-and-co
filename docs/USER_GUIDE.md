@@ -14,7 +14,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 4. The small cards show this quarter's GST and its due date, the next payroll, payouts ready or blocked, and how many accounts need reconciling. Each has a link to its screen.
 5. Active projects lists the biggest jobs with contract value, billed and forecast profit. Click one to open it.
 
-> Everything here comes from the ledger of the book you are in (Live or Test — the switch at the top of every page).
+> Everything here comes from the ledger.
 
 ### Search
 
@@ -46,9 +46,9 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/projects/new` — Set up a project so invoices, bills, payroll and financing can be charged to it.
 
 1. Enter the project name; the code is suggested (SC-001, SC-002 …) and can be changed.
-2. Choose the customer (or add one from the form), the start date and the contract value.
+2. Choose the customer (or add one from the form), the start date and the project value. GST is worked out from the value at the standard rate in Settings → Taxes.
 3. Choose how revenue is recognised: as billed, by percentage of completion, or the company default.
-4. Press "Create project". Budget, variations and billing stages are added on the project's own page.
+4. Press "Create project". Variations and billing stages are added on the project's own page.
 
 > The profit-share scheme the project uses is the one in force on its start date.
 
@@ -57,14 +57,13 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/projects/[id]` — One project from start to payout, in tabs.
 
 1. Overview: contract value, billed, collected, cost to date, forecast profit, % complete and over/under-billing.
-2. Value & budget: set budget lines by category; see budget against actual and committed (open purchase orders). Amber/red warnings mean a category is past 80% or 100%.
-3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download template", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". "Download bills (Excel)" gives the bills already added in the same layout — add rows and upload it again; bills already saved are recognised and skipped.
-4. Variations: raise a variation; only approved ones change the contract value.
-5. Billing plan: stages of the contract; turn a stage into an invoice when it is due.
-6. Financing: record money received for the project — a Capital Pool member's contribution or an external lender's loan — and see each source's share of the financing. Choosing "External lender" shows "+ New lender" to add one without leaving the page.
-7. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
-8. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
-9. Transactions: every document posted to the project.
+2. Variations: raise a variation with its details and amount; only approved ones change the contract value.
+3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download bills (Excel)", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", choose the account they were "Paid from" (receipts are saved as paid on their date; pick "Not paid yet" for bills still to pay), pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". The sheet comes with the bills already added (blank when there are none); bills already saved are recognised and skipped. "+ Other cost (no vendor)" records money already paid with no supplier bill (transport, pickups, site labour paid in cash): pick the category (e.g. Freight & Logistics, Direct Labour, Site Expenses) and the account it was paid from. A bill shows "Overdue" when it is unpaid past its due date; a receipt with no payment terms is due the day it is dated, so mark it paid from its status (pick the account it was paid from), or use "Mark all as paid"; each is paid on its own date. Salaries reach a project through Payroll: set each employee's project split, and each payslip charges its share to the projects.
+4. Billing plan: what is still to come from the client (contract value, invoiced, received, still to receive), then the stages of the contract; turn a stage into an invoice when it is due. Stage amounts are before GST: when the project carries GST (or the company is GST registered) each stage shows its GST and the total with GST, and its invoice adds the GST on top.
+5. Financing: record money for the project and see each source's share of the financing. "Capital Pool" (admin) takes the amount from the company's own money and from each member's released financing returns and profit shares (never their principal, which came from their own pocket and is repaid to them), each in proportion to what they have — e.g. 100,000 from the company 100,000, Muaz 30,000, Mushahid 20,000 and Mariyam 10,000 (160,000 in all) takes 62,500 from the company, 18,750 from Muaz, 12,500 from Mushahid and 6,250 from Mariyam; the table shows each part as you type. "One member, new money" records fresh money from one member; "External lender" records a loan and shows "+ New lender" to add one without leaving the page. The company's own part is a source like the rest: it shows as repaid once the client has paid in full, and its share of the financing pool (e.g. 35,000 of 40,000 earns 35/40 of the 20 %) is shown on Profit split; both stay with the company, so nothing is posted.
+6. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
+7. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
+8. Transactions: every document posted to the project.
 
 > Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive.
 > Anything posted to a completed project later (a cost, a bad debt) adjusts the split with its own entry and flags the project for review.
@@ -89,10 +88,14 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 `/sales/new` — Bill a customer (invoice), reduce what they owe (credit note), or record a sale paid on the spot (sales receipt).
 
-1. Choose the customer; the due date follows their payment terms. Choose the project if the work is for one.
+1. Choose the customer; the due date follows their payment terms. Type a number of days to set it from the invoice date (10 days from 26 Oct is 5 Nov), or pick the date. Choose the project if the work is for one.
 2. For a sales receipt, choose the account the money went into (or leave it in Undeposited Funds to bank later).
-3. Add lines: description, quantity and rate (or just an amount), GST code and income account. The total with GST shows as you type.
-4. Press "Save invoice" (or credit note / receipt). It is posted to the books at once.
+3. Fill in the Quotation no., AGR no. and PO no. as they should print in the invoice header.
+4. Add lines: item no. (1.1, 2.1 …), description, quantity, unit and rate (or just an amount), GST code and income account. A line with only an item no. and description is a heading: a letter (A, B) prints on a grey band as a section, 1.0 prints bold. The total with GST shows as you type.
+5. "Note on the document" prints centred at the top of the table, one line per line; the second line prints large and underlined as the job's title.
+6. The printed invoice follows the paper layout: Sub Total, Less Advance Payment, Less Retention Payment, Taxable Amount, GST and the Grand Total in words, then Authorized by / Invoice Received by, the terms and Payment Received by. The terms and the footer line come from the invoice template (Quotations → Templates).
+7. Under "Signed by", pick who signs this invoice and whether the company stamp goes on; it starts from the invoice template's choice. Signatures are uploaded under Quotations → Signatures & stamp.
+8. Press "Save invoice" (or credit note / receipt). It is posted to the books at once.
 
 > Save as draft if it is not final; a draft posts nothing.
 > Foreign currency: choose USD and enter the MVR rate.
@@ -262,7 +265,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Tiles: principal still owed, returns and shares owed, ready to pay, and blocked.
 2. Payouts awaiting approval: an admin presses "Approve and pay" (or "Turn down…" with a reason).
-3. People: what each person is owed — principal, financing return and profit share kept apart. Click a name for their statement.
+3. Capital Pool members and Lenders are listed in separate tables: what each is owed — principal, financing return and profit share kept apart — and, for members, what is ready to take (released returns and profit shares, usable to finance another project; principal is repaid, not reinvested). Click a name for their statement.
 4. Projects: financing, what is owed and whether payouts are released (and why not).
 
 ### Lenders
@@ -423,11 +426,29 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Choose who, write the message, send. The history lists what went out.
 
+### Bids
+
+`/bids` — Tenders the company is chasing, from registering to won or lost.
+
+1. "+ New bid": the bid's name, the company that put it out, the Gazette link, the pre-bid meeting (compulsory or optional) and the submission deadline.
+2. The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.
+3. The meeting and deadline show on Tasks & Calendar.
+
+> When Telegram is set up, the company group is told about each new bid, each stage change, and any change to its dates.
+
+### Bid
+
+`/bids/[id]` — One bid: its details, its stage and its history.
+
+1. Press a stage to move the bid along; a note typed first goes with it, to the history and the Telegram group.
+2. "Add a note" records something on the history only.
+3. "Edit" changes the details and dates.
+
 ### Quotations
 
-`/quotations` — Price the work, win it, then invoice it (Live only for now).
+`/quotations` — Price the work, win it, then invoice it.
 
-1. "New quotation", fill in the lines, save; print it with your template and signature.
+1. "New quotation", fill in the lines, save (type the days it is valid for, or pick the date); print it with your template and signature.
 2. Mark it won, then "Convert to invoice" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.
 3. Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices.
 
@@ -448,7 +469,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 > With a board thickness set, a part thicker than the board — a 2in leg from 18mm board — is cut in layers to glue up, and the cut list says so.
 > Untick "Pieces may be turned to fit" to keep the grain running along every part.
-> The list is saved to your account as you type, so it opens on your phone, PC or any device you sign in on. Each person has their own list. It is not part of the books, so it is the same in Live and Test.
+> The list is saved to your account as you type, so it opens on your phone, PC or any device you sign in on. Each person has their own list. It is not part of the books.
 > If the list was changed on another device while this page was open, you are asked which one to keep.
 
 ## Settings
@@ -467,9 +488,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 2. Opening balance date and the month the financial year starts.
 3. How project revenue is recognised; where partners' profit shares are charged; the bill approval limit.
 4. GST: filed monthly or quarterly, and the day it is due. No-pay days in a month.
-5. "Save settings". Reset Test book (at the bottom) clears everything in the Test book.
-
-> Settings are shared by the Live and Test books.
+5. "Save settings".
 
 ### Taxes & rates
 
@@ -482,8 +501,6 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/settings/numbering` — How each kind of document is numbered.
 
 1. Change the prefix, the next number and digits; "Save".
-
-> Test-book numbers always start with TEST-.
 
 ### Currencies
 

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /** The company block every printed ledger document carries. */
 export type Company = {
-  legal_name: string; trade_name: string | null; tin: string | null; gst_registered: boolean;
+  legal_name: string; trade_name: string | null; registration_no?: string | null; tin: string | null; gst_registered: boolean;
   taxable_activity_no: string | null; address: string | null; phone: string | null; email: string | null; bank_details: string | null;
 };
 

@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useState, useTransition } from "react";
 import { input, label, primary, small } from "@/components/form-styles";
 import {
-  approvePayout, completeProject, deleteScheme, recordFinancing, rejectPayout, savePayout, saveScheme, type Result,
+  approvePayout, completeProject, deleteScheme, financeFromCompanyCapital, recordFinancing, rejectPayout, savePayout, saveScheme, type Result,
 } from "@/app/actions/partners";
 import { money, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, toLaari } from "@/lib/money";
@@ -30,28 +30,37 @@ function BankSelect({ id, banks }: { id: string; banks: Bank[] }) {
 }
 
 /** Money received for a project: an external loan or a Capital Pool contribution. A new lender can be added here. */
-export function FinancingForm({ projectId, lenders, partners, banks, initialLender }: {
+export function FinancingForm({ projectId, lenders, partners, banks, initialLender, capital }: {
   projectId: string; lenders: Opt[]; partners: Opt[]; banks: Bank[]; initialLender?: string;
+  /** what the Capital Pool has available, by member and the company; null when this person may not use it */
+  capital?: { name: string; available: string }[] | null;
 }) {
   const [state, action, pending] = useActionState(recordFinancing, null as Result | null);
   const router = useRouter();
   // the choices are held here so a refresh after saving never clears them; the amount and reference start afresh after each save
   const start = initialLender && lenders.some((l) => l.id === initialLender) ? initialLender : "";
-  const [type, setType] = useState<"capital_contribution" | "loan_receipt">(start ? "loan_receipt" : "capital_contribution");
+  // an admin starts on the Capital Pool, shared out by what everyone has
+  const [type, setType] = useState<"capital_contribution" | "loan_receipt" | "company_capital">(start ? "loan_receipt" : capital ? "company_capital" : "capital_contribution");
   const [contact, setContact] = useState(start);
   const [bank, setBank] = useState("");
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<Opt[]>([]);   // shown until the page's list catches up
+  const from = (
+    <div className="px-5 pt-4 sm:w-1/3"><label htmlFor="fin-type" className={label}>From</label>
+      <select id="fin-type" value={type} onChange={(e) => { setType(e.target.value as typeof type); setContact(""); }} className={input}>
+        {capital && <option value="company_capital">Capital Pool (everyone&apos;s money, shared out)</option>}
+        <option value="capital_contribution">One member, new money</option>
+        <option value="loan_receipt">External lender</option>
+      </select></div>
+  );
+  if (type === "company_capital" && capital) return <>{from}<CompanyCapitalForm projectId={projectId} banks={banks} capital={capital} /></>;
   const who = type === "loan_receipt" ? [...lenders, ...added.filter((a) => !lenders.some((l) => l.id === a.id))].sort((a, b) => a.name.localeCompare(b.name)) : partners;
   return (
     <>
+    {from}
     <form onSubmit={submit(action)} className="grid gap-3 px-5 py-4 sm:grid-cols-3">
       <input type="hidden" name="project_id" value={projectId} />
-      <div><label htmlFor="fin-type" className={label}>From</label>
-        <select id="fin-type" name="type" value={type} onChange={(e) => { setType(e.target.value as typeof type); setContact(""); }} className={input}>
-          <option value="capital_contribution">Capital Pool member</option>
-          <option value="loan_receipt">External lender</option>
-        </select></div>
+      <input type="hidden" name="type" value={type} />
       <div><label htmlFor="fin-who" className={label}>{type === "loan_receipt" ? "Lender" : "Member"}</label>
         <select id="fin-who" name="contact_id" required value={contact} onChange={(e) => setContact(e.target.value)} className={input}>
           <option value="">Choose…</option>
@@ -81,6 +90,67 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
         </Modal>
       )}
     </>
+  );
+}
+
+/**
+ * Finance the project from the Capital Pool: the company's own money and what
+ * each member has untaken in the company. The amount is shared by what each
+ * has, shown as it is typed; the most it can be is everything available.
+ */
+function CompanyCapitalForm({ projectId, banks, capital }: {
+  projectId: string; banks: Bank[]; capital: { name: string; available: string }[];
+}) {
+  const [state, action, pending] = useActionState(financeFromCompanyCapital, null as (Result & { parts?: { name: string; amount: number }[] }) | null);
+  const [amount, setAmount] = useState("");
+  const total = capital.reduce((t, c) => t + dbToLaari(c.available), 0n);
+  const want = toLaari(amount) ?? 0n;
+  const over = want > total;
+  // the same sharing as the database: members by floor, the company takes the rest
+  const parts = capital.filter((c) => dbToLaari(c.available) > 0n).map((c) => ({ name: c.name, avail: dbToLaari(c.available), share: 0n }));
+  if (total > 0n && want > 0n && !over) {
+    for (const p of parts) if (p.name !== "Company") p.share = (want * p.avail) / total;
+    const company = parts.find((p) => p.name === "Company");
+    const given = parts.filter((p) => p.name !== "Company").reduce((t, p) => t + p.share, 0n);
+    if (company) company.share = want - given;
+  }
+  return (
+    <form onSubmit={submit(action)} className="space-y-4 px-5 py-4">
+      <input type="hidden" name="project_id" value={projectId} />
+      <p className="text-sm">From the <strong>Capital Pool</strong>: the company&apos;s own money and each member&apos;s released financing returns and profit shares, each putting in their share. Members&apos; principal is not taken: it is repaid to them.</p>
+      <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--hover)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
+            <tr><th className="px-3 py-2 font-medium">Whose</th><th className="px-3 py-2 text-right font-medium">Available</th><th className="px-3 py-2 text-right font-medium">Share</th><th className="px-3 py-2 text-right font-medium">Puts in</th></tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)] tabular-nums">
+            {parts.map((p) => (
+              <tr key={p.name}>
+                <td className="px-3 py-2">{p.name}{p.name === "Company" && <span className="block text-xs text-[var(--muted)]">bank, cash and payments not yet banked, less everything released to members</span>}</td>
+                <td className="px-3 py-2 text-right">{money(laariToNumber(p.avail))}</td>
+                <td className="px-3 py-2 text-right">{total > 0n ? `${(Number((p.avail * 10000n) / total) / 100).toFixed(2)}%` : "—"}</td>
+                <td className="px-3 py-2 text-right">{p.share > 0n ? money(laariToNumber(p.share)) : "—"}</td>
+              </tr>
+            ))}
+            <tr className="font-semibold"><td className="px-3 py-2">Most you can finance</td><td className="px-3 py-2 text-right">{money(laariToNumber(total))}</td><td className="px-3 py-2 text-right">100%</td>
+              <td className="px-3 py-2 text-right">{want > 0n && !over ? money(laariToNumber(want)) : "—"}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div><label htmlFor="cc-amt" className={label}>Amount (MVR)</label>
+          <input id="cc-amt" name="amount" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} className={`${input} tabular-nums`} />
+          {over && <p className="mt-1 text-xs text-red-700">More than the {money(laariToNumber(total))} available.</p>}</div>
+        <div><label htmlFor="cc-bank" className={label}>Goes through</label><BankSelect id="cc-bank" banks={banks} />
+          <p className="mt-1 text-xs text-[var(--muted)]">Members&apos; money is paid out and put back in through it, so it nets to nothing.</p></div>
+        <div><label htmlFor="cc-date" className={label}>Date</label><input id="cc-date" name="date" type="date" required defaultValue={today()} className={input} /></div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending || over || want <= 0n || total <= 0n} className={primary}>{pending ? "Saving…" : "Finance from the Capital Pool"}</button>
+        {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
+        {state?.ok && <p className="text-sm text-[var(--muted)]">Recorded: {(state.parts ?? []).map((x) => `${x.name} ${money(x.amount)}`).join(" · ")}</p>}
+      </div>
+    </form>
   );
 }
 

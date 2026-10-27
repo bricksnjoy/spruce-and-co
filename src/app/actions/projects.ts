@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isLocked, LOCKED } from "@/lib/project-lock";
-import { moneyToDb, percentToDb } from "@/lib/money";
+import { laariToDb, moneyToDb, percentOf, percentToDb, toLaari } from "@/lib/money";
+import { standardGstRate } from "@/server/gst-rate";
 
 export type Result = { error?: string; ok?: boolean };
 
@@ -15,6 +16,9 @@ const text = (fd: FormData, k: string) => {
 
 /** An amount as the database's exact decimal string (never a float); blank is 0. */
 const amount = (fd: FormData, k: string) => moneyToDb(String(fd.get(k) ?? "").replace(/[^0-9.,-]/g, "")) ?? "0.00";
+/** GST on the project value at the standard rate in force (Settings → Taxes). */
+const gst = async (supabase: Awaited<ReturnType<typeof createClient>>, value: string) =>
+  laariToDb(percentOf(toLaari(value) ?? 0n, await standardGstRate(supabase)));
 const percent = (fd: FormData, k: string) => percentToDb(String(fd.get(k) ?? "")) ?? "0";
 /** Blank means "use the company default" (Settings → Accounting). */
 const recognition = (fd: FormData) => {
@@ -81,6 +85,7 @@ export async function createProject(_prev: unknown, fd: FormData): Promise<Resul
 
   const start = text(fd, "start_date");
   const days = int(fd, "duration_days");
+  const value = amount(fd, "contract_value");
 
   // let the database pick the next code unless one was typed in
   let code = text(fd, "code");
@@ -98,8 +103,8 @@ export async function createProject(_prev: unknown, fd: FormData): Promise<Resul
       status: text(fd, "status") ?? "in_progress",
       description: text(fd, "description"),
       site_address: text(fd, "site_address"),
-      contract_value: amount(fd, "contract_value"),
-      gst_amount: amount(fd, "gst_amount"),
+      contract_value: value,
+      gst_amount: await gst(supabase, value),
       start_date: start,
       duration_days: days,
       end_date: endDate(start, days),
@@ -133,6 +138,7 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
 
   const start = text(fd, "start_date");
   const days = int(fd, "duration_days");
+  const value = amount(fd, "contract_value");
 
   const { error } = await supabase
     .from("projects")
@@ -143,8 +149,8 @@ export async function updateProject(_prev: unknown, fd: FormData): Promise<Resul
       status: text(fd, "status") ?? "in_progress",
       description: text(fd, "description"),
       site_address: text(fd, "site_address"),
-      contract_value: amount(fd, "contract_value"),
-      gst_amount: amount(fd, "gst_amount"),
+      contract_value: value,
+      gst_amount: await gst(supabase, value),
       start_date: start,
       duration_days: days,
       end_date: endDate(start, days),

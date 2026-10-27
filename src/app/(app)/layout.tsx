@@ -7,7 +7,6 @@ import { initials } from "@/lib/format";
 import { Badge } from "@/components/ui";
 import { Logo, Wordmark } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
-import { BookSwitch } from "@/components/book-switch";
 import { BookGuard } from "@/components/book-guard";
 import type { Book } from "@/lib/books";
 import { NewMenu } from "@/components/new-menu";
@@ -34,7 +33,9 @@ export default async function AppLayout({
   ]);
 
   const name = profile?.full_name || user.email || "User";
-  const book = (profile?.active_book ?? "live") as Book;
+  // one set of books for now (migration 031): anyone left in Test is moved back to Live
+  if (profile?.active_book === "sandbox") await supabase.rpc("rpc_set_book", { p_book: "live" });
+  const book: Book = "live";
   const groups = visibleFor(profile?.role, {
     gstRegistered: company?.gst_registered ?? false,
     book,
@@ -75,7 +76,6 @@ export default async function AppLayout({
             </form>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <BookSwitch book={book} />
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium leading-tight">{name}</p>
               <p className="text-xs text-[var(--muted)]">
@@ -96,11 +96,6 @@ export default async function AppLayout({
             </form>
           </div>
         </header>
-        {book === "sandbox" && (
-          <div role="status" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900 sm:px-6">
-            <strong>Test book.</strong> Nothing here is real or reaches the Live books; document numbers start with TEST-.
-          </div>
-        )}
         <main className="flex-1 p-4 sm:p-6"><BookGuard book={book}><PageHelp />{children}</BookGuard></main>
       </div>
     </div>

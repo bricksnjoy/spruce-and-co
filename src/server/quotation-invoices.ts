@@ -1,6 +1,6 @@
 import type { Session } from "./session";
 import type { SalesFormData } from "./sales-data";
-import { blankDoc, type DocValues, type LineValue } from "@/lib/sales-doc";
+import { blankDoc, blankLine, type DocValues, type LineValue } from "@/lib/sales-doc";
 import { portionLines, round2 } from "@/lib/documents";
 import { dbToLaari, laariToNumber } from "@/lib/money";
 
@@ -76,8 +76,8 @@ export async function invoiceFromQuotation(
   const part = whole ? "" : ` (${Number(pct.toFixed(2))}%)`;
   const describe = (l: { title: string | null; description: string | null }) => [l.title, l.description].filter(Boolean).join("\n");
   const docLines: LineValue[] = whole
-    ? lines.map((l) => ({ description: describe(l), qty: String(l.qty), rate: String(l.rate), amount: "", tax_code_id: data.defaultTaxCode ?? "", project_id: "", account_id: "" }))
-    : portionLines(lines, pct, target).map((l) => ({ description: describe(l) + part, qty: "", rate: "", amount: l.amount.toFixed(2), tax_code_id: data.defaultTaxCode ?? "", project_id: "", account_id: "" }));
+    ? lines.map((l, i) => ({ ...blankLine(data), item_no: String(i + 1), description: describe(l), qty: String(l.qty), unit: l.unit ?? "", rate: String(l.rate) }))
+    : portionLines(lines, pct, target).map((l, i) => ({ ...blankLine(data), item_no: String(i + 1), description: describe(l) + part, amount: l.amount.toFixed(2) }));
 
   const values = blankDoc("invoice", data, customerId, project?.id ?? "");
   return {

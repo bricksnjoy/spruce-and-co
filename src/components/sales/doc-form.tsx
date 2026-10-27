@@ -7,11 +7,13 @@ import { input, label, primary, small } from "@/components/form-styles";
 import { saveSalesDoc, type Result } from "@/app/actions/sales";
 import { addDays, money } from "@/lib/format";
 import { laariToNumber, percentOf, qtyTimesRate, toLaari } from "@/lib/money";
-import type { SalesFormData } from "@/server/sales-data";
-import type { Company } from "./ledger-sheet";
-import { SalesSheet, type SheetSigner } from "./sales-sheet";
+import type { SalesBranding, SalesFormData } from "@/server/sales-data";
+import { SalesSheet } from "./sales-sheet";
+import { SignerPicker } from "@/app/(app)/quotations/quotation-form";
+import { signerFor } from "@/lib/documents";
+import { DueIn } from "@/components/due-in";
 
-import { TITLES, type DocType, type DocValues, type LineValue } from "@/lib/sales-doc";
+import { TITLES, blankLine, type DocType, type DocValues, type LineValue } from "@/lib/sales-doc";
 export type { DocType, DocValues, LineValue };
 
 /**
@@ -20,7 +22,7 @@ export type { DocType, DocValues, LineValue };
  */
 export function DocForm({ data, values, branding, number = null }: {
   data: SalesFormData; values: DocValues;
-  branding: { company: Company | null; signer: SheetSigner | null };
+  branding: SalesBranding;
   /** the document's number, once it has one */
   number?: string | null;
 }) {
@@ -35,22 +37,25 @@ export function DocForm({ data, values, branding, number = null }: {
 
   const lineAmount = (l: LineValue) => (l.qty !== "" && l.rate !== "" ? qtyTimesRate(l.qty, l.rate) : toLaari(l.amount)) ?? 0n;
   const subtotal = v.lines.reduce((t, l) => t + lineAmount(l), 0n);
-  const gst = v.lines.reduce((t, l) => t + percentOf(lineAmount(l), rateOf.get(l.tax_code_id) ?? "0"), 0n);
+  const gst = v.lines.reduce((t, l) => t + percentOf(lineAmount(l), l.amount.trim() || l.qty.trim() ? rateOf.get(l.tax_code_id) ?? "0" : "0"), 0n);
   const taxName = useMemo(() => new Map(data.taxCodes.map((t) => [t.id, t.name])), [data.taxCodes]);
   const sheetLines = v.lines
     .filter((l) => l.description.trim() || lineAmount(l) !== 0n)
     .map((l) => {
       const byQty = l.qty !== "" && l.rate !== "";
+      const heading = !byQty && !l.qty.trim() && !l.rate.trim() && !l.amount.trim();
       const amount = lineAmount(l);
       return {
-        description: l.description,
+        itemNo: l.item_no, description: l.description, heading, unit: l.unit,
         qty: byQty ? Number(l.qty) : null,
         rate: byQty ? qtyTimesRate("1", l.rate) : null,
         amount,
-        tax: percentOf(amount, rateOf.get(l.tax_code_id) ?? "0"),
+        tax: heading ? 0n : percentOf(amount, rateOf.get(l.tax_code_id) ?? "0"),
         taxName: taxName.get(l.tax_code_id) ?? "",
       };
     });
+  const signer = branding.tail ? signerFor(branding.kit, branding.tail, v.signatory_id || null, v.show_stamp) : branding.signer;
+  const signatoryId = v.signatory_id || branding.tail?.signatory_id || null;
   const projects = v.contact_id ? data.projects.filter((p) => !p.customer_id || p.customer_id === v.contact_id) : data.projects;
 
   const chooseCustomer = (id: string) => {
@@ -90,9 +95,8 @@ export function DocForm({ data, values, branding, number = null }: {
         </div>
         {v.type === "invoice" && (
           <div>
-            <label htmlFor="d-due" className={label}>Due</label>
-            <input id="d-due" name="due_date" type="date" value={v.due_date} onChange={(e) => set("due_date", e.target.value)} className={input} />
-            <p className="mt-1 text-xs text-[var(--muted)]">From the customer&apos;s terms; due on receipt when they have none</p>
+            <DueIn id="d-due" name="due_date" label="Due" from={v.date} value={v.due_date} onChange={(d) => set("due_date", d)} />
+            <p className="mt-1 text-xs text-[var(--muted)]">Type the days or pick the date; starts from the customer&apos;s terms</p>
           </div>
         )}
         {v.type === "sales_receipt" && (
@@ -112,9 +116,19 @@ export function DocForm({ data, values, branding, number = null }: {
           </div>
         </div>
         <div>
-          <label htmlFor="d-ref" className={label}>Reference</label>
-          <input id="d-ref" name="reference" value={v.reference} onChange={(e) => set("reference", e.target.value)} className={input} placeholder="Client PO, contract no." />
+          <label htmlFor="d-ref" className={label}>{v.type === "invoice" ? "Quotation no." : "Reference"}</label>
+          <input id="d-ref" name="reference" value={v.reference} onChange={(e) => set("reference", e.target.value)} className={input} placeholder={v.type === "invoice" ? "Q/2025/035" : "Client PO, contract no."} />
         </div>
+        {v.type === "invoice" && <>
+          <div>
+            <label htmlFor="d-agr" className={label}>AGR no.</label>
+            <input id="d-agr" name="agr_no" value={v.agr_no} onChange={(e) => set("agr_no", e.target.value)} className={input} />
+          </div>
+          <div>
+            <label htmlFor="d-po" className={label}>PO no.</label>
+            <input id="d-po" name="po_no" value={v.po_no} onChange={(e) => set("po_no", e.target.value)} className={input} placeholder="WOC-2026-00372" />
+          </div>
+        </>}
       </Card>
 
       <Card>
@@ -122,7 +136,8 @@ export function DocForm({ data, values, branding, number = null }: {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-[var(--muted)]">
-                <th className="px-3 py-2 font-medium">Description</th><th className="w-20 px-2 py-2 font-medium">Qty</th>
+                <th className="w-20 px-2 py-2 font-medium">Item no.</th>
+                <th className="px-3 py-2 font-medium">Description</th><th className="w-20 px-2 py-2 font-medium">Qty</th><th className="w-20 px-2 py-2 font-medium">Unit</th>
                 <th className="w-28 px-2 py-2 font-medium">Rate</th><th className="w-32 px-2 py-2 font-medium">Amount</th>
                 <th className="w-40 px-2 py-2 font-medium">GST</th><th className="w-40 px-2 py-2 font-medium">Income account</th><th className="w-8" />
               </tr>
@@ -132,8 +147,10 @@ export function DocForm({ data, values, branding, number = null }: {
                 const byQty = l.qty !== "" && l.rate !== "";
                 return (
                   <tr key={i} className="border-t border-[var(--border)] align-top">
+                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} item no.`} value={l.item_no} onChange={(e) => setLine(i, { item_no: e.target.value })} className={input} placeholder="1.1" /></td>
                     <td className="px-3 py-2"><textarea rows={1} aria-label={`Line ${i + 1} description`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} className={input} /></td>
                     <td className="px-2 py-2"><input aria-label={`Line ${i + 1} quantity`} inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} className={`${input} tabular-nums`} /></td>
+                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} unit`} value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className={input} placeholder="nos" /></td>
                     <td className="px-2 py-2"><input aria-label={`Line ${i + 1} rate`} inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} className={`${input} tabular-nums`} /></td>
                     <td className="px-2 py-2">
                       {byQty ? <p className="px-3 py-2 text-right tabular-nums">{money(laariToNumber(lineAmount(l)))}</p>
@@ -142,7 +159,7 @@ export function DocForm({ data, values, branding, number = null }: {
                     <td className="px-2 py-2">
                       <select aria-label={`Line ${i + 1} GST`} value={l.tax_code_id} onChange={(e) => setLine(i, { tax_code_id: e.target.value })} className={input}>
                         <option value="">None</option>
-                        {data.taxCodes.map((t) => <option key={t.id} value={t.id}>{t.name}{t.rate !== "0" ? ` ${Number(t.rate)}%` : ""}</option>)}
+                        {data.taxCodes.map((t) => <option key={t.id} value={t.id}>{t.rate !== "0" ? `${Number(t.rate)}% · ${t.name}` : t.name}</option>)}
                       </select>
                     </td>
                     <td className="px-2 py-2">
@@ -162,7 +179,7 @@ export function DocForm({ data, values, branding, number = null }: {
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4 border-t border-[var(--border)] px-5 py-4">
           <button type="button" className={small}
-            onClick={() => setV((o) => ({ ...o, lines: [...o.lines, { description: "", qty: "", rate: "", amount: "", tax_code_id: data.defaultTaxCode ?? "", project_id: "", account_id: "" }] }))}>
+            onClick={() => setV((o) => ({ ...o, lines: [...o.lines, blankLine(data)] }))}>
             Add a line
           </button>
           <dl className="grid grid-cols-[auto_8rem] gap-x-6 gap-y-1 text-sm tabular-nums">
@@ -171,13 +188,24 @@ export function DocForm({ data, values, branding, number = null }: {
             <dt className="font-semibold">Total{v.currency !== "MVR" ? ` (${v.currency})` : ""}</dt><dd className="text-right font-semibold">{money(laariToNumber(subtotal + gst))}</dd>
           </dl>
         </div>
-        <p className="px-5 pb-3 text-xs text-[var(--muted)]">Leave quantity and rate blank to type an amount. GST is charged at the rate in force on the document date.</p>
+        <p className="px-5 pb-3 text-xs text-[var(--muted)]">Leave quantity and rate blank to type an amount; leave all three blank for a heading (A · Civil works, 1.0 · Preliminaries). GST is charged at the rate in force on the document date.</p>
       </Card>
 
       <Card className="px-5 py-5">
         <label htmlFor="d-memo" className={label}>Note on the document</label>
         <textarea id="d-memo" name="memo" rows={2} value={v.memo} onChange={(e) => set("memo", e.target.value)} className={input} />
       </Card>
+
+      {branding.kit.signatories.length > 0 && (
+        <Card className="px-5 py-5">
+          <p className={label}>Signed by</p>
+          <input type="hidden" name="signatory_id" value={v.signatory_id} />
+          {/* a stamp ticked off is kept as "no stamp", not as the template's default */}
+          {v.show_stamp !== null && <input type="hidden" name="stamp_chosen" value="1" />}
+          <SignerPicker kit={branding.kit} signatoryId={signatoryId} showStamp={v.show_stamp ?? branding.tail?.show_stamp ?? false}
+            onSigner={(id) => set("signatory_id", id ?? "")} onStamp={(x) => set("show_stamp", x)} names={{ signer: "signer-choice", stamp: "show_stamp" }} />
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : v.id ? "Save changes" : `Save ${TITLES[v.type].toLowerCase()}`}</button>
@@ -202,8 +230,8 @@ export function DocForm({ data, values, branding, number = null }: {
                 customer={data.customers.find((c) => c.id === v.contact_id) ?? null}
                 date={v.date} due={v.type === "invoice" ? (v.due_date || v.date) : null}
                 projectCode={data.projects.find((p) => p.id === v.project_id)?.code ?? null}
-                reference={v.reference || null} lines={sheetLines} currency={v.currency}
-                memo={v.memo || null} signer={branding.signer} />
+                reference={v.reference || null} agrNo={v.agr_no || null} poNo={v.po_no || null} lines={sheetLines} currency={v.currency}
+                memo={v.memo || null} signer={signer} terms={branding.terms} footer={branding.footer} />
             </div>
           </div>
         </aside>

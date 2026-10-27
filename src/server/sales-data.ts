@@ -1,6 +1,6 @@
 import type { Session } from "./session";
 import { today } from "@/lib/format";
-import { signerFor, toTemplate } from "@/lib/documents";
+import { signerFor, toTemplate, type SigningKit, type TemplateTail } from "@/lib/documents";
 import { signingKit } from "@/lib/branding";
 import type { Company } from "@/components/sales/ledger-sheet";
 import type { SheetSigner } from "@/components/sales/sales-sheet";
@@ -36,7 +36,8 @@ export async function salesFormData(s: Session) {
     customers: (cust.data ?? []) as CustomerOpt[],
     projects: (proj.data ?? []) as ProjectOpt[],
     taxCodes,
-    defaultTaxCode: taxCodes.find((c) => c.code === (gstRegistered ? "STD" : "OOS"))?.id ?? null,
+    // GST at the standard rate (8% today) unless the line is changed
+    defaultTaxCode: taxCodes.find((c) => c.code === "STD")?.id ?? null,
     incomeAccounts: (income.data ?? []) as AccountOpt[],
     banks: (banks.data ?? []) as AccountOpt[],
     gstRegistered,
@@ -48,11 +49,14 @@ export type SalesFormData = Awaited<ReturnType<typeof salesFormData>>;
  * The company block and the signer a printed sales document carries: signed and
  * stamped as the default invoice template says (Quotations → Edit templates).
  */
-export async function salesBranding(s: Session): Promise<{ company: Company | null; signer: SheetSigner | null }> {
+/** `signer` is the invoice template's default; `kit` and `tail` let a document choose its own. */
+export type SalesBranding = { company: Company | null; signer: SheetSigner | null; terms: string; footer: string; kit: SigningKit; tail: TemplateTail | null };
+export async function salesBranding(s: Session): Promise<SalesBranding> {
   const [{ data: company }, { data: tpl }, kit] = await Promise.all([
-    s.supabase.from("company").select("legal_name, trade_name, tin, gst_registered, taxable_activity_no, address, phone, email, bank_details").eq("id", true).maybeSingle(),
+    s.supabase.from("company").select("legal_name, trade_name, registration_no, tin, gst_registered, taxable_activity_no, address, phone, email, bank_details").eq("id", true).maybeSingle(),
     s.supabase.from("document_templates").select("*").eq("kind", "invoice").order("is_default", { ascending: false }).limit(1).maybeSingle(),
     signingKit(s.supabase),
   ]);
-  return { company: (company as Company | null) ?? null, signer: tpl ? signerFor(kit, toTemplate(tpl).tail, null, null) : null };
+  const tail = tpl ? toTemplate(tpl).tail : null;
+  return { company: (company as Company | null) ?? null, signer: tail ? signerFor(kit, tail, null, null) : null, terms: tail?.terms ?? "", footer: tail?.footer_text ?? "", kit, tail };
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader } from "@/components/ui";
+import { standardGstRate } from "@/server/gst-rate";
 import { ProjectForm } from "../../project-form";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +15,10 @@ export default async function EditProjectPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: project }, { data: customers }] = await Promise.all([
+  const [{ data: project }, { data: customers }, gstRate] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).maybeSingle(),
     supabase.from("contacts").select("id, name").contains("kinds", ["customer"]).eq("active", true).order("name"),
+    standardGstRate(supabase),
   ]);
 
   if (!project) notFound();
@@ -33,6 +35,7 @@ export default async function EditProjectPage({
         <ProjectForm
           mode="edit"
           customers={customers ?? []}
+          gstRate={gstRate}
           values={{
             id: project.id,
             code: project.code,
@@ -42,7 +45,6 @@ export default async function EditProjectPage({
             description: project.description,
             site_address: project.site_address,
             contract_value: Number(project.contract_value),
-            gst_amount: Number(project.gst_amount),
             start_date: project.start_date,
             duration_days: project.duration_days,
             progress_pct: Number(project.progress_pct),
