@@ -16,8 +16,8 @@ export const STAGE_LABEL: Record<string, string> = {
 
 /** Each stage's colour: a badge, and a bar down the side of its row. Active blue, completed amber, settled green, closed grey. */
 export const STAGE_TONE: Record<string, { badge: string; bar: string }> = {
-  active: { badge: "bg-blue-50 text-blue-700 ring-blue-200", bar: "border-l-blue-500" },
+  active: { badge: "bg-blue-50 text-blue-700 ring-blue-200", bar: "border-l-blue-600" },
   completed: { badge: "bg-amber-50 text-amber-800 ring-amber-200", bar: "border-l-amber-500" },
-  settled: { badge: "bg-emerald-50 text-emerald-700 ring-emerald-200", bar: "border-l-emerald-500" },
+  settled: { badge: "bg-emerald-50 text-emerald-700 ring-emerald-200", bar: "border-l-green-500" },
   closed: { badge: "bg-slate-100 text-slate-600 ring-slate-200", bar: "border-l-slate-400" },
 };
