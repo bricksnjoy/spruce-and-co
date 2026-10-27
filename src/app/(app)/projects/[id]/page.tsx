@@ -43,7 +43,7 @@ export default async function ProjectPage({ params, searchParams }: {
       </div>
       <PageHeader title={p.name}
         subtitle={`${p.code}${p.customer_name ? ` · ${p.customer_name}` : ""} · ${STAGE_LABEL[p.stage] ?? p.stage}`}
-        action={writer ? <ProjectMenu id={id} archived={Boolean(p.archived_at)} /> : undefined} />
+        action={writer ? <ProjectMenu id={id} archived={Boolean(p.archived_at)} canUndoCompletion={s.role === "admin" && Boolean(p.completed_at)} /> : undefined} />
 
       <div className="flex gap-1 overflow-x-auto border-b border-neutral-300">
         {TABS.map(([k, l]) => (

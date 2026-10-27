@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { setProjectArchived } from "@/app/actions/projects";
+import { undoCompletion } from "@/app/actions/partners";
 
-/** The project's ⋯ menu: edit it, or archive it out of the working lists (or bring it back). Nothing is deleted. */
-export function ProjectMenu({ id, archived }: { id: string; archived: boolean }) {
+/**
+ * The project's ⋯ menu: edit it, archive it out of the working lists (or bring it back), and for an
+ * admin, undo its completion. Nothing is deleted.
+ */
+export function ProjectMenu({ id, archived, canUndoCompletion }: { id: string; archived: boolean; canUndoCompletion: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +47,19 @@ export function ProjectMenu({ id, archived }: { id: string; archived: boolean })
             }}>
             {pending ? "…" : archived ? "Unarchive project" : "Archive project"}
           </button>
+          {canUndoCompletion && (
+            <button type="button" role="menuitem" disabled={pending} className={`${item} text-red-700`}
+              onClick={() => {
+                if (!confirm("Undo this project's completion? Its profit split is reversed and the project goes back to active. You can complete it again later.")) return;
+                start(async () => {
+                  const r = await undoCompletion(id);
+                  setError(r.error ?? null);
+                  setOpen(false);
+                });
+              }}>
+              Undo completion
+            </button>
+          )}
         </div>
       )}
     </div>
