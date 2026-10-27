@@ -39,7 +39,8 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Use "New project" (or + New → Project) to add one.
 2. Read across a row: revised contract value, % billed, collected, cost to date, forecast profit and margin, and what the client still owes.
-3. Click a project to open it. Use "Archived" to see projects taken out of the working list.
+3. The stage is in colour, on its badge and down the side of the row: blue active, amber completed with the client still owing, green settled (payouts due), grey closed.
+4. Click a project to open it. Use "Archived" to see projects taken out of the working list, and (admin) "Deleted" for projects deleted in the last 30 days, each with "Restore" to put it back with everything it had.
 
 ### New project
 
@@ -56,7 +57,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 `/projects/[id]` — One project from start to payout, in tabs.
 
-1. Overview: contract value, billed, collected, cost to date, forecast profit, % complete and over/under-billing.
+1. Overview: contract value and variations (with GST), profit (income before GST less costs), cost to date, billed (with GST) and collected.
 2. Variations: raise a variation with its details and amount; only approved ones change the contract value.
 3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download bills (Excel)", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", choose the account they were "Paid from" (receipts are saved as paid on their date; pick "Not paid yet" for bills still to pay), pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". The sheet comes with the bills already added (blank when there are none); bills already saved are recognised and skipped. "+ Other cost (no vendor)" records money already paid with no supplier bill (transport, pickups, site labour paid in cash): pick the category (e.g. Freight & Logistics, Direct Labour, Site Expenses) and the account it was paid from. A bill shows "Overdue" when it is unpaid past its due date; a receipt with no payment terms is due the day it is dated, so mark it paid from its status (pick the account it was paid from), or use "Mark all as paid"; each is paid on its own date. Salaries reach a project through Payroll: set each employee's project split, and each payslip charges its share to the projects.
 4. Billing plan: what is still to come from the client (contract value, invoiced, received, still to receive), then the stages of the contract; turn a stage into an invoice when it is due. Stage amounts are before GST: when the project carries GST (or the company is GST registered) each stage shows its GST and the total with GST, and its invoice adds the GST on top.
@@ -65,7 +66,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 7. Payouts: whether payouts are released (the client must owe nothing) and what each person is owed.
 8. Transactions: every document posted to the project.
 
-> Buttons at the top: New invoice, New bill (opens the Bills tab with the form), Edit, Archive.
+> The ⋯ button at the top: Edit project, Archive project; for an admin, Undo completion (on a completed project) and Delete project…, which takes every document, payment, financing entry and payout of the project out of the books after you type its code. A project is refused while something of it also belongs to another project, a payroll run charged labour to it, it is in a filed GST return, or a director's account has already used its money. It can be restored for 30 days from Projects → Deleted.
 > Anything posted to a completed project later (a cost, a bad debt) adjusts the split with its own entry and flags the project for review.
 
 ### Edit project

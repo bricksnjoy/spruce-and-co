@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button, Card, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
-import { money, pct } from "@/lib/format";
+import { date, money, pct } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
 import { bookLabel } from "@/lib/books";
-import { STAGE_LABEL, type ProjectFigures } from "@/lib/project-figures";
+import { STAGE_TONE, type ProjectFigures } from "@/lib/project-figures";
+import { StageBadge } from "@/components/projects/stage-badge";
+import { RestoreProjectButton } from "@/components/projects/restore-project";
 import { RunWip } from "./run-wip";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +15,17 @@ export const dynamic = "force-dynamic";
 const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
 const sum = (rows: ProjectFigures[], k: keyof ProjectFigures) => rows.reduce((t, r) => t + dbToLaari(r[k] as number), 0n);
 
-export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ archived?: string; deleted?: string }> }) {
   const s = await getSession();
   if (!s) redirect("/login");
-  const showArchived = (await searchParams).archived === "1";
-  const { data, error } = await s.supabase.from("project_list_v").select("*").order("code");
+  const sp = await searchParams;
+  const showArchived = sp.archived === "1";
+  const admin = s.role === "admin";
+  if (sp.deleted === "1" && admin) return <DeletedProjects s={s} />;
+  const [{ data, error }, { data: deleted }] = await Promise.all([
+    s.supabase.from("project_list_v").select("*").order("code"),
+    admin ? s.supabase.rpc("deleted_projects") : Promise.resolve({ data: [] }),
+  ]);
   const all = (data ?? []) as ProjectFigures[];
   const rows = all.filter((p) => Boolean(p.archived_at) === showArchived);
   const archivedCount = all.filter((p) => p.archived_at).length;
@@ -47,9 +55,14 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         {canWrite(s.role) && hasPoc ? <RunWip /> : <span />}
-        <Link href={showArchived ? "/projects" : "/projects?archived=1"} className="text-xs text-[var(--muted)] hover:underline">
-          {showArchived ? "← Current projects" : `Archived (${archivedCount})`}
-        </Link>
+        <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--muted)]">
+          {/* what each colour means */}
+          {(["active", "completed", "settled", "closed"] as const).map((k) => <StageBadge key={k} stage={k} />)}
+          <Link href={showArchived ? "/projects" : "/projects?archived=1"} className="hover:underline">
+            {showArchived ? "← Current projects" : `Archived (${archivedCount})`}
+          </Link>
+          {admin && <Link href="/projects?deleted=1" className="hover:underline">Deleted ({((deleted ?? []) as unknown[]).length})</Link>}
+        </div>
       </div>
 
       <Card>
@@ -69,11 +82,11 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id} className="row-link hover:bg-[var(--hover)]">
-                  <Td>
+                  <Td className={`border-l-4 ${STAGE_TONE[p.stage]?.bar ?? STAGE_TONE.closed.bar}`}>
                     <Link href={`/projects/${p.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{p.name}</Link>
                     <p className="text-xs text-[var(--muted)]"><span className="font-mono">{p.code}</span>{p.customer_name ? ` · ${p.customer_name}` : ""}</p>
                   </Td>
-                  <Td className="text-xs">{STAGE_LABEL[p.stage] ?? p.stage}</Td>
+                  <Td><StageBadge stage={p.stage} /></Td>
                   <Td right>{m(p.revised)}</Td>
                   <Td right>{m(p.billed)}<p className="text-xs text-[var(--muted)]">{pct(Number(p.billed_pct), 0)}</p></Td>
                   <Td right>{m(p.collected)}</Td>
@@ -81,6 +94,38 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                   <Td right className={dbToLaari(p.forecast_profit) < 0n ? "text-red-700" : ""}>{m(p.forecast_profit)}</Td>
                   <Td right>{pct(Number(p.margin_pct), 1)}</Td>
                   <Td right>{dbToLaari(p.client_balance) !== 0n ? m(p.client_balance) : <span className="text-[var(--muted)]">—</span>}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** Projects deleted in the last 30 days, each with everything it had, ready to restore (admin). */
+async function DeletedProjects({ s }: { s: NonNullable<Awaited<ReturnType<typeof getSession>>> }) {
+  const { data } = await s.supabase.rpc("deleted_projects");
+  const rows = (data ?? []) as { id: string; code: string; name: string; customer_name: string | null; deleted_at: string; deleted_by: string | null; documents: number }[];
+  return (
+    <div className="max-w-7xl space-y-5">
+      <PageHeader title="Deleted projects" subtitle="Kept for 30 days after deleting; restoring one puts it back with all its documents, financing and profit split." />
+      <Link href="/projects" className="text-xs text-[var(--muted)] hover:underline">← Current projects</Link>
+      <Card>
+        {rows.length === 0 ? <div className="px-5 py-12 text-center text-sm text-[var(--muted)]">No deleted projects.</div> : (
+          <Table>
+            <thead><tr><Th>Project</Th><Th>Deleted</Th><Th>By</Th><Th right>Documents</Th><Th>Restore until</Th><Th><span className="sr-only">Restore</span></Th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <Td><span className="font-medium">{r.name}</span>
+                    <p className="text-xs text-[var(--muted)]"><span className="font-mono">{r.code}</span>{r.customer_name ? ` · ${r.customer_name}` : ""}</p></Td>
+                  <Td className="whitespace-nowrap">{date(r.deleted_at.slice(0, 10))}</Td>
+                  <Td>{r.deleted_by ?? "—"}</Td>
+                  <Td right>{r.documents}</Td>
+                  <Td className="whitespace-nowrap">{date(new Date(new Date(r.deleted_at).getTime() + 30 * 86400000).toISOString().slice(0, 10))}</Td>
+                  <Td right><RestoreProjectButton id={r.id} /></Td>
                 </tr>
               ))}
             </tbody>
