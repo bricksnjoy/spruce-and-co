@@ -82,7 +82,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id} className="row-link hover:bg-[var(--hover)]">
-                  <Td className={`border-l-4 ${STAGE_TONE[p.stage]?.bar ?? STAGE_TONE.closed.bar}`}>
+                  <Td className={`border-l-8 ${STAGE_TONE[p.stage]?.bar ?? STAGE_TONE.closed.bar}`}>
                     <Link href={`/projects/${p.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{p.name}</Link>
                     <p className="text-xs text-[var(--muted)]"><span className="font-mono">{p.code}</span>{p.customer_name ? ` · ${p.customer_name}` : ""}</p>
                   </Td>
