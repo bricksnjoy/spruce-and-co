@@ -19,9 +19,9 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   sql(`insert into contacts (name, kinds, tin, gst_registered) values ('${vendor}', '{vendor}', '10${digits}3GST501', true)`);
   await signIn(page, "admin");
 
-  // the header's New bill opens the pop-up on the Bills tab
-  await page.goto(`/projects/${project}`);
-  await page.getByRole("link", { name: "New bill" }).click();
+  // the Bills tab's New bill opens the pop-up
+  await page.goto(`/projects/${project}?tab=bills`);
+  await page.getByRole("button", { name: "New bill" }).click();
   const dialog = page.getByRole("dialog", { name: "New bill" });
   await expect(dialog).toBeVisible();
   const vendorSelect = dialog.getByLabel(/^Vendor/);
