@@ -80,6 +80,18 @@ export async function completeProject(_prev: unknown, fd: FormData): Promise<Res
   return { ok: true, id: data as string };
 }
 
+/** Undo a project's completion (admin only): reverse its profit split and set it back to active. */
+export async function undoCompletion(project: string): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (w.s.role !== "admin") return { error: "Only an admin can undo a completion." };
+  if (!isId(project)) return { error: "No project." };
+  const { error } = await w.s.supabase.rpc("rpc_undo_completion", { p_project: project });
+  if (error) return { error: dbMessage(error) };
+  refresh();
+  return { ok: true };
+}
+
 /**
  * Pay one person: one line per project and component with an amount
  * (fields named amt:<project id>:<component>). An admin's payout is paid at
