@@ -19,12 +19,15 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   if (!s) redirect("/login");
   const show = (await searchParams).show ?? "all";
   const t = today();
-  const [{ data }, { data: paid }] = await Promise.all([
+  const [{ data }, { data: paid }, { data: bin }] = await Promise.all([
     s.supabase.from("expenses_list_v").select("id, type, number, date, due_date, total, balance, vendor_name, project_code, status, voided_at, tax_invoice_no")
       .order("date", { ascending: false }).limit(500),
     s.supabase.rpc("bills_paid_since", { p_since: addDays(t, -30) }),
+    s.supabase.from("bill_bin").select("bill_id, payments"),
   ]);
-  const rows = (data ?? []) as Row[];
+  // deleted bills, and the payments deleted with them, are on their project's Bills tab to restore
+  const deleted = new Set(((bin ?? []) as { bill_id: string; payments: string[] }[]).flatMap((b) => [b.bill_id, ...b.payments]));
+  const rows = ((data ?? []) as Row[]).filter((r) => !deleted.has(r.id));
   const open = rows.filter((r) => r.type === "bill" && ["open", "partial", "overdue", "sent"].includes(r.status));
   const unpaid = open.reduce((a, r) => a + dbToLaari(r.balance), 0n);
   const overdue = open.filter((r) => r.status === "overdue").reduce((a, r) => a + dbToLaari(r.balance), 0n);

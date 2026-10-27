@@ -189,3 +189,25 @@ export async function voidExpenseDoc(id: string, reason: string): Promise<Result
   refresh(id);
   return { ok: true };
 }
+
+/** Delete a bill, expense or vendor credit with the payments made only for it; restorable for 30 days. */
+export async function deleteBill(id: string): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (!isId(id)) return { error: "No bill." };
+  const { error } = await w.s.supabase.rpc("rpc_delete_bill", { p_id: id });
+  if (error) return { error: dbMessage(error) };
+  refresh(id);
+  return { ok: true };
+}
+
+/** Put a deleted bill back, with its payments, within 30 days of deleting it. */
+export async function restoreBill(id: string): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (!isId(id)) return { error: "No bill." };
+  const { error } = await w.s.supabase.rpc("rpc_restore_bill", { p_id: id });
+  if (error) return { error: dbMessage(error) };
+  refresh(id);
+  return { ok: true };
+}
