@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession, type Session } from "@/server/session";
-import { date, money, pct, titleize, today } from "@/lib/format";
+import { addDays, date, money, pct, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
 import { STAGE_LABEL, type ProjectFigures } from "@/lib/project-figures";
@@ -13,6 +13,7 @@ import { CompleteForm, FinancingForm } from "@/components/partners/forms";
 import { COMPONENT_LABEL, COMPONENTS, type StatementRow } from "@/lib/partners";
 import { ProjectBills } from "@/components/projects/project-bills";
 import { BillStatusMenu, MarkAllPaid } from "@/components/projects/bill-status";
+import { DeleteBillButton, RestoreBillButton } from "@/components/projects/bill-bin";
 import { expenseFormData } from "@/server/expense-data";
 import { standardGstRate } from "@/server/gst-rate";
 import { blankExpense } from "@/lib/expense-doc";
@@ -452,22 +453,27 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
     s.supabase.from("transaction_lines").select("transaction_id, transactions!inner(type)").eq("project_id", p.id).in("transactions.type", ["bill", "vendor_credit", "expense"]),
   ]);
   const ids = [...new Set([...(byHead ?? []).map((r) => r.id), ...(byLine ?? []).map((r) => r.transaction_id)])];
-  const [{ data }, { data: what }, form] = await Promise.all([
+  const [{ data }, { data: what }, { data: bin }, form] = await Promise.all([
     ids.length ? s.supabase.from("document_balances_v").select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at, contact_id").in("id", ids).order("date", { ascending: false })
       : Promise.resolve({ data: [] }),
     // what each cost was for, for those with no vendor (transport, salary, …)
     ids.length ? s.supabase.from("transactions").select("id, memo, transaction_lines(description, accounts(name))").in("id", ids) : Promise.resolve({ data: [] }),
+    // deleted ones leave the list; those deleted in the last 30 days can be restored
+    ids.length ? s.supabase.from("bill_bin").select("bill_id, deleted_at").in("bill_id", ids) : Promise.resolve({ data: [] }),
     writer ? expenseFormData(s) : Promise.resolve(null),
   ]);
-  const rows = (data ?? []) as (DocBalance & { id: string; type: string; number: string | null; date: string; total: number; balance: number; contact_id: string | null })[];
-  const { data: vendors } = rows.length ? await s.supabase.from("contacts").select("id, name").in("id", [...new Set(rows.map((r) => r.contact_id).filter(Boolean))] as string[]) : { data: [] };
+  const binned = new Map(((bin ?? []) as { bill_id: string; deleted_at: string }[]).map((b) => [b.bill_id, b.deleted_at.slice(0, 10)]));
+  const all = (data ?? []) as (DocBalance & { id: string; type: string; number: string | null; date: string; total: number; balance: number; contact_id: string | null })[];
+  const rows = all.filter((r) => !binned.has(r.id));
+  const t = today();
+  const restorable = all.filter((r) => binned.has(r.id) && addDays(binned.get(r.id)!, 30) >= t);
+  const { data: vendors } = all.length ? await s.supabase.from("contacts").select("id, name").in("id", [...new Set(all.map((r) => r.contact_id).filter(Boolean))] as string[]) : { data: [] };
   const vn = new Map((vendors ?? []).map((v) => [v.id, v.name]));
   const forWhat = new Map((what ?? []).map((w) => {
     const l = ((w.transaction_lines ?? []) as unknown as { description: string | null; accounts: { name: string } | null }[])[0];
     return [w.id as string, [l?.accounts?.name, l?.description || w.memo].filter(Boolean).join(" · ")];
   }));
   const live = rows.filter((r) => !r.voided_at);
-  const t = today();
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
@@ -485,7 +491,7 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
           </div> : undefined} />
         {rows.length === 0 ? <Empty message="No bills or costs on this project yet." /> : (
           <Table>
-            <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor / for</Th><Th>Due</Th><Th right>Total</Th><Th right>To pay</Th><Th right>Status</Th></tr></thead>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor / for</Th><Th>Due</Th><Th right>Total</Th><Th right>To pay</Th><Th right>Status</Th>{writer && <Th><span className="sr-only">Delete</span></Th>}</tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className={r.voided_at ? "text-[var(--muted)] line-through" : ""}>
@@ -498,12 +504,34 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
                   <Td right>{writer && form && !r.voided_at && !r.is_draft && r.type === "bill" && Number(r.balance) > 0
                     ? <BillStatusMenu projectId={p.id} billId={r.id} label={docStatus(r, t)} payFrom={form.payFrom} />
                     : <Badge value={docStatus(r, t)} />}</Td>
+                  {writer && <Td right>{!r.voided_at && <DeleteBillButton billId={r.id} number={r.number} />}</Td>}
                 </tr>
               ))}
             </tbody>
           </Table>
         )}
       </Card>
+      {restorable.length > 0 && (
+        <Card>
+          <CardHeader title="Deleted bills" subtitle="Kept for 30 days after deleting; restoring one puts it back with its payment." />
+          <Table>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor / for</Th><Th right>Total</Th><Th>Deleted</Th><Th>Restore until</Th>{writer && <Th><span className="sr-only">Restore</span></Th>}</tr></thead>
+            <tbody>
+              {restorable.map((r) => (
+                <tr key={r.id} className="text-[var(--muted)]">
+                  <Td className="whitespace-nowrap">{date(r.date)}</Td>
+                  <Td><span className="font-mono text-xs">{r.number ?? "—"}</span></Td>
+                  <Td>{vn.get(r.contact_id ?? "") ?? (forWhat.get(r.id) || "—")}</Td>
+                  <Td right>{m(r.total)}</Td>
+                  <Td className="whitespace-nowrap">{date(binned.get(r.id)!)}</Td>
+                  <Td className="whitespace-nowrap">{date(addDays(binned.get(r.id)!, 30))}</Td>
+                  {writer && <Td right><RestoreBillButton billId={r.id} /></Td>}
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }
