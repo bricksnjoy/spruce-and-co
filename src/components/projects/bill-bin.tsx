@@ -12,7 +12,7 @@ export function DeleteBillButton({ billId, number }: { billId: string; number: s
   return (
     <span className="inline-flex flex-col items-end">
       <button type="button" disabled={pending} aria-label={`Delete ${number ?? "this bill"}`} title="Delete"
-        className="rounded-md p-1.5 text-[var(--muted)] hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+        className="inline-flex rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
         onClick={() => {
           if (!confirm(`Delete ${number ?? "this bill"}? Its payment is removed with it. You can restore it from Deleted bills for 30 days.`)) return;
           start(async () => {
@@ -21,8 +21,8 @@ export function DeleteBillButton({ billId, number }: { billId: string; number: s
             router.refresh();
           });
         }}>
-        <svg aria-hidden viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+        <svg aria-hidden viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
         </svg>
       </button>
       {error && <span className="mt-1 max-w-56 text-right text-xs text-red-700">{error}</span>}
