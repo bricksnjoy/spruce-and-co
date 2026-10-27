@@ -25,7 +25,8 @@ export default defineConfig({
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : undefined,
   },
   webServer: {
-    command: `npx next build && npx next start -p ${PORT}`,
+    // CI builds the app while Supabase starts (E2E_PREBUILT), so here it only starts
+    command: `${process.env.E2E_PREBUILT ? "" : "npx next build && "}npx next start -p ${PORT}`,
     url: `http://127.0.0.1:${PORT}/login`,
     timeout: 400_000,
     reuseExistingServer: !process.env.CI,

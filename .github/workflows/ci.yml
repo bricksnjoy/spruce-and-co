@@ -1,10 +1,12 @@
-# Checks every push and pull request. Nothing here reaches the live Supabase
-# project: the database tests run in memory (PGlite), and the browser tests run
-# against a throwaway local Supabase started inside the job. No secrets needed.
+# Checks every pull request, and the default branch after each merge. Nothing
+# here reaches the live Supabase project: the database tests run in memory
+# (PGlite), and the browser tests run against a throwaway local Supabase
+# started inside the job. No secrets needed.
 name: CI
 
 on:
   push:
+    branches: [claude/jolly-cannon-i4y7vh]
   pull_request:
 
 concurrency:
@@ -12,10 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Types, lint and tests
+  types:
+    name: Types and lint
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,12 +27,33 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx eslint src tests e2e
-      - run: npx vitest run
+
+  tests:
+    # the database tests, split across two machines
+    name: Tests (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --shard=${{ matrix.shard }}/2
 
   e2e:
     name: Browser tests (local Supabase)
     runs-on: ubuntu-24.04  # Playwright 1.56 cannot install its browser on ubuntu-latest (26.04)
     timeout-minutes: 45
+    env:
+      # the local stack's public demo keys, as in playwright.config.ts
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,15 +64,23 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.118.0
-      - name: Start a throwaway Supabase
-        run: supabase start
+      - name: Start a throwaway Supabase, build the app and install the browser, side by side
+        run: |
+          supabase start > supabase.log 2>&1 & s=$!
+          npx next build > build.log 2>&1 & b=$!
+          npx playwright install --with-deps chromium > playwright.log 2>&1 & p=$!
+          fail=0
+          wait $s || { echo "::group::supabase start"; cat supabase.log; echo "::endgroup::"; fail=1; }
+          wait $b || { echo "::group::next build"; cat build.log; echo "::endgroup::"; fail=1; }
+          wait $p || { echo "::group::playwright install"; cat playwright.log; echo "::endgroup::"; fail=1; }
+          exit $fail
       - name: Load the schema, migrations and test users
         run: ./e2e/setup-db.sh
-      - run: npx playwright install --with-deps chromium
       - name: Browser tests
         run: npx playwright test
         env:
           CI: "1"
+          E2E_PREBUILT: "1"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -57,4 +88,6 @@ jobs:
           path: |
             e2e/report
             test-results
+            supabase.log
+            build.log
           retention-days: 7
