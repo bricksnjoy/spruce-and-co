@@ -45,25 +45,65 @@ export async function recordFinancing(_prev: unknown, fd: FormData): Promise<Res
 }
 
 /**
- * Finance a project from the Capital Pool (admin only): the amount is shared
- * among the directors' released profit shares and the company's own money by
- * what each has, and the directors' parts become their Capital Pool money on
- * the project (migration 030).
+ * Finance a project from the Capital Pool (admin only), each part as entered: a
+ * director's from their director's account, the company's from its own money
+ * (fields amt:<contact id> and amt:company; migration 039).
  */
-export async function financeFromCompanyCapital(_prev: unknown, fd: FormData): Promise<Result & { parts?: { name: string; amount: number }[] }> {
+export async function financeFromCapitalPool(_prev: unknown, fd: FormData): Promise<Result & { parts?: { name: string; amount: number }[] }> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
   if (w.s.role !== "admin") return { error: "Only an admin can finance from the Capital Pool." };
-  const project = text(fd, "project_id"), bank = text(fd, "bank_id"), date = text(fd, "date");
+  const project = text(fd, "project_id"), date = text(fd, "date");
   if (!isId(project)) return { error: "Choose the project." };
-  if (!isId(bank)) return { error: "Choose the account it goes through." };
   if (!isDate(date)) return { error: "Enter the date." };
-  const amount = moneyToDb(text(fd, "amount"));
-  if (amount === null || Number(amount) <= 0) return { error: "Enter the amount to finance." };
-  const { data, error } = await w.s.supabase.rpc("rpc_finance_from_company_capital", { p_project: project, p_date: date, p_amount: amount, p_bank: bank });
+  const parts: { contact_id: string | null; amount: string }[] = [];
+  for (const [k, v] of fd.entries()) {
+    const f = /^amt:([0-9a-f-]{36}|company)$/i.exec(k);
+    if (!f || String(v).trim() === "") continue;
+    const amount = moneyToDb(String(v));
+    if (amount === null) return { error: "Each amount must be a number." };
+    if (Number(amount) > 0) parts.push({ contact_id: f[1] === "company" ? null : f[1], amount });
+  }
+  if (!parts.length) return { error: "Enter how much comes from at least one." };
+  const { data, error } = await w.s.supabase.rpc("rpc_finance_from_capital_pool", { p_project: project, p_date: date, p_parts: parts });
   if (error) return { error: dbMessage(error) };
   refresh();
   return { ok: true, parts: (data ?? []) as { name: string; amount: number }[] };
+}
+
+/** A director's choice for money waiting for them (admin only): keep it in the company, or take it out now. */
+export async function directorChoice(_prev: unknown, fd: FormData): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (w.s.role !== "admin") return { error: "Only an admin records a director's choice." };
+  const contact = text(fd, "contact_id"), choice = text(fd, "choice"), date = text(fd, "date"), bank = text(fd, "bank_id");
+  if (!isId(contact)) return { error: "No director." };
+  if (choice !== "keep" && choice !== "take") return { error: "Choose to keep it in the company or take it out." };
+  if (choice === "take" && !isId(bank)) return { error: "Choose the account it is paid from." };
+  if (!isDate(date)) return { error: "Enter the date." };
+  const amount = moneyToDb(text(fd, "amount"));
+  if (amount === null || Number(amount) <= 0) return { error: "Enter the amount." };
+  const { error } = await w.s.supabase.rpc("rpc_director_choice", { p_contact: contact, p_choice: choice, p_amount: amount, p_date: date, p_bank: choice === "take" ? bank : null });
+  if (error) return { error: dbMessage(error) };
+  refresh();
+  return { ok: true };
+}
+
+/** Pay a director out of their director's account (admin only). */
+export async function directorWithdraw(_prev: unknown, fd: FormData): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (w.s.role !== "admin") return { error: "Only an admin pays out of a director's account." };
+  const contact = text(fd, "contact_id"), date = text(fd, "date"), bank = text(fd, "bank_id");
+  if (!isId(contact)) return { error: "No director." };
+  if (!isId(bank)) return { error: "Choose the account it is paid from." };
+  if (!isDate(date)) return { error: "Enter the date." };
+  const amount = moneyToDb(text(fd, "amount"));
+  if (amount === null || Number(amount) <= 0) return { error: "Enter the amount." };
+  const { error } = await w.s.supabase.rpc("rpc_director_withdraw", { p_contact: contact, p_amount: amount, p_date: date, p_bank: bank });
+  if (error) return { error: dbMessage(error) };
+  refresh();
+  return { ok: true };
 }
 
 /** Complete a project and post its profit split, after the preview is confirmed (§6). */

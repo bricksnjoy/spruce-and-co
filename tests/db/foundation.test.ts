@@ -26,8 +26,8 @@ describe("settings, rates, accounts, contacts", () => {
     const r = await one<{ ar: string; ap: string; n: string }>(db,
       `select acct('ar') ar, acct('ap') ap, (select count(*) from accounts where parent_id is null) n`);
     expect(r.ar).toBeTruthy();
-    // §2 lists 14 asset, 17 liability, 4 equity, 3 income, 7 job-cost and 16 expense accounts
-    expect(Number(r.n)).toBe(61);
+    // §2 lists 14 asset, 17 liability, 4 equity, 3 income, 7 job-cost and 16 expense accounts; 039 adds Directors' Accounts
+    expect(Number(r.n)).toBe(62);
     await expect(db.query(`insert into accounts (code, name, type, subtype) values ('1101','AR 2','asset','ar')`)).rejects.toThrow();
   });
 
