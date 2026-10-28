@@ -40,8 +40,12 @@ export const num = (n: unknown) => Number(n ?? 0);
 export const today = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
 
+/** Document types whose name on screen is not their stored name: a bill is entered once bought, as a receipt. */
+export const DOC_NAMES: Record<string, string> = { bill: "Receipt", bill_payment: "Vendor payment" };
+
 export function titleize(s: string | null | undefined) {
   if (!s) return "—";
+  if (DOC_NAMES[s]) return DOC_NAMES[s].replace(/\b\w/g, (c) => c.toUpperCase());
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

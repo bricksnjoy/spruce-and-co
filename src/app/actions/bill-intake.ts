@@ -31,7 +31,7 @@ export type ExtractResult = {
 /** Read a photographed bill and hand the fields back for checking. */
 export async function readBillPhoto(_prev: unknown, fd: FormData): Promise<ExtractResult> {
   if (!extractionAvailable()) {
-    return { error: "No reader key is set on this server, so the bill was read on your device instead." };
+    return { error: "No reader key is set on this server, so the receipt was read on your device instead." };
   }
 
   const file = fd.get("photo");

@@ -48,7 +48,7 @@ export const HELP: Help[] = [
   },
   {
     path: "/projects/new", area: "Projects", title: "New project",
-    purpose: "Set up a project so invoices, bills, payroll and financing can be charged to it.",
+    purpose: "Set up a project so invoices, receipts, payroll and financing can be charged to it.",
     steps: [
       "Enter the project name; the code is suggested (SC-001, SC-002 …) and can be changed.",
       "Choose the customer (or add one from the form), the start date and the project value. GST is worked out from the value at the standard rate in Settings → Taxes.",
@@ -63,7 +63,7 @@ export const HELP: Help[] = [
     steps: [
       "Overview: contract value and variations (with GST), profit (income before GST less costs), cost to date, billed (with GST) and collected.",
       "Variations: raise a variation with its details and amount; only approved ones change the contract value.",
-      "Bills: every bill on the project. \"New bill\" opens the bill form in a pop-up. To add many: \"Download bills (Excel)\", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), \"Upload filled sheet\", choose the account they were \"Paid from\" (receipts are saved as paid on their date; pick \"Not paid yet\" for bills still to pay), pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then \"Save\". The sheet comes with the bills already added (blank when there are none); bills already saved are recognised and skipped. \"+ Other cost (no vendor)\" records money already paid with no supplier bill (transport, pickups, site labour paid in cash): pick the category (e.g. Freight & Logistics, Direct Labour, Site Expenses) and the account it was paid from. A bill shows \"Overdue\" when it is unpaid past its due date; a receipt with no payment terms is due the day it is dated, so mark it paid from its status (pick the account it was paid from), or use \"Mark all as paid\"; each is paid on its own date. Salaries reach a project through Payroll: set each employee's project split, and each payslip charges its share to the projects.",
+      "Receipts: everything bought for the project. \"New receipt\" opens the receipt form in a pop-up; it is saved as paid from the account you pick under \"Paid from\" (pick \"Not paid yet\" when it is still to pay). To add many: \"Download receipts (Excel)\", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), \"Upload filled sheet\", choose the account they were \"Paid from\" (receipts are saved as paid on their date; pick \"Not paid yet\" for ones still to pay), pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then \"Save\". The sheet comes with the receipts already added (blank when there are none); receipts already saved are recognised and skipped. \"+ Other cost (no vendor)\" records money already paid with no supplier receipt (transport, pickups, site labour paid in cash): pick the category (e.g. Freight & Logistics, Direct Labour, Site Expenses) and the account it was paid from. A receipt not paid yet shows \"Overdue\" once past its due date (with no payment terms, the day it is dated); mark it paid from its status (pick the account it was paid from), or use \"Mark all as paid\"; each is paid on its own date. Salaries reach a project through Payroll: set each employee's project split, and each payslip charges its share to the projects.",
       "Billing plan: what is still to come from the client (contract value, invoiced, received, still to receive), then the stages of the contract; turn a stage into an invoice when it is due. Stage amounts are before GST: when the project carries GST (or the company is GST registered) each stage shows its GST and the total with GST, and its invoice adds the GST on top.",
       "Financing: record money for the project and see each source's share of the financing. \"Capital Pool\" (admin) lists each director's account and the company's own money with what each has; type how much comes from each — e.g. company 100,000, Mujahid 40,000, Muaz 25,000, Mushahid 25,000 and Mariyam 10,000 — and none can be more than it has. Each director's part leaves their director's account and becomes their Capital Pool money in the project. \"One member, new money\" records fresh money from one member; \"External lender\" records a loan and shows \"+ New lender\" to add one without leaving the page. The company's own part is a source like the rest: it shows as repaid once the client has paid in full, and its share of the financing pool (e.g. 35,000 of 40,000 earns 35/40 of the 20 %) is shown on Profit split; both stay with the company, so nothing is posted.",
       "Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and \"Complete and post split\" to complete the project.",
@@ -163,40 +163,41 @@ export const HELP: Help[] = [
 
   // ── Expenses ──
   {
-    path: "/expenses", area: "Expenses", title: "Bills & expenses",
-    purpose: "Every bill, expense, vendor credit, purchase order and bill payment.",
-    steps: ["Use the tabs: All, Bills, Expenses, Unpaid, Overdue.", "Click one to open it. New ones come from + New (Bill, Pay bills, Expense, Vendor credit, Purchase order)."],
+    path: "/expenses", area: "Expenses", title: "Receipts & expenses",
+    purpose: "Every receipt, expense, vendor credit, purchase order and payment to a vendor.",
+    steps: ["Use the tabs: All, Receipts, Expenses, Unpaid, Overdue.", "Click one to open it. New ones come from + New (Receipt, Pay vendors, Expense, Vendor credit, Purchase order)."],
   },
   {
-    path: "/expenses/new", area: "Expenses", title: "New bill / expense / vendor credit / purchase order",
-    purpose: "Record what you owe a vendor (bill), something already paid (expense), a vendor's credit, or an order not yet billed.",
+    path: "/expenses/new", area: "Expenses", title: "New receipt / expense / vendor credit / purchase order",
+    purpose: "Record what you bought from a vendor (receipt), something paid with no vendor (expense), a vendor's credit, or an order not yet bought.",
     steps: [
-      "Optional: upload a photo of the bill and press \"Read the photo\" to fill in the vendor, TIN, invoice number and lines.",
-      "Choose the vendor and the project (or overhead). For an expense, choose the account it was paid from.",
+      "Optional: upload a photo of the receipt and press \"Read the photo\" to fill in the vendor, TIN, invoice number and lines.",
+      "Choose the vendor and the project (or overhead). A vendor not on the list: pick \"+ Add a new vendor…\", type the name (and TIN if they are GST registered) and press \"Add vendor\"; they are added to Vendors and chosen.",
+      "\"Paid from\": the account the receipt was paid from; it is saved as paid on its date. Pick \"Not paid yet\" to pay it later (it then has a due date). For an expense, choose the account it was paid from.",
       "Enter the supplier's TIN, tax invoice number and date — needed to claim the GST.",
-      "Add lines: account, description, amount before GST, the supplier's GST figure, and the project. Untick \"claimable\" when the GST cannot be claimed (it then becomes cost).",
-      "Press \"Save bill\" (or expense …).",
+      "Add lines: account, description, amount before GST, the supplier's GST figure, and the project. Untick \"claimable\" when the GST cannot be claimed (it then becomes cost). Labour (Direct Labour) has no GST, so its line has no GST box.",
+      "Press \"Save receipt\" (or expense …).",
     ],
-    tips: ["Bills above the approval limit (Settings → Accounting) wait for an admin's approval before they post."],
+    tips: ["Receipts above the approval limit (Settings → Accounting) wait for an admin's approval before they post; mark them paid once approved."],
   },
   {
-    path: "/expenses/[id]", area: "Expenses", title: "Bill or expense",
+    path: "/expenses/[id]", area: "Expenses", title: "Receipt or expense",
     purpose: "One document: lines, GST, payments and what is still owed.",
     steps: [
-      "Pay opens Pay bills for it. Approve and post appears for an admin when a bill is waiting for approval.",
-      "A vendor credit shows \"Apply\" against the vendor's open bills. A purchase order has \"Turn into a bill\" and Close/Reopen.",
+      "Pay opens Pay vendors for a receipt not paid yet. Approve and post appears for an admin when a receipt is waiting for approval.",
+      "A vendor credit shows \"Apply\" against the vendor's unpaid receipts. A purchase order has \"Turn into a receipt\" and Close/Reopen.",
       "Edit changes it; Void reverses it (the reason is kept).",
     ],
   },
   {
-    path: "/expenses/[id]/edit", area: "Expenses", title: "Edit bill or expense",
-    purpose: "Correct a bill, expense, credit or order.",
+    path: "/expenses/[id]/edit", area: "Expenses", title: "Edit receipt or expense",
+    purpose: "Correct a receipt, expense, credit or order.",
     steps: ["Change what is wrong and press \"Save changes\"."],
   },
   {
-    path: "/expenses/pay", area: "Expenses", title: "Pay bills",
-    purpose: "Pay several bills at once; one payment is made per vendor.",
-    steps: ["Choose the account to pay from and the date.", "Tick the bills and adjust the amounts for part payments.", "Press \"Record payment\"."],
+    path: "/expenses/pay", area: "Expenses", title: "Pay vendors",
+    purpose: "Pay several receipts not paid yet at once; one payment is made per vendor.",
+    steps: ["Choose the account to pay from and the date.", "Tick the receipts and adjust the amounts for part payments.", "Press \"Record payment\"."],
   },
   {
     path: "/expenses/vendors", area: "Expenses", title: "Vendors",
@@ -205,8 +206,8 @@ export const HELP: Help[] = [
   },
   {
     path: "/expenses/vendors/[id]", area: "Expenses", title: "Vendor",
-    purpose: "One vendor: details, bills, projects and statement.",
-    steps: ["Tabs: Transactions, Projects, Statement, Details.", "Buttons: New bill, Pay bills, Archive."],
+    purpose: "One vendor: details, receipts, projects and statement.",
+    steps: ["Tabs: Transactions, Projects, Statement, Details.", "Buttons: New receipt, Pay vendors, Archive."],
   },
 
   // ── Payroll ──
@@ -257,7 +258,7 @@ export const HELP: Help[] = [
     steps: [
       "Tiles: principal still owed, returns and shares owed, ready to pay, and blocked.",
       "Payouts awaiting approval: an admin presses \"Approve and pay\" (or \"Turn down…\" with a reason).",
-      "Directors' accounts: for each director, what they have invested in projects, what they have earned on projects not yet completed and paid for, what is waiting for their choice, and what is in their director's account (kept in the company); and the company's own money. Kept money and the company's own money can finance the next project. Click a name for their page.",
+      "Directors' accounts: for each director, what they have invested in projects, what they have earned on projects not yet completed and paid for, what is waiting for their choice, and what is in their director's account (kept in the company); and the company's own money: bank and cash less everything it owes (directors, lenders, GST, vendors, salaries). A project's money (the client's payments and its financing) stays in the project until it is completed and paid for; then its profit is split and the company's part becomes its own. Kept money and the company's own money can finance the next project. Click a name for their page.",
       "Lenders: what each external lender is owed — principal and financing return — and what is ready to pay.",
       "Projects: financing, what is owed and whether payouts are released (and why not).",
     ],
@@ -450,7 +451,7 @@ export const HELP: Help[] = [
     steps: [
       "Closing date: nothing on or before it can change without an adjustment.",
       "Opening balance date and the month the financial year starts.",
-      "How project revenue is recognised; where partners' profit shares are charged; the bill approval limit.",
+      "How project revenue is recognised; where partners' profit shares are charged; the receipt approval limit.",
       "GST: filed monthly or quarterly, and the day it is due. No-pay days in a month.",
       "\"Save settings\".",
     ],

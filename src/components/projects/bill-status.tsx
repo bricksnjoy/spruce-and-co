@@ -14,7 +14,7 @@ export function BillStatusMenu({ projectId, billId, label, payFrom }: { projectI
   const overdue = label === "overdue";
   return (
     <span className="inline-flex flex-col items-end">
-      <select aria-label="Bill status" value="" disabled={pending}
+      <select aria-label="Receipt status" value="" disabled={pending}
         onChange={(e) => {
           const bank = e.target.value;
           if (!bank) return;
@@ -52,7 +52,7 @@ export function MarkAllPaid({ projectId, billIds, payFrom }: { projectId: string
       <button type="button" disabled={pending || !bank}
         className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--hover)]"
         onClick={() => {
-          if (!confirm(`Mark all ${billIds.length} unpaid bills as paid, each on its own date?`)) return;
+          if (!confirm(`Mark all ${billIds.length} unpaid receipts as paid, each on its own date?`)) return;
           start(async () => {
             const r = await markBillsPaid(projectId, billIds, bank);
             setMsg(r.error ?? (r.failed?.length ? `${r.paid} marked paid; ${r.failed.length} not: ${r.failed[0]}` : `${r.paid} marked paid.`));

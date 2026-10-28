@@ -215,7 +215,7 @@ export async function saveAsset(_prev: unknown, fd: FormData): Promise<BooksResu
     updated_at: new Date().toISOString(),
   };
   const { error } = id ? await supabase.from("assets").update(row).eq("id", id) : await supabase.from("assets").insert(row);
-  if (error) return { error: error.code === "23505" ? "That bill is already in the register." : say(error) };
+  if (error) return { error: error.code === "23505" ? "That receipt is already in the register." : say(error) };
   refresh();
   return { ok: true };
 }

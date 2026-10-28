@@ -50,7 +50,7 @@ export const NAV: NavGroup[] = [
     group: "Expenses",
     defaultOpen: true,
     items: [
-      { href: "/expenses", label: "Bills & expenses", roles: MONEY },
+      { href: "/expenses", label: "Receipts & expenses", roles: MONEY },
       { href: "/expenses/vendors", label: "Vendors", roles: MONEY },
     ],
   },

@@ -8,13 +8,17 @@ export type ExpenseValues = {
   id?: string; type: ExpenseType; date: string; due_date: string; contact_id: string; project_id: string; bank_account_id: string;
   currency: string; fx_rate: string; memo: string; reference: string; supplier_tin: string; tax_invoice_no: string; tax_invoice_date: string;
   customs_ref: string; is_draft: boolean; lines: ExpenseLine[];
+  /** a new receipt: the account it was paid from, or "" when not paid yet */
+  paid_from?: string;
 };
-export const TITLES: Record<ExpenseType, string> = { bill: "Bill", expense: "Expense", vendor_credit: "Vendor credit", purchase_order: "Purchase order" };
+/** A bill is called a receipt: it is entered once bought from the vendor. */
+export const TITLES: Record<ExpenseType, string> = { bill: "Receipt", expense: "Expense", vendor_credit: "Vendor credit", purchase_order: "Purchase order" };
 export const blankLine = (): ExpenseLine => ({ description: "", qty: "", rate: "", amount: "", tax_amount: "", gst_claimable: true, project_id: "", account_id: "" });
 
 export function blankExpense(type: ExpenseType, vendorId = "", projectId = "", data?: ExpenseFormData): ExpenseValues {
   const v = data?.vendors.find((x) => x.id === vendorId);
   const t = today();
   return { type, date: t, due_date: addDays(t, v?.terms_days ?? 0), contact_id: vendorId, project_id: projectId, bank_account_id: "", currency: "MVR", fx_rate: "1",
-    memo: "", reference: "", supplier_tin: v?.tin ?? "", tax_invoice_no: "", tax_invoice_date: t, customs_ref: "", is_draft: false, lines: [blankLine()] };
+    memo: "", reference: "", supplier_tin: v?.tin ?? "", tax_invoice_no: "", tax_invoice_date: t, customs_ref: "", is_draft: false, lines: [blankLine()],
+    paid_from: type === "bill" ? data?.payFrom[0]?.id ?? "" : "" };
 }

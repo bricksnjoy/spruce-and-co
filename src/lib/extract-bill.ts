@@ -89,7 +89,7 @@ export async function extractBill(
   const which = reader();
   if (!which) {
     throw new Error(
-      "Auto-reading is not configured. Set ANTHROPIC_API_KEY or GEMINI_API_KEY to switch it on, or type the bill in by hand.",
+      "Auto-reading is not configured. Set ANTHROPIC_API_KEY or GEMINI_API_KEY to switch it on, or type the receipt in by hand.",
     );
   }
   return which === "claude"
@@ -144,7 +144,7 @@ async function withClaude(
   }
 
   const parsed = response.parsed_output;
-  if (!parsed) throw new Error("Could not read a bill out of this image.");
+  if (!parsed) throw new Error("Could not read a receipt out of this image.");
   return parsed;
 }
 
@@ -185,7 +185,7 @@ async function withGemini(
   ];
 
   let res: Awaited<ReturnType<typeof ai.models.generateContent>> | null = null;
-  let lastError = "Could not read a bill out of this image.";
+  let lastError = "Could not read a receipt out of this image.";
   const dead = new Set<string>();
 
   for (const { model, wait } of attempts) {
@@ -241,17 +241,17 @@ async function withGemini(
   if (!res) throw new Error(lastError);
 
   const text = res.text;
-  if (!text) throw new Error("Could not read a bill out of this image.");
+  if (!text) throw new Error("Could not read a receipt out of this image.");
 
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
-    throw new Error("The reader returned something that was not a bill.");
+    throw new Error("The reader returned something that was not a receipt.");
   }
 
   const parsed = BillSchema.safeParse(json);
-  if (!parsed.success) throw new Error("Could not read a bill out of this image.");
+  if (!parsed.success) throw new Error("Could not read a receipt out of this image.");
   return parsed.data;
 }
 
@@ -261,10 +261,10 @@ function googleMessage(e: unknown): string {
   const match = raw.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   const msg = match ? match[1].replace(/\\"/g, '"') : raw;
   if (/quota|rate limit|RESOURCE_EXHAUSTED/i.test(msg)) {
-    return "Google's free tier is rate limited — wait a moment and read this bill again.";
+    return "Google's free tier is rate limited — wait a moment and read this receipt again.";
   }
   if (/503|UNAVAILABLE|overloaded|high demand/i.test(msg)) {
-    return "Google's free reader is busy and did not answer after three tries. Wait a moment and read this bill again, or fill it in by hand.";
+    return "Google's free reader is busy and did not answer after three tries. Wait a moment and read this receipt again, or fill it in by hand.";
   }
   if (/API key|API_KEY_INVALID|PERMISSION_DENIED/i.test(msg)) {
     return "The Gemini key was rejected. Check GEMINI_API_KEY in Vercel.";

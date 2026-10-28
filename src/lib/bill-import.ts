@@ -177,11 +177,11 @@ export function checkRows(raw: RawRow[], look: Lookups, choices: ShopChoices = {
     const contact = v?.id ?? null;
     if (status === "new" && contact && invoiceNo && savedKey.has(`${contact}|${norm(invoiceNo)}`)) {
       const b = savedKey.get(`${contact}|${norm(invoiceNo)}`)!;
-      status = "saved"; notes.splice(0, notes.length, `Already saved as ${b.number ?? "a bill"}`);
+      status = "saved"; notes.splice(0, notes.length, `Already saved as ${b.number ?? "a receipt"}`);
     } else if (status === "new" && !invoiceNo && contact && date && cat && net !== null) {
       // no invoice number to go by: the same shop, date, category and amount on this project's bills
       const l = savedLine.get(lineKey(contact, date, cat.id, net));
-      if (l) { status = "saved"; notes.splice(0, notes.length, `Looks already saved as ${l.number ?? "a bill"} (same shop, date, category and amount)`); }
+      if (l) { status = "saved"; notes.splice(0, notes.length, `Looks already saved as ${l.number ?? "a receipt"} (same shop, date, category and amount)`); }
     }
 
     const shop = v?.name ?? typed;

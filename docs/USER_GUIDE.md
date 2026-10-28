@@ -45,7 +45,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 ### New project
 
-`/projects/new` — Set up a project so invoices, bills, payroll and financing can be charged to it.
+`/projects/new` — Set up a project so invoices, receipts, payroll and financing can be charged to it.
 
 1. Enter the project name; the code is suggested (SC-001, SC-002 …) and can be changed.
 2. Choose the customer (or add one from the form), the start date and the project value. GST is worked out from the value at the standard rate in Settings → Taxes.
@@ -60,7 +60,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Overview: contract value and variations (with GST), profit (income before GST less costs), cost to date, billed (with GST) and collected.
 2. Variations: raise a variation with its details and amount; only approved ones change the contract value.
-3. Bills: every bill on the project. "New bill" opens the bill form in a pop-up. To add many: "Download bills (Excel)", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", choose the account they were "Paid from" (receipts are saved as paid on their date; pick "Not paid yet" for bills still to pay), pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". The sheet comes with the bills already added (blank when there are none); bills already saved are recognised and skipped. "+ Other cost (no vendor)" records money already paid with no supplier bill (transport, pickups, site labour paid in cash): pick the category (e.g. Freight & Logistics, Direct Labour, Site Expenses) and the account it was paid from. A bill shows "Overdue" when it is unpaid past its due date; a receipt with no payment terms is due the day it is dated, so mark it paid from its status (pick the account it was paid from), or use "Mark all as paid"; each is paid on its own date. Salaries reach a project through Payroll: set each employee's project split, and each payslip charges its share to the projects.
+3. Receipts: everything bought for the project. "New receipt" opens the receipt form in a pop-up; it is saved as paid from the account you pick under "Paid from" (pick "Not paid yet" when it is still to pay). To add many: "Download receipts (Excel)", fill one row per receipt (Date, Shop, Invoice no., Category, Amount, Discount, GST, Total; categories are on the Categories sheet and set the account for you), "Upload filled sheet", choose the account they were "Paid from" (receipts are saved as paid on their date; pick "Not paid yet" for ones still to pay), pick the right shop for any name not on file (or add it as new), check the rows (problems show in red), then "Save". The sheet comes with the receipts already added (blank when there are none); receipts already saved are recognised and skipped. "+ Other cost (no vendor)" records money already paid with no supplier receipt (transport, pickups, site labour paid in cash): pick the category (e.g. Freight & Logistics, Direct Labour, Site Expenses) and the account it was paid from. A receipt not paid yet shows "Overdue" once past its due date (with no payment terms, the day it is dated); mark it paid from its status (pick the account it was paid from), or use "Mark all as paid"; each is paid on its own date. Salaries reach a project through Payroll: set each employee's project split, and each payslip charges its share to the projects.
 4. Billing plan: what is still to come from the client (contract value, invoiced, received, still to receive), then the stages of the contract; turn a stage into an invoice when it is due. Stage amounts are before GST: when the project carries GST (or the company is GST registered) each stage shows its GST and the total with GST, and its invoice adds the GST on top.
 5. Financing: record money for the project and see each source's share of the financing. "Capital Pool" (admin) lists each director's account and the company's own money with what each has; type how much comes from each — e.g. company 100,000, Mujahid 40,000, Muaz 25,000, Mushahid 25,000 and Mariyam 10,000 — and none can be more than it has. Each director's part leaves their director's account and becomes their Capital Pool money in the project. "One member, new money" records fresh money from one member; "External lender" records a loan and shows "+ New lender" to add one without leaving the page. The company's own part is a source like the rest: it shows as repaid once the client has paid in full, and its share of the financing pool (e.g. 35,000 of 40,000 earns 35/40 of the 20 %) is shown on Profit split; both stay with the company, so nothing is posted.
 6. Profit split: before completion, a preview of who gets what on the profit to date. Tick the box and "Complete and post split" to complete the project.
@@ -160,45 +160,46 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 ## Expenses
 
-### Bills & expenses
+### Receipts & expenses
 
-`/expenses` — Every bill, expense, vendor credit, purchase order and bill payment.
+`/expenses` — Every receipt, expense, vendor credit, purchase order and payment to a vendor.
 
-1. Use the tabs: All, Bills, Expenses, Unpaid, Overdue.
-2. Click one to open it. New ones come from + New (Bill, Pay bills, Expense, Vendor credit, Purchase order).
+1. Use the tabs: All, Receipts, Expenses, Unpaid, Overdue.
+2. Click one to open it. New ones come from + New (Receipt, Pay vendors, Expense, Vendor credit, Purchase order).
 
-### New bill / expense / vendor credit / purchase order
+### New receipt / expense / vendor credit / purchase order
 
-`/expenses/new` — Record what you owe a vendor (bill), something already paid (expense), a vendor's credit, or an order not yet billed.
+`/expenses/new` — Record what you bought from a vendor (receipt), something paid with no vendor (expense), a vendor's credit, or an order not yet bought.
 
-1. Optional: upload a photo of the bill and press "Read the photo" to fill in the vendor, TIN, invoice number and lines.
-2. Choose the vendor and the project (or overhead). For an expense, choose the account it was paid from.
-3. Enter the supplier's TIN, tax invoice number and date — needed to claim the GST.
-4. Add lines: account, description, amount before GST, the supplier's GST figure, and the project. Untick "claimable" when the GST cannot be claimed (it then becomes cost).
-5. Press "Save bill" (or expense …).
+1. Optional: upload a photo of the receipt and press "Read the photo" to fill in the vendor, TIN, invoice number and lines.
+2. Choose the vendor and the project (or overhead). A vendor not on the list: pick "+ Add a new vendor…", type the name (and TIN if they are GST registered) and press "Add vendor"; they are added to Vendors and chosen.
+3. "Paid from": the account the receipt was paid from; it is saved as paid on its date. Pick "Not paid yet" to pay it later (it then has a due date). For an expense, choose the account it was paid from.
+4. Enter the supplier's TIN, tax invoice number and date — needed to claim the GST.
+5. Add lines: account, description, amount before GST, the supplier's GST figure, and the project. Untick "claimable" when the GST cannot be claimed (it then becomes cost). Labour (Direct Labour) has no GST, so its line has no GST box.
+6. Press "Save receipt" (or expense …).
 
-> Bills above the approval limit (Settings → Accounting) wait for an admin's approval before they post.
+> Receipts above the approval limit (Settings → Accounting) wait for an admin's approval before they post; mark them paid once approved.
 
-### Bill or expense
+### Receipt or expense
 
 `/expenses/[id]` — One document: lines, GST, payments and what is still owed.
 
-1. Pay opens Pay bills for it. Approve and post appears for an admin when a bill is waiting for approval.
-2. A vendor credit shows "Apply" against the vendor's open bills. A purchase order has "Turn into a bill" and Close/Reopen.
+1. Pay opens Pay vendors for a receipt not paid yet. Approve and post appears for an admin when a receipt is waiting for approval.
+2. A vendor credit shows "Apply" against the vendor's unpaid receipts. A purchase order has "Turn into a receipt" and Close/Reopen.
 3. Edit changes it; Void reverses it (the reason is kept).
 
-### Edit bill or expense
+### Edit receipt or expense
 
-`/expenses/[id]/edit` — Correct a bill, expense, credit or order.
+`/expenses/[id]/edit` — Correct a receipt, expense, credit or order.
 
 1. Change what is wrong and press "Save changes".
 
-### Pay bills
+### Pay vendors
 
-`/expenses/pay` — Pay several bills at once; one payment is made per vendor.
+`/expenses/pay` — Pay several receipts not paid yet at once; one payment is made per vendor.
 
 1. Choose the account to pay from and the date.
-2. Tick the bills and adjust the amounts for part payments.
+2. Tick the receipts and adjust the amounts for part payments.
 3. Press "Record payment".
 
 ### Vendors
@@ -211,10 +212,10 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 ### Vendor
 
-`/expenses/vendors/[id]` — One vendor: details, bills, projects and statement.
+`/expenses/vendors/[id]` — One vendor: details, receipts, projects and statement.
 
 1. Tabs: Transactions, Projects, Statement, Details.
-2. Buttons: New bill, Pay bills, Archive.
+2. Buttons: New receipt, Pay vendors, Archive.
 
 ## Payroll
 
@@ -267,7 +268,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Tiles: principal still owed, returns and shares owed, ready to pay, and blocked.
 2. Payouts awaiting approval: an admin presses "Approve and pay" (or "Turn down…" with a reason).
-3. Directors' accounts: for each director, what they have invested in projects, what they have earned on projects not yet completed and paid for, what is waiting for their choice, and what is in their director's account (kept in the company); and the company's own money. Kept money and the company's own money can finance the next project. Click a name for their page.
+3. Directors' accounts: for each director, what they have invested in projects, what they have earned on projects not yet completed and paid for, what is waiting for their choice, and what is in their director's account (kept in the company); and the company's own money: bank and cash less everything it owes (directors, lenders, GST, vendors, salaries). A project's money (the client's payments and its financing) stays in the project until it is completed and paid for; then its profit is split and the company's part becomes its own. Kept money and the company's own money can finance the next project. Click a name for their page.
 4. Lenders: what each external lender is owed — principal and financing return — and what is ready to pay.
 5. Projects: financing, what is owed and whether payouts are released (and why not).
 
@@ -491,7 +492,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Closing date: nothing on or before it can change without an adjustment.
 2. Opening balance date and the month the financial year starts.
-3. How project revenue is recognised; where partners' profit shares are charged; the bill approval limit.
+3. How project revenue is recognised; where partners' profit shares are charged; the receipt approval limit.
 4. GST: filed monthly or quarterly, and the day it is due. No-pay days in a month.
 5. "Save settings".
 

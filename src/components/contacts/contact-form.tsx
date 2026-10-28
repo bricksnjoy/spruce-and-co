@@ -88,13 +88,13 @@ export function ContactForm({ contact: c, base, onDone, onCreated }: {
       </div>
       <label className="flex items-start gap-2 text-sm sm:col-span-2">
         <input type="checkbox" name="gst_registered" defaultChecked={c.gst_registered} className="mt-0.5 h-4 w-4" />
-        <span>Registered for GST<span className="block text-xs text-[var(--muted)]">Input GST on their bills can only be claimed when this is ticked and their TIN is recorded.</span></span>
+        <span>Registered for GST<span className="block text-xs text-[var(--muted)]">Input GST on their receipts can only be claimed when this is ticked and their TIN is recorded.</span></span>
       </label>
 
       <div>
         <label htmlFor="c-terms" className={label}>Payment terms (days)</label>
         <input id="c-terms" name="terms_days" inputMode="numeric" defaultValue={f("terms_days")} className={`${input} tabular-nums`} placeholder="30" />
-        <p className={hint}>Sets the due date on new invoices and bills</p>
+        <p className={hint}>Sets the due date on new invoices and unpaid receipts</p>
       </div>
       <div>
         <label htmlFor="c-cur" className={label}>Currency</label>

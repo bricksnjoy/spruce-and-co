@@ -230,7 +230,7 @@ export async function addBill(_prev: unknown, fd: FormData): Promise<BillResult>
   if (!shop) return { error: "Enter the shop or supplier name." };
 
   const total = number(fd, "total");
-  if (total <= 0) return { error: "Enter the bill total." };
+  if (total <= 0) return { error: "Enter the receipt total." };
 
   // Settle the shop before touching storage: a confirmation round would
   // otherwise leave an orphaned upload behind on every pass.

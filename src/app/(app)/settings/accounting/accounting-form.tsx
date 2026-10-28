@@ -76,7 +76,7 @@ export function AccountingForm({ settings, canEdit }: { settings: AccountingSett
               </select>
             </div>
             <div>
-              <label htmlFor="approval_limit_bill" className={label}>Bills above this need approval</label>
+              <label htmlFor="approval_limit_bill" className={label}>Receipts above this need approval</label>
               <input id="approval_limit_bill" name="approval_limit_bill" inputMode="decimal" defaultValue={settings.approval_limit_bill} className={`${input} tabular-nums`} placeholder="No limit" />
               <p className={hint}>MVR. Leave blank for no approval step.</p>
             </div>

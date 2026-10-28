@@ -43,7 +43,7 @@ export function ProjectMenu({ id, code, archived, canUndoCompletion, canDelete }
           <Link href={`/projects/${id}/edit`} role="menuitem" className={item} onClick={() => setOpen(false)}>Edit project</Link>
           <button type="button" role="menuitem" disabled={pending} className={item}
             onClick={() => {
-              if (!archived && !confirm("Archive this project? It leaves the project lists, but every bill, invoice and payment stays on the books. You can unarchive it any time.")) return;
+              if (!archived && !confirm("Archive this project? It leaves the project lists, but every receipt, invoice and payment stays on the books. You can unarchive it any time.")) return;
               start(async () => {
                 const r = await setProjectArchived(id, !archived);
                 setError(r.error ?? null);
@@ -77,7 +77,7 @@ export function ProjectMenu({ id, code, archived, canUndoCompletion, canDelete }
         <Modal title="Delete project" size="md" onClose={() => setDeleting(false)}>
           <div className="space-y-4 p-5 text-sm">
             <h2 className="text-lg font-semibold">Delete {code} and all its information?</h2>
-            <p>Every invoice, bill, expense, payment, financing entry and payout of this project is taken out of the books, its profit split is reversed, and the project leaves every list and report. Your bank balances change to match.</p>
+            <p>Every invoice, receipt, expense, payment, financing entry and payout of this project is taken out of the books, its profit split is reversed, and the project leaves every list and report. Your bank balances change to match.</p>
             <p className="text-[var(--muted)]">You can restore it, exactly as it was, from Projects → Deleted for 30 days.</p>
             <div>
               <label htmlFor="del-code" className="mb-1 block text-xs font-medium text-[var(--muted)]">Type the project code <span className="font-mono">{code}</span> to confirm</label>

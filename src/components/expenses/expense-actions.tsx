@@ -26,7 +26,7 @@ export function ExpenseActions({ id, type, status, voided, canEdit, isAdmin, con
       {type === "bill" && Number(balance) > 0 && status !== "draft" && status !== "awaiting_approval" && contactId && (
         <Link href={`/expenses/pay?bill=${id}`} className={small}>Pay</Link>
       )}
-      {type === "purchase_order" && !poClosed && <button type="button" disabled={pending} onClick={() => run(() => billFromPo(id, today()), (b) => `/expenses/${b}/edit`)} className={small}>Turn into a bill</button>}
+      {type === "purchase_order" && !poClosed && <button type="button" disabled={pending} onClick={() => run(() => billFromPo(id, today()), (b) => `/expenses/${b}/edit`)} className={small}>Turn into a receipt</button>}
       {type === "purchase_order" && <button type="button" disabled={pending} onClick={() => run(() => closePo(id, poClosed))} className={small}>{poClosed ? "Reopen" : "Close"}</button>}
       {!(type === "purchase_order" && poClosed) && <Link href={`/expenses/${id}/edit`} className={small}>Edit</Link>}
       {voiding ? (
@@ -48,7 +48,7 @@ export function ApplyCredit({ creditId, bills }: { creditId: string; bills: { id
   const [msg, setMsg] = useState<string | null>(null);
   return (
     <Card>
-      <CardHeader title="Apply this credit to a bill" />
+      <CardHeader title="Apply this credit to a receipt" />
       <div className="divide-y divide-[var(--border)]">
         {bills.map((b) => (
           <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">

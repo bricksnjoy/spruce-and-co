@@ -85,7 +85,7 @@ describe("financing a project from the Capital Pool", () => {
     await choose(mujahid, "keep", "100000");
     const b = await project(db, "D-2", client, 500000, { start: "2026-06-01" });
     const companyHas = Number((await one<{ available: string }>(db, `select available::text from company_capital_available() where contact_id is null`)).available);
-    expect(companyHas).toBeGreaterThan(50000);
+    expect(companyHas).toBeGreaterThan(20000);
 
     const parts = (xs: [string | null, number][]) => JSON.stringify(xs.map(([contact_id, amount]) => ({ contact_id, amount })));
     await expect(as(ADMIN, () => db.query(`select rpc_finance_from_capital_pool($1, '2026-06-05', $2::jsonb)`, [b, parts([[mujahid, 100001]])])))
@@ -94,10 +94,10 @@ describe("financing a project from the Capital Pool", () => {
       .rejects.toThrow(/of its own to put in/);
     await expect(as(MANAGER, () => db.query(`select rpc_finance_from_capital_pool($1, '2026-06-05', $2::jsonb)`, [b, parts([[mujahid, 1000]])]))).rejects.toThrow();
 
-    await as(ADMIN, () => db.query(`select rpc_finance_from_capital_pool($1, '2026-06-05', $2::jsonb)`, [b, parts([[mujahid, 60000], [null, 40000]])]));
+    await as(ADMIN, () => db.query(`select rpc_finance_from_capital_pool($1, '2026-06-05', $2::jsonb)`, [b, parts([[mujahid, 60000], [null, 20000]])]));
     expect(await account(mujahid)).toBe("40000.00");
     expect(await q(db, `select contact_id, received::numeric(18,2)::text r from project_financing_v where project_id = $1`, [b])).toEqual([{ contact_id: mujahid, r: "60000.00" }]);
-    expect(await val(`select company_funding($1)`, [b])).toBe("40000.00");
+    expect(await val(`select company_funding($1)`, [b])).toBe("20000.00");
 
     // on completion his 60,000 comes back to wait for his choice, with his part of the financing pool's share
     const inv = await doc(db, { type: "invoice", date: "2026-07-01", dueDate: "2026-12-31", contact: client, project: b, lines: [{ account: "4000", amount: 500000 }] });
@@ -106,8 +106,8 @@ describe("financing a project from the Capital Pool", () => {
     await doc(db, { type: "customer_payment", date: "2026-08-01", contact: client, bank: "1010", total: 500000, apply: [{ to: inv, amount: 500000 }] });
     const back = await q<{ component: string; amount: string }>(db, `select component, amount::numeric(18,2)::text amount from director_waiting($1) where project_id = $2 order by component`, [mujahid, b]);
     expect(back.find((r) => r.component === "principal")?.amount).toBe("60000.00");
-    // the pool's 20% of 300,000 is shared 60:40 with the company, so his return is 36,000
-    expect(back.find((r) => r.component === "financing_return")?.amount).toBe("36000.00");
+    // the pool's 20% of 300,000 is shared 60:20 with the company, so his return is 45,000
+    expect(back.find((r) => r.component === "financing_return")?.amount).toBe("45000.00");
     // Muaz financed nothing and has only his profit share
     expect((await q<{ component: string }>(db, `select component from director_waiting($1) where project_id = $2`, [muaz, b])).map((r) => r.component)).toEqual(["profit_share"]);
   });

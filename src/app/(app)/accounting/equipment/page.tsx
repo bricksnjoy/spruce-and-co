@@ -75,7 +75,7 @@ export default async function EquipmentPage() {
           </Card>
           {unregistered.length > 0 && (
             <Card>
-              <CardHeader title="Equipment bills not in the register" subtitle="Bills marked as equipment. Add each one so its life and any sale are recorded; until then it is written off over the default life." />
+              <CardHeader title="Equipment receipts not in the register" subtitle="Receipts marked as equipment. Add each one so its life and any sale are recorded; until then it is written off over the default life." />
               <ul className="divide-y divide-[var(--border)] text-sm">
                 {unregistered.map((b) => (
                   <li key={b.id} className="px-5 py-2.5">
@@ -92,7 +92,7 @@ export default async function EquipmentPage() {
           )}
         </div>
         <Card>
-          <CardHeader title="Add an item" subtitle="Bought without a bill in the app, or before it was used" />
+          <CardHeader title="Add an item" subtitle="Bought without a receipt in the app, or before it was used" />
           <AssetForm life={life} />
         </Card>
       </div>

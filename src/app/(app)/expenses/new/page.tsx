@@ -8,7 +8,7 @@ import { blankExpense, TITLES, type ExpenseType } from "@/lib/expense-doc";
 
 export const dynamic = "force-dynamic";
 const SUB: Record<ExpenseType, string> = {
-  bill: "What a supplier has billed you, to pay later",
+  bill: "What you bought from a vendor, entered once bought: saved as paid from the account you choose",
   expense: "Paid on the spot, by bank, cash or card",
   vendor_credit: "A supplier's credit, reducing what you owe them",
   purchase_order: "An order to a supplier; it counts as committed cost on the project until billed",

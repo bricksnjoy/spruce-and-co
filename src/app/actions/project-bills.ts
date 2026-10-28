@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { canWrite, dbMessage, getSession } from "@/server/session";
 import { billLookups, readBillSheet } from "@/server/project-bills";
+import { payInFull } from "@/server/pay-bill";
 import { checkRows, type BillGroup, type PreviewRow, type RawRow, type ShopChoices, type UnknownShop } from "@/lib/bill-import";
 
 const isId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
@@ -16,7 +17,7 @@ export type SaveResult = { error?: string; saved?: number; skipped?: number; fai
 async function writer() {
   const s = await getSession();
   if (!s) return { error: "Not signed in." } as const;
-  if (!canWrite(s.role)) return { error: "You can view but not add bills." } as const;
+  if (!canWrite(s.role)) return { error: "You can view but not add receipts." } as const;
   return { s } as const;
 }
 
@@ -98,14 +99,14 @@ export async function markBillsPaid(projectId: string, billIds: string[], bank: 
   const w = await writer();
   if ("error" in w) return { error: w.error };
   if (!isId(projectId) || !isId(bank)) return { error: "Choose the account they were paid from." };
-  if (!Array.isArray(billIds) || !billIds.length || billIds.length > 500 || !billIds.every(isId)) return { error: "Choose the bills." };
+  if (!Array.isArray(billIds) || !billIds.length || billIds.length > 500 || !billIds.every(isId)) return { error: "Choose the receipts." };
   const { data } = await w.s.supabase.from("document_balances_v").select("id, number, date, balance, type").in("id", billIds);
   let paid = 0;
   const failed: string[] = [];
   for (const b of data ?? []) {
     if (b.type !== "bill" || Number(b.balance) <= 0) continue;
     const err = await payInFull(w.s, b.id, b.date, bank);
-    if (err) failed.push(`${b.number ?? "A bill"}: ${err}`); else paid++;
+    if (err) failed.push(`${b.number ?? "A receipt"}: ${err}`); else paid++;
   }
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/expenses");
@@ -113,14 +114,6 @@ export async function markBillsPaid(projectId: string, billIds: string[], bank: 
 }
 
 type S = NonNullable<Awaited<ReturnType<typeof getSession>>>;
-
-/** Pay a bill's whole balance from one account on a date; the error, if any. */
-async function payInFull(s: S, bill: string, date: string, bank: string): Promise<string | null> {
-  const { data } = await s.supabase.from("document_balances_v").select("balance").eq("id", bill).maybeSingle();
-  if (!data || Number(data.balance) <= 0) return null;
-  const { error } = await s.supabase.rpc("rpc_pay_bills", { p_bank: bank, p_date: date, p_items: [{ bill, amount: String(data.balance) }], p_reference: null });
-  return error ? dbMessage(error) : null;
-}
 
 /** A shop named in the sheet, not on file and confirmed as new: added once, marked for review. */
 async function newVendor(s: S, b: BillGroup, made: Map<string, string>) {

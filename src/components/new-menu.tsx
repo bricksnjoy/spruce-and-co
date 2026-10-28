@@ -24,7 +24,7 @@ export function NewMenu({ canWrite, canPayroll, live }: { canWrite: boolean; can
     { title: "Customers", items: [["/sales/new?type=invoice", "Invoice"], ["/sales/payments/new", "Receive payment"], ["/sales/new?type=sales_receipt", "Sales receipt"],
       ["/sales/new?type=credit_note", "Credit note"], ["/sales/deposits/new", "Bank deposit"], ["/sales/advances", "Customer advance"],
       ...(live ? [["/quotations/new", "Estimate / quotation"] as Item] : []), ["/sales/customers", "Customer"]] },
-    { title: "Vendors", items: [["/expenses/new?type=bill", "Bill"], ["/expenses/pay", "Pay bills"], ["/expenses/new?type=expense", "Expense"],
+    { title: "Vendors", items: [["/expenses/new?type=bill", "Receipt"], ["/expenses/pay", "Pay vendors"], ["/expenses/new?type=expense", "Expense"],
       ["/expenses/new?type=vendor_credit", "Vendor credit"], ["/expenses/new?type=purchase_order", "Purchase order"], ["/expenses/vendors", "Vendor"]] },
     ...(canPayroll ? [{ title: "Employees", items: [["/payroll", "Payroll run"], ["/payroll/employees", "Employee"], ["/payroll/remittances", "Pay pension / tax"]] as Item[] }] : []),
     { title: "Projects & financing", items: [["/projects/new", "Project"], ["/partners/lenders", "Lender"], ["/partners", "Pay out to a partner"], ["/taxes", "File or pay GST"]] },

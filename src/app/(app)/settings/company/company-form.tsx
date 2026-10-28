@@ -60,7 +60,7 @@ export function CompanyForm({ company }: { company: Company }) {
             <span className="text-sm">
               Registered for GST
               <span className="block text-xs text-[var(--muted)]">
-                Input tax on your bills can only be claimed while this is true. Registration
+                Input tax on your receipts can only be claimed while this is true. Registration
                 is required once taxable supplies pass MVR 1 million a year.
               </span>
             </span>
@@ -72,7 +72,7 @@ export function CompanyForm({ company }: { company: Company }) {
               defaultValue={company.taxable_activity_no ?? ""}
               className={`${input} font-mono`} placeholder="1178331GST501" />
             <p className={hint}>
-              From your GST registration certificate. It fills itself in on every bill from here.
+              From your GST registration certificate. It fills itself in on every invoice from here.
             </p>
           </div>
         </div>
