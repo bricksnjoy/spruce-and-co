@@ -68,14 +68,15 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await expect(page.locator("main")).toContainText(invoiceNo);
   expect(invoiceNo).not.toBe("");
 
-  // 4. a bill with claimable GST, charged to the project
+  // 4. a receipt with claimable GST, charged to the project, paid from the bank
   await page.goto(`/expenses/new?type=bill&project=${projectId}`);
   await pick(page, /^Vendor/, VENDOR);
   await page.getByLabel("Tax invoice no.").fill(`TI-${tag}`);
   await pick(page, "Line 1 account", /5000/);
   await page.getByLabel("Line 1 amount before GST").fill("150000");
   await page.getByLabel("Line 1 GST").fill("12000");
-  await page.getByRole("button", { name: "Save bill" }).click();
+  await pick(page, "Paid from", /1010/);
+  await page.getByRole("button", { name: "Save receipt" }).click();
   await page.waitForURL(/\/expenses\/[0-9a-f-]{36}$/);
 
   // 5. payroll: a site employee allocated to the project

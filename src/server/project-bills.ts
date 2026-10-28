@@ -46,7 +46,7 @@ export async function billWorkbook(s: Session, projectId: string) {
   ]);
   const cats = categories(form);
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet("Bills");
+  const ws = wb.addWorksheet("Receipts");
   ws.columns = SHEET_COLUMNS.map(([key, header]) => ({ key, header, width: key === "shop" ? 30 : key === "category" ? 22 : 16 }));
   ws.getRow(1).font = { bold: true };
   ws.views = [{ state: "frozen", ySplit: 1 }];
@@ -80,9 +80,9 @@ export async function billWorkbook(s: Session, projectId: string) {
   const help = wb.addWorksheet("How to fill");
   help.columns = [{ width: 110 }];
   for (const line of [
-    `Bills for ${project?.code ?? ""} ${project?.name ?? ""}`,
+    `Receipts for ${project?.code ?? ""} ${project?.name ?? ""}`,
     "",
-    "One row per receipt. Rows with the same shop and invoice no. become one bill with several lines.",
+    "One row per receipt. Rows with the same shop and invoice no. become one receipt with several lines.",
     "Date: YYYY-MM-DD (2026-09-01) or day/month/year (1/9/2026).",
     "Shop: the name as on the Shops sheet. A name not on file is held on upload so you can pick the right shop (a spelling slip) or add it as new.",
     "Invoice no.: the number on the shop's receipt. Leave blank if there is none, but GST is only claimed back with it.",
@@ -130,7 +130,7 @@ export async function readBillSheet(file: File): Promise<RawRow[]> {
     ws = await wb.csv.read(Readable.from(buf));
   } else {
     await wb.xlsx.load(buf as unknown as ArrayBuffer);
-    ws = wb.getWorksheet("Bills") ?? wb.worksheets[0];
+    ws = wb.getWorksheet("Receipts") ?? wb.getWorksheet("Bills") ?? wb.worksheets[0];
   }
   if (!ws) return [];
   // columns by their header, so a sheet with columns moved still reads

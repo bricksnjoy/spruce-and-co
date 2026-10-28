@@ -11,10 +11,10 @@ export function DeleteBillButton({ billId, number }: { billId: string; number: s
   const [error, setError] = useState<string | null>(null);
   return (
     <span className="inline-flex flex-col items-end">
-      <button type="button" disabled={pending} aria-label={`Delete ${number ?? "this bill"}`} title="Delete"
+      <button type="button" disabled={pending} aria-label={`Delete ${number ?? "this receipt"}`} title="Delete"
         className="inline-flex rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
         onClick={() => {
-          if (!confirm(`Delete ${number ?? "this bill"}? Its payment is removed with it. You can restore it from Deleted bills for 30 days.`)) return;
+          if (!confirm(`Delete ${number ?? "this receipt"}? Its payment is removed with it. You can restore it from Deleted receipts for 30 days.`)) return;
           start(async () => {
             const r = await deleteBill(billId);
             setError(r.error ?? null);

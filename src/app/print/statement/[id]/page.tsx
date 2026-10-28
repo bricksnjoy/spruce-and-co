@@ -3,12 +3,12 @@ import { getSession } from "@/server/session";
 import { PrintToolbar } from "../../toolbar";
 import { LedgerSheet, sheetAccent, sheetTh, type Company } from "@/components/sales/ledger-sheet";
 import { dbToLaari, laariToNumber } from "@/lib/money";
-import { today } from "@/lib/format";
+import { DOC_NAMES, today } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 const n2 = (v: bigint) => new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(laariToNumber(v));
 const d = (s: string | null | undefined) => s ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${s}T00:00:00Z`)) : "";
-const label = (t: string | null) => (t ? t.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) : "");
+const label = (t: string | null) => (t ? (DOC_NAMES[t] ?? t).replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) : "");
 type Row = { line_date: string; type: string | null; number: string | null; memo: string | null; due_date: string | null; amount: number | null; balance: number };
 
 /** A customer's statement as a PDF (§ Sales): balance brought forward, each document, balance due. */

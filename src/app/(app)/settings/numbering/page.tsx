@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const NAMES: Record<string, string> = {
   estimate: "Estimates", invoice: "Invoices", credit_note: "Credit notes", sales_receipt: "Sales receipts",
-  customer_payment: "Payments received", bill: "Bills", purchase_order: "Purchase orders", bill_payment: "Bill payments",
+  customer_payment: "Payments received", bill: "Receipts", purchase_order: "Purchase orders", bill_payment: "Payments to vendors",
   journal: "Journal entries", payout: "Payouts", payroll_run: "Payroll runs", distribution: "Profit distributions",
 };
 

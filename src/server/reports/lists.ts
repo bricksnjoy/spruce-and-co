@@ -249,8 +249,8 @@ export const lists: ReportDef[] = [
   // ── expenses and payables ──
   { key: "ap-aging", title: "AP Aging Summary", group: "Expenses and payables", filters: [], description: "What is owed to each vendor, by how overdue",
     build: aging("AP Aging Summary", ["bill"], false, (id) => `/expenses/vendors/${id}`) },
-  { key: "unpaid-bills", title: "Unpaid Bills", group: "Expenses and payables", filters: [], description: "Every unpaid bill with its due date and days overdue",
-    build: aging("Unpaid Bills", ["bill"], true, (id) => `/expenses/vendors/${id}`) },
+  { key: "unpaid-bills", title: "Unpaid Receipts", group: "Expenses and payables", filters: [], description: "Every receipt not paid yet, with its due date and days overdue",
+    build: aging("Unpaid Receipts", ["bill"], true, (id) => `/expenses/vendors/${id}`) },
   {
     key: "vendor-balances", title: "Vendor Balances", group: "Expenses and payables", filters: [], description: "What is owed to each vendor and how much is overdue",
     async build(s) {
@@ -482,7 +482,7 @@ export const lists: ReportDef[] = [
 
   // ── banking and control ──
   {
-    key: "cash-position", title: "Cash Position", group: "Banking and control", filters: [], description: "Cash today, what customers owe in the next 30 days, and bills and payroll due",
+    key: "cash-position", title: "Cash Position", group: "Banking and control", filters: [], description: "Cash today, what customers owe in the next 30 days, and unpaid receipts and payroll due",
     async build(s, p) {
       const [{ data: accts }, { data: bals }, { data: docs }] = await Promise.all([
         s.supabase.from("accounts").select("id, code, name, subtype").in("subtype", ["bank", "cash", "undeposited", "salaries_payable", "pension_payable", "wht_payable", "gst_payable"]).order("code"),
@@ -499,7 +499,7 @@ export const lists: ReportDef[] = [
       const cashTotal = cash.reduce((t, a) => t + (bal.get(a.id) ?? 0n), 0n);
       rows.push({ cells: { label: "Cash now", amount: cashTotal }, style: "subtotal" });
       rows.push({ cells: { label: "Customers owe, due within 30 days (incl. overdue)", amount: due("invoice") }, href: "/reports/ar-aging-detail" });
-      rows.push({ cells: { label: "Bills due within 30 days (incl. overdue)", amount: -due("bill") }, href: "/reports/unpaid-bills" });
+      rows.push({ cells: { label: "Unpaid receipts due within 30 days (incl. overdue)", amount: -due("bill") }, href: "/reports/unpaid-bills" });
       for (const a of owe) { const v = bal.get(a.id) ?? 0n; if (v) rows.push({ cells: { label: a.name, amount: -v }, href: glHref(a.id, { from: "2000-01-01", to: p.today }) }); }
       rows.push({ cells: { label: "Expected position in 30 days", amount: rows.filter((r) => r.style !== "section" && r.style !== "indent" && r.style !== "subtotal" && typeof r.cells.amount === "bigint").reduce((t, r) => t + (r.cells.amount as bigint), cashTotal) }, style: "total" });
       return { title: "Cash Position", subtitle: `As at ${date(p.today)}`, columns: [text("label", ""), money("amount", "Amount")], rows };
@@ -507,7 +507,7 @@ export const lists: ReportDef[] = [
   },
   {
     key: "cash-forecast", title: "Cash-Flow Forecast (12 weeks)", group: "Banking and control", filters: [],
-    description: "Expected receipts against bills, payroll, GST and payouts, week by week, with the running cash balance",
+    description: "Money expected from customers against unpaid receipts, payroll, GST and payouts, week by week, with the running cash balance",
     async build(s, p) {
       const fc = await loadForecast(s, p.today);
       const kinds = Object.keys(FLOW_LABEL).filter((k) => fc.weeks.some((w) => w.byKind[k]));

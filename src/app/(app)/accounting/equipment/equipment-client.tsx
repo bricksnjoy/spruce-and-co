@@ -71,7 +71,7 @@ export function AssetForm({ a, bill, life, compact, onDone }: {
         <>
           <input type="hidden" name="purchased_on" value={a?.purchased_on} />
           <input type="hidden" name="cost" value={a?.cost} />
-          <p className="col-span-2">Bought on {date(a?.purchased_on)} for {money(a?.cost)} — from the bill {a?.bill_label}.</p>
+          <p className="col-span-2">Bought on {date(a?.purchased_on)} for {money(a?.cost)} — from the receipt {a?.bill_label}.</p>
         </>
       ) : (
         <>

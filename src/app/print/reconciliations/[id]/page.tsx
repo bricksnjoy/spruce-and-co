@@ -3,11 +3,12 @@ import { getSession } from "@/server/session";
 import { PrintToolbar } from "../../toolbar";
 import { LedgerSheet, sheetAccent, sheetTh, type Company } from "@/components/sales/ledger-sheet";
 import { dbToLaari, laariToNumber } from "@/lib/money";
+import { DOC_NAMES } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 const n2 = (v: bigint) => new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(laariToNumber(v));
 const d = (s: string | null | undefined) => s ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${s.slice(0, 10)}T00:00:00Z`)) : "";
-const label = (t: string | null | undefined) => (t ? t.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) : "");
+const label = (t: string | null | undefined) => (t ? (DOC_NAMES[t] ?? t).replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) : "");
 type JL = { id: number; date: string; debit: number; credit: number; memo: string | null; cleared: string; reconciliation_id: string | null;
   transactions: { type: string; number: string | null } | null; contacts: { name: string } | null };
 

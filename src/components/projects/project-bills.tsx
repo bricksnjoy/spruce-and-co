@@ -11,7 +11,7 @@ import type { ExpenseValues } from "@/lib/expense-doc";
 import { money } from "@/lib/format";
 import { Modal } from "@/components/modal";
 
-/** The Bills tab's actions: a new bill in a pop-up, the bills sheet to download, and uploading it back. */
+/** The Receipts tab's actions: a new receipt in a pop-up, the receipts sheet to download, and uploading it back. */
 export function ProjectBills({ projectId, data, blank, openNew }: { projectId: string; data: ExpenseFormData; blank: ExpenseValues; openNew: boolean }) {
   const router = useRouter();
   const [newOpen, setNewOpen] = useState(openNew);
@@ -51,33 +51,33 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={primary} onClick={() => { setFormKey((k) => k + 1); setNewOpen(true); setMsg(null); }}>New bill</button>
-        <a className={small} href={`/projects/${projectId}/bills/sheet`}>Download bills (Excel)</a>
+        <button type="button" className={primary} onClick={() => { setFormKey((k) => k + 1); setNewOpen(true); setMsg(null); }}>New receipt</button>
+        <a className={small} href={`/projects/${projectId}/bills/sheet`}>Download receipts (Excel)</a>
         <button type="button" className={small} disabled={pending} onClick={() => fileRef.current?.click()}>{pending && !preview ? "Reading…" : "Upload filled sheet"}</button>
-        <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" aria-label="Filled bills sheet"
+        <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" aria-label="Filled receipts sheet"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
         {msg && <span className="text-sm text-emerald-700">{msg}</span>}
       </div>
       {result && !preview && (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900">
-          Saved {result.saved} bill{result.saved === 1 ? "" : "s"}{result.skipped ? `; ${result.skipped} row${result.skipped === 1 ? " was" : "s were"} already saved and skipped` : ""}.
+          Saved {result.saved} receipt{result.saved === 1 ? "" : "s"}{result.skipped ? `; ${result.skipped} row${result.skipped === 1 ? " was" : "s were"} already saved and skipped` : ""}.
           {(result.notes ?? []).map((n) => <span key={n} className="block text-xs">{n}</span>)}
         </p>
       )}
 
       {newOpen && (
-        <Modal title="New bill" onClose={() => setNewOpen(false)}>
+        <Modal title="New receipt" onClose={() => setNewOpen(false)}>
           <ExpenseForm key={formKey} data={data} values={blank}
-            onSaved={(_id, note) => { setNewOpen(false); setMsg(note ? `Bill saved. ${note}` : "Bill saved."); router.refresh(); }} />
+            onSaved={(_id, note) => { setNewOpen(false); setMsg(note ? `Receipt saved. ${note}` : "Receipt saved."); router.refresh(); }} />
         </Modal>
       )}
 
       {preview && (
-        <Modal title="Check the bills before saving" onClose={() => { setPreview(null); setResult(null); setChoices({}); }}>
+        <Modal title="Check the receipts before saving" onClose={() => { setPreview(null); setResult(null); setChoices({}); }}>
           {preview.error ? <p className="text-sm text-red-700">{preview.error}</p> : (
             <div className="space-y-4">
               <p className="text-sm">
-                <strong>{preview.bills}</strong> new bill{preview.bills === 1 ? "" : "s"} ({counts.new} row{counts.new === 1 ? "" : "s"}), total <strong className="tabular-nums">{money(Number(preview.total))}</strong> with GST
+                <strong>{preview.bills}</strong> new receipt{preview.bills === 1 ? "" : "s"} ({counts.new} row{counts.new === 1 ? "" : "s"}), total <strong className="tabular-nums">{money(Number(preview.total))}</strong> with GST
                 {counts.saved > 0 && <> · {counts.saved} already saved (skipped)</>}
                 {counts.error > 0 && <> · <span className="font-medium text-red-700">{counts.error} with problems</span></>}
               </p>
@@ -149,7 +149,7 @@ export function ProjectBills({ projectId, data, blank, openNew }: { projectId: s
                   </select>
                 </label>
                 <button type="button" className={primary} disabled={pending || counts.error > 0 || !preview.bills} onClick={save}>
-                  {pending ? "Saving…" : `Save ${preview.bills} bill${preview.bills === 1 ? "" : "s"}`}
+                  {pending ? "Saving…" : `Save ${preview.bills} receipt${preview.bills === 1 ? "" : "s"}`}
                 </button>
                 {counts.error > 0 && <span className="text-sm text-[var(--muted)]">Pick the shops above; fix any other rows in red in the sheet and upload it again.</span>}
                 {counts.error === 0 && !preview.bills && <span className="text-sm text-[var(--muted)]">Nothing new to save.</span>}

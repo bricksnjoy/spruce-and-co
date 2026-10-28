@@ -22,7 +22,7 @@ import { blankExpense } from "@/lib/expense-doc";
 export const dynamic = "force-dynamic";
 
 const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
-const TABS: [string, string][] = [["overview", "Overview"], ["variations", "Variations"], ["bills", "Bills"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
+const TABS: [string, string][] = [["overview", "Overview"], ["variations", "Variations"], ["bills", "Receipts"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
 
 export default async function ProjectPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; new?: string; lender?: string }>;
@@ -96,7 +96,7 @@ async function Overview({ s, p }: { s: Session; p: ProjectFigures }) {
         <Figure label={gst ? "Contract value (incl. GST)" : "Contract value"} value={money(withGst(p.revised))} hint={beforeGst(p.revised)} />
         <Figure label="Profit" value={m(p.actual_profit)} tone={profit < 0n ? "bad" : undefined}
           hint={`Billed before GST, less cost to date${dbToLaari(p.bad_debts) ? ` and ${m(p.bad_debts)} written off` : ""}`} />
-        <Figure label="Cost to date" value={m(p.cost_to_date)} hint="Bills and costs on this project" />
+        <Figure label="Cost to date" value={m(p.cost_to_date)} hint="Receipts and costs on this project" />
         <Figure label={gst ? "Variations (incl. GST)" : "Variations"} value={money(withGst(p.variations))} hint={`Original contract ${money(withGst(p.original))}`} />
         <Figure label={gst ? "Billed (incl. GST)" : "Billed"} value={money(laariToNumber(dbToLaari(p.billed) + gstBilled))}
           hint={`${pct(Number(p.billed_pct), 1)} of the contract · ${beforeGst(p.billed)}`} />
@@ -268,7 +268,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
       )}
       {(txns ?? []).length > 0 && (
         <Card>
-          <CardHeader title="Receipts" />
+          <CardHeader title="Financing received" />
           <Table>
             <thead><tr><Th>Date</Th><Th>No.</Th><Th>From</Th><Th>Reference</Th><Th right>Amount</Th></tr></thead>
             <tbody>
@@ -481,19 +481,19 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Figure label="Bills and costs on this project" value={String(live.length)} />
+        <Figure label="Receipts and costs on this project" value={String(live.length)} />
         <Figure label="Total cost to the project" value={m(live.reduce((x, r) => x + Number(r.total) * (r.type === "vendor_credit" ? -1 : 1), 0))} hint="Including GST" />
         <Figure label="Still to pay" value={m(live.filter((r) => r.type === "bill").reduce((x, r) => x + Number(r.balance), 0))} />
       </div>
       {writer && form && <ProjectBills projectId={p.id} data={form} blank={blankExpense("bill", "", p.id, form)} openNew={openNew} />}
       <Card>
-        <CardHeader title="Bills and other costs" subtitle="Click one to open it. Overdue: not paid yet and past its due date; pick from its status to mark it paid."
+        <CardHeader title="Receipts and other costs" subtitle="Click one to open it. Overdue: not paid yet and past its due date; pick from its status to mark it paid."
           action={writer ? <div className="flex gap-2">
             <Link href={`/expenses/new?type=expense&project=${p.id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--hover)]">+ Other cost (no vendor)</Link>
             {form && <MarkAllPaid projectId={p.id} payFrom={form.payFrom}
               billIds={live.filter((r) => r.type === "bill" && Number(r.balance) > 0 && !r.is_draft).map((r) => r.id)} />}
           </div> : undefined} />
-        {rows.length === 0 ? <Empty message="No bills or costs on this project yet." /> : (
+        {rows.length === 0 ? <Empty message="No receipts or costs on this project yet." /> : (
           <Table>
             <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor / for</Th><Th>Due</Th><Th right>Total</Th><Th right>To pay</Th><Th right>Status</Th>{writer && <Th><span className="sr-only">Delete</span></Th>}</tr></thead>
             <tbody>
@@ -517,7 +517,7 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
       </Card>
       {restorable.length > 0 && (
         <Card>
-          <CardHeader title="Deleted bills" subtitle="Kept for 30 days after deleting; restoring one puts it back with its payment." />
+          <CardHeader title="Deleted receipts" subtitle="Kept for 30 days after deleting; restoring one puts it back with its payment." />
           <Table>
             <thead><tr><Th>Date</Th><Th>No.</Th><Th>Vendor / for</Th><Th right>Total</Th><Th>Deleted</Th><Th>Restore until</Th>{writer && <Th><span className="sr-only">Restore</span></Th>}</tr></thead>
             <tbody>

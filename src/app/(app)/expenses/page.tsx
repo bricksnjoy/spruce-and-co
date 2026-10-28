@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 type Row = { id: string; type: string; number: string | null; date: string; due_date: string | null; total: number; balance: number;
   vendor_name: string | null; project_code: string | null; status: string; voided_at: string | null; tax_invoice_no: string | null };
 const m = (v: number | string | bigint | null | undefined) => money(typeof v === "bigint" ? laariToNumber(v) : laariToNumber(dbToLaari(v)));
-const FILTERS: [string, string][] = [["all", "All"], ["bill", "Bills"], ["unpaid", "Unpaid"], ["overdue", "Overdue"], ["awaiting_approval", "Awaiting approval"],
+const FILTERS: [string, string][] = [["all", "All"], ["bill", "Receipts"], ["unpaid", "Unpaid"], ["overdue", "Overdue"], ["awaiting_approval", "Awaiting approval"],
   ["expense", "Expenses"], ["bill_payment", "Payments made"], ["vendor_credit", "Vendor credits"], ["purchase_order", "Purchase orders"]];
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
@@ -41,7 +41,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Expenses" subtitle={`${bookLabel(s.book)} book`}
         action={writer ? (
           <div className="flex flex-wrap gap-2 text-sm">
-            {[["/expenses/new?type=bill", "Bill"], ["/expenses/pay", "Pay bills"], ["/expenses/new?type=expense", "Expense"],
+            {[["/expenses/new?type=bill", "Receipt"], ["/expenses/pay", "Pay vendors"], ["/expenses/new?type=expense", "Expense"],
               ["/expenses/new?type=vendor_credit", "Vendor credit"], ["/expenses/new?type=purchase_order", "Purchase order"]].map(([h, l], i) => (
               <Link key={h} href={h} className={i === 0 ? "rounded-lg bg-[var(--brand)] px-3.5 py-2 font-medium text-white hover:bg-[var(--brand-hover)]" : "rounded-lg border border-[var(--border)] px-3 py-2 font-medium hover:bg-[var(--brand-soft)]"}>+ {l}</Link>
             ))}
@@ -49,7 +49,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         ) : undefined} />
 
       <div className="grid overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-4">
-        {[["Unpaid bills", m(unpaid), "unpaid", "bg-blue-50"], ["Overdue", m(overdue), "overdue", "bg-red-50"],
+        {[["Unpaid receipts", m(unpaid), "unpaid", "bg-blue-50"], ["Overdue", m(overdue), "overdue", "bg-red-50"],
           ["Paid, last 30 days", m(dbToLaari(paid as number | null)), "bill_payment", "bg-emerald-50"],
           ["Awaiting approval", String(pending.length), "awaiting_approval", "bg-amber-50"]].map(([l, v, f, tone]) => (
           <Link key={l} href={`/expenses?show=${f}`} className={`px-5 py-4 ${tone} hover:brightness-95`}>
@@ -64,7 +64,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           <Link key={k} href={`/expenses?show=${k}`} className={`rounded-full px-3 py-1 text-xs font-medium ${show === k ? "bg-[var(--brand)] text-white" : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
         ))}
         <Link href="/expenses/vendors" className="ml-auto text-xs text-[var(--muted)] hover:underline">Vendors →</Link>
-        {show === "all" && <p className="w-full text-xs text-[var(--muted)]">Each bill shows whether it is paid; the payments themselves are under “Payments made”.</p>}
+        {show === "all" && <p className="w-full text-xs text-[var(--muted)]">Each receipt shows whether it is paid; the payments themselves are under “Payments made”.</p>}
       </div>
 
       <Card>

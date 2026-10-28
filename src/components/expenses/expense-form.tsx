@@ -1,20 +1,21 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui";
 import { input, label, primary, small } from "@/components/form-styles";
 import { saveExpenseDoc, type Result } from "@/app/actions/expenses";
+import { createContact } from "@/app/actions/contacts";
 import { readBillPhoto } from "@/app/actions/bill-intake";
 import { shrinkForReading } from "@/lib/shrink-photo";
 import { money, today, addDays } from "@/lib/format";
 import { laariToDb, laariToNumber, percentOf, qtyTimesRate, toLaari } from "@/lib/money";
-import type { ExpenseFormData } from "@/server/expense-data";
+import type { ExpenseFormData, VendorOpt } from "@/server/expense-data";
 
 import { TITLES, blankLine, type ExpenseLine, type ExpenseType, type ExpenseValues } from "@/lib/expense-doc";
 export type { ExpenseLine, ExpenseType, ExpenseValues };
 
-/** Bill, expense, vendor credit or purchase order: the supplier's own GST figure, with the evidence to claim it. */
+/** Receipt (bill), expense, vendor credit or purchase order: the supplier's own GST figure, with the evidence to claim it. */
 export function ExpenseForm({ data, values, onSaved }: {
   data: ExpenseFormData; values: ExpenseValues;
   /** when given (e.g. in a pop-up), called after saving instead of opening the saved document */
@@ -25,6 +26,9 @@ export function ExpenseForm({ data, values, onSaved }: {
   const [v, setV] = useState(values);
   const [reading, setReading] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  // vendors to pick from, with any added here
+  const [vendors, setVendors] = useState(data.vendors);
+  const [adding, setAdding] = useState(false);
   const set = <K extends keyof ExpenseValues>(k: K, x: ExpenseValues[K]) => setV((o) => ({ ...o, [k]: x }));
   const setLine = (i: number, patch: Partial<ExpenseLine>) => setV((o) => ({ ...o, lines: o.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
   useEffect(() => {
@@ -33,17 +37,18 @@ export function ExpenseForm({ data, values, onSaved }: {
     else router.push(`/expenses/${state.id}${state.note ? `?note=${encodeURIComponent(state.note)}` : ""}`);
   }, [state, router, onSaved]);
 
-  const vendor = data.vendors.find((x) => x.id === v.contact_id);
+  const vendor = vendors.find((x) => x.id === v.contact_id);
+  // labour is paid without GST
+  const isLabour = (accountId: string) => data.accounts.find((a) => a.id === accountId)?.budget_category === "labour";
   const lineAmount = (l: ExpenseLine) => (l.qty !== "" && l.rate !== "" ? qtyTimesRate(l.qty, l.rate) : toLaari(l.amount)) ?? 0n;
   const subtotal = v.lines.reduce((t, l) => t + lineAmount(l), 0n);
   const gst = v.lines.reduce((t, l) => t + (toLaari(l.tax_amount) ?? 0n), 0n);
   const claiming = v.type !== "purchase_order" && v.lines.some((l) => l.gst_claimable && (toLaari(l.tax_amount) ?? 0n) > 0n);
   const expired = vendor && [vendor.licence_expiry, vendor.insurance_expiry].some((d) => d && d < today());
 
-  const chooseVendor = (id: string) => {
-    const x = data.vendors.find((y) => y.id === id);
+  const chooseVendor = (id: string, x = vendors.find((y) => y.id === id)) => {
     setV((o) => ({ ...o, contact_id: id, supplier_tin: x?.tin ?? "", due_date: addDays(o.date, x?.terms_days ?? 0), currency: x?.currency ?? o.currency,
-      lines: o.lines.map((l) => ({ ...l, gst_claimable: Boolean(x?.gst_registered) })) }));
+      lines: o.lines.map((l) => ({ ...l, gst_claimable: Boolean(x?.gst_registered) && !isLabour(l.account_id) })) }));
   };
 
   // read the photographed bill: server reader if set up, otherwise on this device
@@ -63,7 +68,7 @@ export function ExpenseForm({ data, values, onSaved }: {
       } catch { setReading(r.error ?? "The photo could not be read; please type the details."); return; }
     }
     const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const match = data.vendors.find((x) => f!.supplier_tin && x.tin && key(x.tin) === key(f!.supplier_tin)) ?? data.vendors.find((x) => f!.shop && key(x.name) === key(f!.shop));
+    const match = vendors.find((x) => f!.supplier_tin && x.tin && key(x.tin) === key(f!.supplier_tin)) ?? vendors.find((x) => f!.shop && key(x.name) === key(f!.shop));
     const cents = (n: number) => laariToDb(BigInt(Math.round(n * 100)));   // the reader returns plain numbers
     const sub = f.subtotal || (f.total && f.tax_amount ? f.total - f.tax_amount : f.total);
     setV((o) => ({
@@ -95,7 +100,7 @@ export function ExpenseForm({ data, values, onSaved }: {
       {v.type !== "purchase_order" && (
         <Card className="flex flex-wrap items-end gap-3 px-5 py-4">
           <div>
-            <label htmlFor="e-photo" className={label}>Photo of the bill or receipt</label>
+            <label htmlFor="e-photo" className={label}>Photo of the receipt</label>
             <input id="e-photo" ref={photoRef} name="photo" type="file" accept="image/*" capture="environment" className="text-sm" />
           </div>
           <button type="button" onClick={readPhoto} className={small}>Read the photo</button>
@@ -106,12 +111,21 @@ export function ExpenseForm({ data, values, onSaved }: {
       <Card className="grid gap-4 px-5 py-5 sm:grid-cols-3">
         <div>
           <label htmlFor="e-vendor" className={label}>Vendor{v.type === "expense" ? " (optional)" : ""}</label>
-          <select id="e-vendor" name="contact_id" required={v.type !== "expense"} value={v.contact_id} onChange={(e) => chooseVendor(e.target.value)} className={input}>
+          <select id="e-vendor" name="contact_id" required={v.type !== "expense"} value={v.contact_id} className={input}
+            onChange={(e) => (e.target.value === NEW_VENDOR ? setAdding(true) : chooseVendor(e.target.value))}>
             <option value="">Choose…</option>
-            {data.vendors.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            {vendors.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            <option value={NEW_VENDOR}>+ Add a new vendor…</option>
           </select>
           {expired && <p className="mt-1 text-xs text-amber-700">This vendor&apos;s licence or insurance has expired.</p>}
         </div>
+        {adding && (
+          <QuickVendor onCancel={() => setAdding(false)} onAdded={(x) => {
+            setVendors((o) => [...o, x].sort((a, b) => a.name.localeCompare(b.name)));
+            chooseVendor(x.id, x);
+            setAdding(false);
+          }} />
+        )}
         <div>
           <label htmlFor="e-proj" className={label}>Project</label>
           <select id="e-proj" name="project_id" value={v.project_id} onChange={(e) => set("project_id", e.target.value)} className={input}>
@@ -124,7 +138,14 @@ export function ExpenseForm({ data, values, onSaved }: {
           <input id="e-date" name="date" type="date" required value={v.date} className={input}
             onChange={(e) => { const d = e.target.value; setV((o) => ({ ...o, date: d, due_date: d ? addDays(d, vendor?.terms_days ?? 0) : o.due_date })); }} />
         </div>
-        {v.type === "bill" && (
+        {v.type === "bill" && !v.id && (
+          <div><label htmlFor="e-paid" className={label}>Paid from</label>
+            <select id="e-paid" name="paid_from" value={v.paid_from ?? ""} onChange={(e) => set("paid_from", e.target.value)} className={input}>
+              {data.payFrom.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
+              <option value="">Not paid yet (pay later)</option>
+            </select></div>
+        )}
+        {v.type === "bill" && (v.id || !v.paid_from) && (
           <div><label htmlFor="e-due" className={label}>Due</label>
             <input id="e-due" name="due_date" type="date" value={v.due_date} onChange={(e) => set("due_date", e.target.value)} className={input} /></div>
         )}
@@ -176,7 +197,8 @@ export function ExpenseForm({ data, values, onSaved }: {
                 return (
                   <tr key={i} className="border-t border-[var(--border)] align-top">
                     <td className="px-3 py-2">
-                      <select aria-label={`Line ${i + 1} account`} required value={l.account_id} onChange={(e) => setLine(i, { account_id: e.target.value })} className={input}>
+                      <select aria-label={`Line ${i + 1} account`} required value={l.account_id} className={input}
+                        onChange={(e) => setLine(i, isLabour(e.target.value) ? { account_id: e.target.value, tax_amount: "", gst_claimable: false } : { account_id: e.target.value })}>
                         <option value="">Choose…</option>
                         {(["cogs", "expense", "asset"] as const).map((ty) => (
                           <optgroup key={ty} label={ty === "cogs" ? "Job costs" : ty === "expense" ? "Overheads" : "Assets"}>
@@ -193,6 +215,7 @@ export function ExpenseForm({ data, values, onSaved }: {
                         : <input aria-label={`Line ${i + 1} amount before GST`} inputMode="decimal" value={l.amount} onChange={(e) => setLine(i, { amount: e.target.value })} className={`${input} text-right tabular-nums`} />}
                     </td>
                     <td className="px-2 py-2">
+                      {isLabour(l.account_id) ? <p className="px-1 py-2 text-xs text-[var(--muted)]">No GST on labour</p> : <>
                       <div className="flex gap-1">
                         <input aria-label={`Line ${i + 1} GST`} inputMode="decimal" value={l.tax_amount} onChange={(e) => setLine(i, { tax_amount: e.target.value })} className={`${input} text-right tabular-nums`} />
                         <button type="button" title={`${Number(data.gstRate)}% of the amount`} className="rounded border border-[var(--border)] px-1.5 text-xs"
@@ -203,6 +226,7 @@ export function ExpenseForm({ data, values, onSaved }: {
                           <input type="checkbox" checked={l.gst_claimable} onChange={(e) => setLine(i, { gst_claimable: e.target.checked })} /> claim it back
                         </label>
                       )}
+                      </>}
                     </td>
                     <td className="px-2 py-2">
                       <select aria-label={`Line ${i + 1} project`} value={l.project_id} onChange={(e) => setLine(i, { project_id: e.target.value })} className={input}>
@@ -237,11 +261,54 @@ export function ExpenseForm({ data, values, onSaved }: {
 
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : v.id ? "Save changes" : `Save ${TITLES[v.type].toLowerCase()}`}</button>
-        {v.type === "bill" && (
+        {v.type === "bill" && (v.id || !v.paid_from) && (
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="draft" checked={v.is_draft} onChange={(e) => set("is_draft", e.target.checked)} className="h-4 w-4" /> Save as draft</label>
         )}
         {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
       </div>
     </form>
+  );
+}
+
+const NEW_VENDOR = "__new";
+
+/** Add a vendor without leaving the form: it goes on the Vendors list like any other. */
+function QuickVendor({ onAdded, onCancel }: { onAdded: (v: VendorOpt) => void; onCancel: () => void }) {
+  const [f, setF] = useState({ name: "", phone: "", tin: "", gst: false, anyway: false });
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const add = () => start(async () => {
+    const fd = new FormData();
+    fd.set("name", f.name); fd.set("phone", f.phone); fd.set("tin", f.tin); fd.set("kind_vendor", "on");
+    if (f.gst) fd.set("gst_registered", "on");
+    if (f.anyway) fd.set("allow_duplicate", "on");
+    const r = await createContact(null, fd);
+    if (r.error || !r.id) { setError(r.error ?? "The vendor could not be added."); return; }
+    const tin = f.tin.replace(/\s+/g, "").toUpperCase() || null;
+    onAdded({ id: r.id, name: f.name.trim(), tin, gst_registered: f.gst, terms_days: null, currency: "MVR", licence_expiry: null, insurance_expiry: null, vendor_kind: null });
+  });
+  return (
+    <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--hover)] p-4 sm:col-span-3">
+      <p className="text-sm font-medium">New vendor <span className="font-normal text-[var(--muted)]">— added to Vendors; fill in the rest of their details there</span></p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div><label htmlFor="nv-name" className={label}>Name</label>
+          <input id="nv-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className={input} autoFocus /></div>
+        <div><label htmlFor="nv-phone" className={label}>Phone (optional)</label>
+          <input id="nv-phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className={input} /></div>
+        <div><label htmlFor="nv-tin" className={label}>TIN (optional)</label>
+          <input id="nv-tin" value={f.tin} onChange={(e) => setF({ ...f, tin: e.target.value })} className={`${input} font-mono`} /></div>
+      </div>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.gst} onChange={(e) => setF({ ...f, gst: e.target.checked })} className="h-4 w-4" />
+        Registered for GST <span className="text-xs text-[var(--muted)]">(their GST can then be claimed back; needs the TIN)</span></label>
+      {error && (
+        <div className="text-sm text-red-700">{error}
+          {/already/.test(error) && <label className="mt-1 flex items-center gap-2 text-xs text-[var(--text)]"><input type="checkbox" checked={f.anyway} onChange={(e) => setF({ ...f, anyway: e.target.checked })} /> Add anyway: it is a different vendor</label>}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <button type="button" className={primary} disabled={pending || !f.name.trim()} onClick={add}>{pending ? "Adding…" : "Add vendor"}</button>
+        <button type="button" className={small} onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
   );
 }

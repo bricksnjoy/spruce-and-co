@@ -4,7 +4,7 @@ import { forecast, monthlyOn, type Flow, type Week } from "@/lib/cash-forecast";
 
 const L = (v: number | string | null | undefined) => dbToLaari(v ?? 0);
 export const FLOW_LABEL: Record<string, string> = {
-  customers: "Customers (open invoices)", bills: "Bills", payroll: "Payroll", payroll_owed: "Salaries and payroll taxes owed",
+  customers: "Customers (open invoices)", bills: "Vendors (unpaid receipts)", payroll: "Payroll", payroll_owed: "Salaries and payroll taxes owed",
   gst: "GST to MIRA", payouts: "Payouts released",
 };
 

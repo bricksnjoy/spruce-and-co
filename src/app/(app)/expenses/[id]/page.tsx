@@ -48,7 +48,7 @@ export default async function ExpenseDocPage({ params, searchParams }: { params:
       {note && <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-900">{note}</p>}
       {d.status === "awaiting_approval" && (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-          Over the bill approval limit: it posts, and can be paid, once an admin approves it.
+          Over the receipt approval limit: it posts, and can be paid, once an admin approves it.
         </p>
       )}
       {d.voided_at && <p className="rounded-lg border border-[var(--border)] bg-[var(--hover)] px-4 py-2.5 text-sm">Void since {dateTime(d.voided_at)}{t?.void_reason ? `: ${t.void_reason}` : ""}.</p>}
@@ -69,7 +69,7 @@ export default async function ExpenseDocPage({ params, searchParams }: { params:
           <Card className="px-5 py-4 text-sm sm:col-span-2">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Details</p>
             {bank && <p className="mt-2">Paid from {bank.code} · {bank.name}</p>}
-            {d.type === "vendor_credit" && <p className="mt-2">{m(d.applied_from)} applied to bills · {money(laariToNumber(dbToLaari(d.total) - dbToLaari(d.applied_from)))} left</p>}
+            {d.type === "vendor_credit" && <p className="mt-2">{m(d.applied_from)} applied to receipts · {money(laariToNumber(dbToLaari(d.total) - dbToLaari(d.applied_from)))} left</p>}
             {d.type === "purchase_order" && <p className="mt-2">{d.status === "open" ? "Open: counts as committed cost on the project" : "Closed"}</p>}
             {po && <p className="mt-2">From purchase order <Link href={`/expenses/${po.id}`} className="font-medium text-[var(--brand)] hover:underline">{po.number}</Link></p>}
           </Card>
@@ -111,12 +111,12 @@ export default async function ExpenseDocPage({ params, searchParams }: { params:
 
       {(billsFromPo ?? []).length > 0 && (
         <Card><CardHeader title="Billed as" />
-          <Table><tbody>{(billsFromPo ?? []).map((b) => <tr key={b.id}><Td>{date(b.date)}</Td><Td><Link href={`/expenses/${b.id}`} className="hover:underline">Bill {b.number ?? "(draft)"}</Link></Td></tr>)}</tbody></Table>
+          <Table><tbody>{(billsFromPo ?? []).map((b) => <tr key={b.id}><Td>{date(b.date)}</Td><Td><Link href={`/expenses/${b.id}`} className="hover:underline">Receipt {b.number ?? "(draft)"}</Link></Td></tr>)}</tbody></Table>
         </Card>
       )}
 
       {writer && openBills.length > 0 && dbToLaari(d.total) - dbToLaari(d.applied_from) > 0n && (
-        <ApplyCredit creditId={id} bills={openBills.map((b) => ({ id: b.id, label: `${b.number ?? b.tax_invoice_no ?? "Bill"} · ${date(b.date)}`, balance: String(b.balance) }))} />
+        <ApplyCredit creditId={id} bills={openBills.map((b) => ({ id: b.id, label: `${b.number ?? b.tax_invoice_no ?? "Receipt"} · ${date(b.date)}`, balance: String(b.balance) }))} />
       )}
 
       {[...(appliedTo ?? []).map((a) => ({ a, l: a.from as unknown as L, dir: "from" })), ...(appliedFrom ?? []).map((a) => ({ a, l: a.to as unknown as L, dir: "to" }))].length > 0 && (
@@ -139,7 +139,7 @@ export default async function ExpenseDocPage({ params, searchParams }: { params:
             {photos.map((p, i) => p.signedUrl && (
               <a key={i} href={p.signedUrl} target="_blank" rel="noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.signedUrl} alt={files?.[i]?.file_name ?? "Bill photo"} className="h-40 rounded border border-[var(--border)] object-cover" />
+                <img src={p.signedUrl} alt={files?.[i]?.file_name ?? "Receipt photo"} className="h-40 rounded border border-[var(--border)] object-cover" />
               </a>
             ))}
           </div>

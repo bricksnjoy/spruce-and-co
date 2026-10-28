@@ -47,7 +47,7 @@ export async function saveAccountingSettings(_prev: unknown, fd: FormData): Prom
   if (divisor === null || !/^\d{1,3}(\.\d{1,2})?$/.test(divisor) || Number(divisor) <= 0) return { error: "Enter the no-pay day divisor (e.g. 30)." };
   const limitRaw = text(fd, "approval_limit_bill");
   const limit = limitRaw === null ? null : moneyToDb(limitRaw);
-  if (limitRaw !== null && (limit === null || limit.startsWith("-"))) return { error: "Enter the bill approval limit as an amount, or leave it blank." };
+  if (limitRaw !== null && (limit === null || limit.startsWith("-"))) return { error: "Enter the receipt approval limit as an amount, or leave it blank." };
 
   const { error } = await a.s.supabase.from("settings").update({
     closing_date: closing,

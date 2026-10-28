@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { canWrite, dbMessage, getSession, type Session } from "@/server/session";
 import { laariToDb, moneyToDb, toLaari } from "@/lib/money";
+import { payInFull } from "@/server/pay-bill";
 
 export type Result = { error?: string; ok?: boolean; id?: string; note?: string; ids?: string[] };
 
@@ -42,10 +43,12 @@ async function attachPhoto(s: Session, id: string, file: FormDataEntryValue | nu
 type LineIn = { description?: string; qty?: string; rate?: string; amount?: string; tax_amount?: string; gst_claimable?: boolean; project_id?: string; account_id?: string };
 
 /**
- * Save a bill, expense, vendor credit or purchase order. Purchases keep the
+ * Save a receipt (a bill), expense, vendor credit or purchase order. Purchases keep the
  * supplier's own GST figure; claimable GST needs the tax-invoice evidence (the
- * database refuses otherwise). A bill over the approval limit is sent to an
- * admin instead of posting, unless an admin is saving it.
+ * database refuses otherwise); labour carries no GST. A receipt over the approval
+ * limit is sent to an admin instead of posting, unless an admin is saving it. A new
+ * receipt is entered once bought, so it is saved paid from the account chosen
+ * (unless "not paid yet").
  */
 export async function saveExpenseDoc(_prev: unknown, fd: FormData): Promise<Result> {
   const w = await writer();
@@ -60,15 +63,20 @@ export async function saveExpenseDoc(_prev: unknown, fd: FormData): Promise<Resu
   if (type !== "expense" && !isId(contact)) return { error: "Choose the vendor." };
   const due = text(fd, "due_date");
   if (due !== null && !isDate(due)) return { error: "Enter the due date as a date." };
-  if (type === "bill" && due && due < date) return { error: "The due date cannot be before the bill date." };
+  if (type === "bill" && due && due < date) return { error: "The due date cannot be before the receipt date." };
   const bank = text(fd, "bank_account_id");
   if (type === "expense" && !isId(bank)) return { error: "Choose the account it was paid from." };
+  const paidFrom = type === "bill" && !id ? text(fd, "paid_from") : null;
+  if (paidFrom !== null && !isId(paidFrom)) return { error: "Choose the account it was paid from, or \"Not paid yet\"." };
   const currency = text(fd, "currency") ?? "MVR";
   const fx = currency === "MVR" ? "1" : text(fd, "fx_rate");
   if (!fx || !/^\d{1,6}(\.\d{1,6})?$/.test(fx) || /^0+(\.0+)?$/.test(fx)) return { error: "Enter the exchange rate: MVR for one unit." };
 
   let raw: LineIn[];
   try { raw = JSON.parse(String(fd.get("lines") ?? "[]")); } catch { return { error: "The lines could not be read." }; }
+  // labour is paid without GST
+  const { data: labour } = await s.supabase.from("accounts").select("id").eq("budget_category", "labour");
+  const noGst = new Set((labour ?? []).map((a) => a.id as string));
   const lines = [];
   for (const [i, l] of raw.entries()) {
     const hasQty = (l.qty ?? "") !== "" && (l.rate ?? "") !== "";
@@ -82,7 +90,7 @@ export async function saveExpenseDoc(_prev: unknown, fd: FormData): Promise<Resu
       amount = moneyToDb(l.amount);
       if (amount === null || amount.startsWith("-")) return { error: `Line ${i + 1}: enter the amount before GST.` };
     }
-    const tax = (l.tax_amount ?? "") === "" ? "0.00" : moneyToDb(l.tax_amount);
+    const tax = (l.tax_amount ?? "") === "" || noGst.has(l.account_id) ? "0.00" : moneyToDb(l.tax_amount);
     if (tax === null || tax.startsWith("-")) return { error: `Line ${i + 1}: enter the GST charged, or leave it blank.` };
     lines.push({ description: l.description?.trim() || null, qty, rate, amount, tax_amount: tax, gst_claimable: Boolean(l.gst_claimable) && tax !== "0.00",
       project_id: isId(l.project_id) ? l.project_id : text(fd, "project_id"), account_id: l.account_id });
@@ -100,6 +108,7 @@ export async function saveExpenseDoc(_prev: unknown, fd: FormData): Promise<Resu
   // the database decides whether a bill is over the approval limit (in MVR, to the laari)
   let { data, error } = await s.supabase.rpc("rpc_save_transaction", { p: payload });
   let note: string | undefined;
+  let awaitingApproval = false;
   if (error && type === "bill" && /approval limit/.test(error.message)) {
     ({ data, error } = await s.supabase.rpc("rpc_save_transaction", { p: { ...payload, is_draft: true } }));
     if (error) return { error: dbMessage(error) };
@@ -108,13 +117,22 @@ export async function saveExpenseDoc(_prev: unknown, fd: FormData): Promise<Resu
       : await s.supabase.rpc("rpc_request_approval", { p_id: data });
     if (r.error) return { error: `Saved as a draft, but: ${dbMessage(r.error)}`, id: data as string };
     note = s.role === "admin" ? "Over the approval limit: approved by you and posted." : "Over the approval limit: sent to an admin for approval.";
+    awaitingApproval = s.role !== "admin";
   }
   if (error) return { error: dbMessage(error) };
   const docId = data as string;
 
+  let paid: string | null = null;
+  if (paidFrom && payload.is_draft) paid = "Drafts are not marked paid; mark it paid once it is saved for real.";
+  else if (paidFrom && awaitingApproval) paid = "Mark it paid once an admin approves it.";
+  else if (paidFrom) {
+    const err = await payInFull(s, docId, date, paidFrom);
+    if (err) paid = `Saved, but not marked paid: ${err}`;
+  }
+
   const photo = await attachPhoto(s, docId, fd.get("photo"));
   refresh(docId);
-  return { ok: true, id: docId, note: [note, photo].filter(Boolean).join(" ") || undefined };
+  return { ok: true, id: docId, note: [note, paid, photo].filter(Boolean).join(" ") || undefined };
 }
 
 /** Pay several bills from one account: one payment per vendor. */
@@ -126,14 +144,14 @@ export async function payBills(_prev: unknown, fd: FormData): Promise<Result> {
   if (!isDate(date)) return { error: "Enter the payment date." };
   if (!isId(bank)) return { error: "Choose the account to pay from." };
   let raw: { bill?: string; amount?: string }[];
-  try { raw = JSON.parse(String(fd.get("items") ?? "[]")); } catch { return { error: "The bills could not be read." }; }
+  try { raw = JSON.parse(String(fd.get("items") ?? "[]")); } catch { return { error: "The receipts could not be read." }; }
   const items = [];
   for (const r of raw) {
     const v = toLaari(r.amount);
     if (!isId(r.bill) || v === null) return { error: "Each amount must be a number." };
     if (v > 0n) items.push({ bill: r.bill, amount: laariToDb(v) });
   }
-  if (!items.length) return { error: "Tick the bills to pay." };
+  if (!items.length) return { error: "Tick the receipts to pay." };
   const { data, error } = await w.s.supabase.rpc("rpc_pay_bills", { p_bank: bank, p_date: date, p_items: items, p_reference: text(fd, "reference") });
   if (error) return { error: dbMessage(error) };
   refresh();
@@ -155,7 +173,7 @@ export async function applyCredit(fromId: string, toId: string, amount: string):
 export async function approveBill(id: string): Promise<Result> {
   const s = await getSession();
   if (!s) return { error: "Not signed in." };
-  if (s.role !== "admin") return { error: "Only an admin approves bills." };
+  if (s.role !== "admin") return { error: "Only an admin approves receipts." };
   const { error } = await s.supabase.rpc("rpc_approve_bill", { p_id: id });
   if (error) return { error: dbMessage(error) };
   refresh(id);
@@ -194,7 +212,7 @@ export async function voidExpenseDoc(id: string, reason: string): Promise<Result
 export async function deleteBill(id: string): Promise<Result> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
-  if (!isId(id)) return { error: "No bill." };
+  if (!isId(id)) return { error: "No receipt." };
   const { error } = await w.s.supabase.rpc("rpc_delete_bill", { p_id: id });
   if (error) return { error: dbMessage(error) };
   refresh(id);
@@ -205,7 +223,7 @@ export async function deleteBill(id: string): Promise<Result> {
 export async function restoreBill(id: string): Promise<Result> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
-  if (!isId(id)) return { error: "No bill." };
+  if (!isId(id)) return { error: "No receipt." };
   const { error } = await w.s.supabase.rpc("rpc_restore_bill", { p_id: id });
   if (error) return { error: dbMessage(error) };
   refresh(id);

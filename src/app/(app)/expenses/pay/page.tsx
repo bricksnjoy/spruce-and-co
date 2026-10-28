@@ -19,7 +19,7 @@ export default async function PayBills({ searchParams }: { searchParams: Promise
   return (
     <div className="max-w-6xl">
       <Link href="/expenses" className="text-xs text-[var(--muted)] hover:underline">← Expenses</Link>
-      <PageHeader title="Pay bills" subtitle="Tick the bills to pay; one payment is made per vendor" />
+      <PageHeader title="Pay vendors" subtitle="Tick the unpaid receipts to pay; one payment is made per vendor" />
       <PayBillsForm bills={(bills ?? []) as OpenBill[]} payFrom={data.payFrom} preselect={bill} />
     </div>
   );
