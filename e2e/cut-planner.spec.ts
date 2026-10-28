@@ -29,7 +29,8 @@ test("the cut list is saved to the account and opens on another device", async (
   await page.getByLabel("Shelf length").fill("600");
   await page.getByLabel("Shelf width").fill("300");
   await expect(page.getByText(/^Saved to your account:/)).toBeVisible();
-  expect(saved()).toContain('"Shelf"');
+  // the note shows from the first save already: wait for the last one to land
+  await expect.poll(saved).toContain('"Shelf"');
 
   // another device: the same list opens there
   const other = await browser.newContext();
@@ -40,6 +41,7 @@ test("the cut list is saved to the account and opens on another device", async (
   await expect(phone.getByLabel("Shelf unit")).toHaveValue("mm");
   await phone.getByLabel("Shelf quantity").fill("3");
   await expect(phone.getByText(/^Saved to your account:/)).toBeVisible();
+  await expect.poll(saved).toContain('"qty": "3"');
 
   // back on the first device, it shows the phone's change
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -48,13 +50,14 @@ test("the cut list is saved to the account and opens on another device", async (
   // the phone changes it again while the first device is not looking; an edit there is not lost silently
   await phone.getByLabel("Shelf quantity").fill("5");
   await expect(phone.getByText(/^Saved to your account:/)).toBeVisible();
+  await expect.poll(saved).toContain('"qty": "5"');
   await page.getByLabel("Table top quantity").fill("2");
   const alert = page.getByRole("alert").filter({ hasText: "changed on another device" });
   await expect(alert).toBeVisible();
   await alert.getByRole("button", { name: "Keep this one" }).click();
   await expect(page.getByText(/^Saved to your account:/)).toBeVisible();
-  const data = JSON.parse(saved());
-  expect(data.rows.map((r: { name: string; qty: string }) => `${r.name} ${r.qty}`)).toEqual(["Table top 2", "Shelf 3"]);
+  await expect.poll(() => (JSON.parse(saved()) as { rows: { name: string; qty: string }[] }).rows.map((r) => `${r.name} ${r.qty}`))
+    .toEqual(["Table top 2", "Shelf 3"]);
 
   await other.close();
   w.assertNone();
