@@ -268,7 +268,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Tiles: principal still owed, returns and shares owed, ready to pay, and blocked.
 2. Payouts awaiting approval: an admin presses "Approve and pay" (or "Turn down…" with a reason).
-3. Directors' accounts: for each director, what they have invested in projects, what they have earned on projects not yet completed and paid for, what is waiting for their choice, and what is in their director's account (kept in the company); and the company's own money. Kept money and the company's own money can finance the next project. Click a name for their page.
+3. Directors' accounts: for each director, what they have invested in projects, what they have earned on projects not yet completed and paid for, what is waiting for their choice, and what is in their director's account (kept in the company); and the company's own money: bank and cash less everything it owes (directors, lenders, GST, vendors, salaries). A project's money (the client's payments and its financing) stays in the project until it is completed and paid for; then its profit is split and the company's part becomes its own. Kept money and the company's own money can finance the next project. Click a name for their page.
 4. Lenders: what each external lender is owed — principal and financing return — and what is ready to pay.
 5. Projects: financing, what is owed and whether payouts are released (and why not).
 

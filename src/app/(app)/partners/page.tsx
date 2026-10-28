@@ -68,7 +68,7 @@ export default async function PartnersPage() {
               </tr>
             ))}
             <tr>
-              <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less what it owes directors and lenders and has in unfinished projects</span></Td>
+              <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank and cash less everything it owes (directors, lenders, GST, vendors, salaries); a project&apos;s money stays in the project until it is completed and paid</span></Td>
               <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td>
               <Td right className={companyMoney > 0n ? "font-medium text-emerald-700" : "text-[var(--muted)]"}>{m(companyMoney)}</Td>
             </tr>
@@ -106,7 +106,7 @@ export default async function PartnersPage() {
             })}
             {company && (
               <tr>
-                <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less everything released to members (principal included)</span></Td>
+                <Td><span className="font-medium">Company</span><span className="block text-xs text-[var(--muted)]">its own money: bank and cash less everything it owes (directors, lenders, GST, vendors, salaries); a project&apos;s money stays in the project until it is completed and paid</span></Td>
                 <Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td><Td right className="text-[var(--muted)]">—</Td>
                 <Td right className={companyMoney > 0n ? "text-emerald-700" : "text-[var(--muted)]"}>{m(companyMoney)}</Td>
               </tr>

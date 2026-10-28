@@ -119,7 +119,7 @@ function CapitalPoolForm({ projectId, capital }: { projectId: string; capital: C
             {rows.map((r) => (
               <tr key={r.key}>
                 <td className="px-3 py-2">{r.contact_id ? `${r.name}'s director's account` : "Company"}
-                  {!r.contact_id && <span className="block text-xs text-[var(--muted)]">its own money: bank, cash and payments not yet banked, less what it owes directors and lenders and has in unfinished projects</span>}</td>
+                  {!r.contact_id && <span className="block text-xs text-[var(--muted)]">its own money: bank and cash less everything it owes (directors, lenders, GST, vendors, salaries); a project&apos;s money stays in the project until it is completed and paid</span>}</td>
                 <td className="px-3 py-2 text-right">{money(laariToNumber(r.avail))}</td>
                 <td className="px-3 py-2 text-right">
                   <input aria-label={`${r.contact_id ? r.name : "Company"} puts in`} name={`amt:${r.key}`} inputMode="decimal" value={amounts[r.key] ?? ""}
