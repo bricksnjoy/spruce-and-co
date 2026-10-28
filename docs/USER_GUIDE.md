@@ -39,8 +39,9 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Use "New project" (or + New → Project) to add one.
 2. Read across a row: revised contract value, % billed, collected, cost to date, forecast profit and margin, and what the client still owes.
-3. The stage is in colour, on its badge and down the side of the row: blue active, amber completed with the client still owing, green settled (payouts due), grey closed.
-4. Click a project to open it. Use "Archived" to see projects taken out of the working list, and (admin) "Deleted" for projects deleted in the last 30 days, each with "Restore" to put it back with everything it had.
+3. The colour down the left side of a row is its stage: blue active, amber completed with the client still owing, green settled (payouts due), grey closed.
+4. Use the filter above the list to show one stage only; the totals at the top follow it. "Archived" shows projects taken out of the working list, and (admin) "Deleted" the projects deleted in the last 30 days, each with "Restore" to put it back with everything it had.
+5. Click a project to open it.
 
 ### New project
 

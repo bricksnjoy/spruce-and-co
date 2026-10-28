@@ -14,10 +14,13 @@ export const STAGE_LABEL: Record<string, string> = {
   active: "Active", completed: "Completed · client owes", settled: "Settled · payouts due", closed: "Closed",
 };
 
-/** Each stage's colour: a badge, and a bar down the side of its row. Active blue, completed amber, settled green, closed grey. */
+/**
+ * Each stage's colour: a badge, and a fill for the strip down the side of its row and the dot on its
+ * filter. Active blue, completed amber, settled green, closed grey.
+ */
 export const STAGE_TONE: Record<string, { badge: string; bar: string }> = {
-  active: { badge: "bg-blue-50 text-blue-700 ring-blue-200", bar: "border-l-blue-600" },
-  completed: { badge: "bg-amber-50 text-amber-800 ring-amber-200", bar: "border-l-amber-500" },
-  settled: { badge: "bg-emerald-50 text-emerald-700 ring-emerald-200", bar: "border-l-green-500" },
-  closed: { badge: "bg-slate-100 text-slate-600 ring-slate-200", bar: "border-l-slate-400" },
+  active: { badge: "bg-blue-50 text-blue-700 ring-blue-200", bar: "bg-blue-600" },
+  completed: { badge: "bg-amber-50 text-amber-800 ring-amber-200", bar: "bg-amber-500" },
+  settled: { badge: "bg-emerald-50 text-emerald-700 ring-emerald-200", bar: "bg-green-500" },
+  closed: { badge: "bg-slate-100 text-slate-600 ring-slate-200", bar: "bg-slate-400" },
 };
