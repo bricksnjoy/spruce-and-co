@@ -4,7 +4,7 @@ import { bidEvents, calendarView, dailyDigest, listView, monthGrid, stagePeers, 
 // Thursday 29 October 2026, 08:00 in the Maldives
 const NOW = new Date("2026-10-29T03:00:00Z");
 const bid = (x: Partial<BoardBid> & { id: string; name: string }): BoardBid => ({
-  company: null, gazette_url: null, status: "registered", prebid_meeting_at: null, prebid_attendance: null, submission_due_at: null, ...x,
+  company: null, location: null, gazette_url: null, status: "registered", prebid_meeting_at: null, prebid_attendance: null, submission_due_at: null, ...x,
 });
 const BIDS: BoardBid[] = [
   bid({ id: "a", name: "School hall <Th.>", company: "Ministry of Education", prebid_meeting_at: "2026-10-29T05:00:00Z", prebid_attendance: "compulsory", submission_due_at: "2026-11-20T08:30:00Z" }),

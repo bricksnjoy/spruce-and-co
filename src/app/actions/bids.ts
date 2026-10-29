@@ -11,7 +11,7 @@ import { ensureWebhook } from "@/server/bid-bot";
 export type BidResult = { error?: string; ok?: boolean; id?: string; note?: string };
 const isId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
 const text = (fd: FormData, k: string) => { const v = String(fd.get(k) ?? "").trim(); return v === "" ? null : v; };
-const COLS = "id, name, company, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id";
+const COLS = "id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id";
 
 async function writer() {
   const s = await getSession();
@@ -33,14 +33,8 @@ function refresh(id?: string) {
  */
 async function tell(kind: Parameters<typeof bidMessage>[0], b: Bid, s: Session, note?: string | null) {
   if (!telegramReady()) return undefined;
-  const [h, { data: me }, { data: peers }] = await Promise.all([
-    headers(),
-    s.supabase.from("profiles").select("full_name, email").eq("id", s.userId).maybeSingle(),
-    kind === "dates" ? Promise.resolve({ data: null }) : s.supabase.from("bids").select(COLS).eq("status", b.status),
-  ]);
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const link = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}/bids/${b.id}` : null;
-  let text = bidMessage(kind, b, { link, by: me?.full_name || me?.email || null, note });
+  const { data: peers } = kind === "dates" ? { data: null } : await s.supabase.from("bids").select(COLS).eq("status", b.status);
+  let text = bidMessage(kind, b, { note });
   if (peers) text += `\n${stagePeers(peers as BoardBid[], b.status, b.id)}`;
   const r = await sendTelegram(text);
   return r.ok ? undefined : `Saved, but the Telegram message did not go: ${r.error}`;
@@ -54,6 +48,8 @@ export async function saveBid(_prev: unknown, fd: FormData): Promise<BidResult> 
   if (id && !isId(id)) return { error: "No such bid." };
   const name = text(fd, "name");
   if (!name) return { error: "Give the bid a name." };
+  // a new bid says where the work is; it goes in the Telegram message
+  if (!id && !text(fd, "location")) return { error: "Write the location: where the work is." };
   const gazette = text(fd, "gazette_url");
   if (gazette && !/^https?:\/\/\S+$/i.test(gazette)) return { error: "The Gazette link should start with https://" };
   const meetingRaw = text(fd, "prebid_meeting_at"), dueRaw = text(fd, "submission_due_at");
@@ -66,7 +62,7 @@ export async function saveBid(_prev: unknown, fd: FormData): Promise<BidResult> 
   if (!isBidStatus(status)) return { error: "Unknown stage." };
 
   const row = {
-    name, company: text(fd, "company"), gazette_url: gazette, prebid_meeting_at: meeting,
+    name, company: text(fd, "company"), location: text(fd, "location"), gazette_url: gazette, prebid_meeting_at: meeting,
     prebid_attendance: meeting ? attendance : null, submission_due_at: due, notes: text(fd, "notes"),
   };
   const { s } = w;

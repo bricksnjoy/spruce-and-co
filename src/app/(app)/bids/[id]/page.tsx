@@ -17,7 +17,7 @@ export default async function BidPage({ params }: { params: Promise<{ id: string
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const [{ data }, { data: events }] = await Promise.all([
-    s.supabase.from("bids").select("id, name, company, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id").eq("id", id).maybeSingle(),
+    s.supabase.from("bids").select("id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id").eq("id", id).maybeSingle(),
     s.supabase.from("bid_events").select("id, status, note, created_at, profiles:created_by(full_name, email)").eq("bid_id", id).order("created_at", { ascending: false }),
   ]);
   if (!data) notFound();
@@ -40,6 +40,7 @@ export default async function BidPage({ params }: { params: Promise<{ id: string
           <Card>
             <CardHeader title="Stage" subtitle={telegramReady() ? "Each change is posted to the Telegram group" : "Telegram is not set up yet, so the group is not told"} />
             <div className="px-5 py-4">
+              {writer && !b.location && <p className="mb-3 text-xs text-amber-700">No location yet: press Edit to add it, so the Telegram message says where the work is.</p>}
               {writer ? <StageControl id={b.id} status={b.status} />
                 : <span className={`rounded-full px-3 py-1 text-xs font-medium ${BID_STATUS_TONE[b.status]}`}>{BID_STATUS_LABEL[b.status]}</span>}
             </div>
@@ -71,6 +72,7 @@ export default async function BidPage({ params }: { params: Promise<{ id: string
           <CardHeader title="Details" />
           <dl className="space-y-3 px-5 py-4 text-sm">
             <Row k="Company">{b.company ?? "—"}</Row>
+            <Row k="Location">{b.location ?? "—"}</Row>
             <Row k="Gazette">{b.gazette_url ? <a href={b.gazette_url} target="_blank" rel="noreferrer" className="break-all text-[var(--brand)] hover:underline">Open the notice ↗</a> : "—"}</Row>
             <Row k="Pre-bid meeting">
               {b.prebid_meeting_at ? <>{when(b.prebid_meeting_at)}{b.prebid_attendance && <span className={`ml-1 rounded px-1.5 text-[11px] ${b.prebid_attendance === "compulsory" ? "bg-red-50 text-red-700" : "bg-[var(--hover)]"}`}>{b.prebid_attendance}</span>}</> : "—"}

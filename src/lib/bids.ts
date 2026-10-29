@@ -24,7 +24,7 @@ export const isBidStatus = (s: unknown): s is BidStatus => BID_STATUSES.includes
 export const OPEN_BID: BidStatus[] = ["registered", "prebid_meeting", "papers_ready", "submitted"];
 
 export type Bid = {
-  id: string; name: string; company: string | null; gazette_url: string | null; status: BidStatus;
+  id: string; name: string; company: string | null; location: string | null; gazette_url: string | null; status: BidStatus;
   prebid_meeting_at: string | null; prebid_attendance: "optional" | "compulsory" | null;
   submission_due_at: string | null; notes: string | null; project_id: string | null;
 };
@@ -50,24 +50,36 @@ export function when(v: string): string {
   }).format(new Date(v));
 }
 
-/** The bid's main lines for the group: name, company, and the dates that matter. */
-function summary(b: Bid, link: string | null) {
-  const lines = [`<b>${tg(b.name)}</b>${b.company ? ` — ${tg(b.company)}` : ""}`];
-  if (b.prebid_meeting_at) lines.push(`Pre-bid meeting: ${when(b.prebid_meeting_at)}${b.prebid_attendance ? ` (${b.prebid_attendance})` : ""}`);
-  if (b.submission_due_at) lines.push(`Submission due: ${when(b.submission_due_at)}`);
-  if (b.gazette_url) lines.push(`<a href="${tg(b.gazette_url)}">Gazette notice</a>`);
-  if (link) lines.push(`<a href="${tg(link)}">Open in the back office</a>`);
-  return lines;
+/** "4th November 2026 10:30" in Maldives time, as the group reads it. */
+export function longWhen(v: string): string {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Indian/Maldives",
+  }).formatToParts(new Date(v)).map((x) => [x.type, x.value]));
+  const d = Number(p.day);
+  const th = d % 100 >= 11 && d % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][d % 10] ?? "th";
+  return `${d}${th} ${p.month} ${p.year} ${p.hour}:${p.minute}`;
 }
 
-/** What the group is told when a bid is added, its stage moves, or its dates change. */
-export function bidMessage(kind: "added" | "status" | "dates", b: Bid, opts: { link?: string | null; by?: string | null; note?: string | null } = {}): string {
-  const head = kind === "added" ? "🆕 New bid"
-    : kind === "dates" ? "📅 Bid dates changed"
-    : b.status === "won" ? "🏆 Bid won" : b.status === "lost" ? "✖️ Bid lost" : `📌 Bid moved to: ${BID_STATUS_LABEL[b.status]}`;
-  const lines = [head, ...summary(b, opts.link ?? null)];
-  if (kind === "added") lines.splice(1, 0, `Stage: ${BID_STATUS_LABEL[b.status]}`);
-  if (opts.note) lines.push(`Note: ${tg(opts.note)}`);
-  if (opts.by) lines.push(`<i>by ${tg(opts.by)}</i>`);
+const attr = (s: string) => tg(s).replace(/"/g, "&quot;");
+
+/**
+ * What the group is told when a bid is added, its stage moves, or its dates change:
+ * the stage in bold, then the bid's name, pre-bid meeting (when there is one),
+ * submission date, location and Gazette notice.
+ */
+export function bidMessage(kind: "added" | "status" | "dates", b: Bid, opts: { note?: string | null } = {}): string {
+  const head = kind === "added" ? "New bid" : kind === "dates" ? "Bid dates changed" : "Bid Status update";
+  const lines = [
+    `<b>${head} - ${BID_STATUS_LABEL[b.status]}</b>`,
+    "",
+    `Bid Name: ${tg(b.name)}${b.company ? ` by ${tg(b.company)}` : ""}`,
+  ];
+  if (b.prebid_meeting_at) lines.push(`Pre-bid meeting: ${longWhen(b.prebid_meeting_at)}${b.prebid_attendance ? ` (${b.prebid_attendance})` : ""}`);
+  lines.push(
+    `Bid submission date: ${b.submission_due_at ? `<b>${longWhen(b.submission_due_at)}</b>` : "—"}`,
+    `Location: ${b.location ? tg(b.location) : "—"}`,
+    `Gazette Notice: ${b.gazette_url ? `<a href="${attr(b.gazette_url)}">${tg(b.gazette_url)}</a>` : "—"}`,
+  );
+  if (opts.note) lines.push("", `Note: ${tg(opts.note)}`);
   return lines.join("\n");
 }
