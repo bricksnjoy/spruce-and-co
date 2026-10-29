@@ -2,7 +2,8 @@
  * Posts to the company's Telegram group through a bot, using Telegram's plain
  * HTTP API. Switched on by TELEGRAM_BOT_TOKEN (from @BotFather) and
  * TELEGRAM_CHAT_ID (the group's id) being set in the environment; without them
- * nothing is sent and nothing fails.
+ * nothing is sent and nothing fails. In a group with topics, TELEGRAM_TOPIC_ID
+ * is the topic the bids go to (the number at the end of the topic's link).
  */
 import type { SendOutcome } from "./messaging";
 
@@ -36,10 +37,14 @@ export async function telegramCall<T = unknown>(method: string, body: Record<str
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string; result?: T };
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string; result?: T; parameters?: { migrate_to_chat_id?: number } };
     // Telegram answers an unknown token with a bare "Not Found"
     if (res.status === 404 || res.status === 401) {
       return { ok: false, error: "Telegram does not recognise the bot token. Copy it again from @BotFather into TELEGRAM_BOT_TOKEN on Vercel, then redeploy." };
+    }
+    // a group turned into one with topics gets a new id
+    if (data.parameters?.migrate_to_chat_id) {
+      return { ok: false, error: `The Telegram group was upgraded and has a new id: set TELEGRAM_CHAT_ID on Vercel to ${data.parameters.migrate_to_chat_id}, then redeploy.` };
     }
     if (!res.ok || !data.ok) return { ok: false, error: data.description ?? `Telegram answered ${res.status}` };
     return { ok: true, result: data.result as T };
@@ -49,10 +54,14 @@ export async function telegramCall<T = unknown>(method: string, body: Record<str
 }
 
 /** Send a message (Telegram HTML: <b>, <i>, <a href>, <pre>) to the group, or to another chat. */
-export async function sendTelegram(html: string, opts: { keyboard?: Keyboard; chatId?: string | number } = {}): Promise<SendOutcome> {
+/** The topic the bids go to, in a group with topics. */
+export const bidTopic = () => (/^\d+$/.test(process.env.TELEGRAM_TOPIC_ID ?? "") ? Number(process.env.TELEGRAM_TOPIC_ID) : undefined);
+
+export async function sendTelegram(html: string, opts: { keyboard?: Keyboard; chatId?: string | number; topic?: number } = {}): Promise<SendOutcome> {
   if (!telegramReady()) return { ok: false, error: "Telegram is not set up." };
   const r = await telegramCall<{ message_id?: number }>("sendMessage", {
-    chat_id: opts.chatId ?? process.env.TELEGRAM_CHAT_ID, text: html, parse_mode: "HTML", disable_web_page_preview: true,
+    chat_id: opts.chatId ?? process.env.TELEGRAM_CHAT_ID, message_thread_id: opts.topic ?? (opts.chatId ? undefined : bidTopic()),
+    text: html, parse_mode: "HTML", disable_web_page_preview: true,
     reply_markup: markup(opts.keyboard),
   });
   return r.ok ? { ok: true, id: r.result.message_id != null ? String(r.result.message_id) : null } : r;
