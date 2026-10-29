@@ -6,8 +6,17 @@
  */
 import type { SendOutcome } from "./messaging";
 
+/**
+ * The bot's token (digits, a colon, then 35 letters): picked out of whatever was
+ * pasted, so "bot123:ABC…", the getUpdates address or stray spaces still work.
+ */
+export function botToken(raw = process.env.TELEGRAM_BOT_TOKEN): string | null {
+  const v = (raw ?? "").trim();
+  return /\d{5,}:[A-Za-z0-9_-]{30,}/.exec(v)?.[0] ?? (v || null);
+}
+
 export function telegramReady(): boolean {
-  return Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
+  return Boolean(botToken() && process.env.TELEGRAM_CHAT_ID);
 }
 
 /** Telegram's HTML mode: only &, < and > need escaping in text. */
@@ -19,14 +28,19 @@ const markup = (k?: Keyboard) => (k ? { inline_keyboard: k.map((row) => row.map(
 
 /** One call to the bot API; the result, or Telegram's reason for refusing. */
 export async function telegramCall<T = unknown>(method: string, body: Record<string, unknown>): Promise<{ ok: true; result: T } | { ok: false; error: string }> {
-  if (!process.env.TELEGRAM_BOT_TOKEN) return { ok: false, error: "Telegram is not set up." };
+  const token = botToken();
+  if (!token) return { ok: false, error: "Telegram is not set up." };
   try {
-    const res = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string; result?: T };
+    // Telegram answers an unknown token with a bare "Not Found"
+    if (res.status === 404 || res.status === 401) {
+      return { ok: false, error: "Telegram does not recognise the bot token. Copy it again from @BotFather into TELEGRAM_BOT_TOKEN on Vercel, then redeploy." };
+    }
     if (!res.ok || !data.ok) return { ok: false, error: data.description ?? `Telegram answered ${res.status}` };
     return { ok: true, result: data.result as T };
   } catch (e) {

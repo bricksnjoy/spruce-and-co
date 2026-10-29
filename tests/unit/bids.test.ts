@@ -32,3 +32,16 @@ describe("bids", () => {
     expect(bidMessage("dates", bid)).toMatch(/^📅 Bid dates changed/);
   });
 });
+
+describe("the bot token", () => {
+  it("is picked out of whatever was pasted", async () => {
+    const { botToken } = await import("@/lib/telegram");
+    const t = "123456789:AAFakeTokenForTests_abcdefghijklmnopq";
+    expect(botToken(t)).toBe(t);
+    expect(botToken(` bot${t}\n`)).toBe(t);
+    expect(botToken(`https://api.telegram.org/bot${t}/getUpdates`)).toBe(t);
+    expect(botToken(`"${t}"`)).toBe(t);
+    expect(botToken("")).toBeNull();
+    expect(botToken(undefined)).toBeNull();
+  });
+});
