@@ -70,7 +70,7 @@ export async function groupAdmins(): Promise<Person[]> {
  * True the first time an evening reminder runs on a day (in the Maldives), false
  * after; null when that cannot be checked (better twice than not at all).
  */
-export async function claimRun(day: string, step: "remind" | "chase"): Promise<boolean | null> {
+export async function claimRun(day: string, step: string): Promise<boolean | null> {
   const { data, error } = await db().rpc("bot_claim_run", { p_key: botSecret(), p_day: day, p_step: step });
   return error ? null : data === true;
 }
