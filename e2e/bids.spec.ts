@@ -12,6 +12,7 @@ test("bids: add, move through the stages, and see the dates on Tasks & Calendar"
   const form = page.getByRole("dialog", { name: "New bid" });
   await form.getByLabel("Bid name").fill(`School hall ${tag}`);
   await form.getByLabel("Company").fill("Ministry of Education");
+  await form.getByLabel("Location").fill("Th. Vilufushi");
   await form.getByLabel("Gazette link").fill("https://www.gazette.gov.mv/iulaan/123");
   const soon = new Date(Date.now() + 3 * 86400_000 + 5 * 3600_000).toISOString().slice(0, 10);
   await form.getByLabel("Pre-bid meeting", { exact: true }).fill(`${soon}T10:00`);

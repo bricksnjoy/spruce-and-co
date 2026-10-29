@@ -15,7 +15,7 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
   if (!s) redirect("/login");
   const { status: filter } = await searchParams;
   const { data } = await s.supabase.from("bids")
-    .select("id, name, company, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id")
+    .select("id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id")
     .order("submission_due_at", { ascending: true, nullsFirst: false });
   const bids = (data ?? []) as Bid[];
   const now = new Date().toISOString();
@@ -63,7 +63,7 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
                   <tr key={b.id} className="row-link hover:bg-[var(--hover)]">
                     <Td>
                       <Link href={`/bids/${b.id}`} className="row-link-main font-medium hover:text-[var(--brand)] hover:underline">{b.name}</Link>
-                      {b.company && <span className="block text-xs text-[var(--muted)]">{b.company}</span>}
+                      {(b.company || b.location) && <span className="block text-xs text-[var(--muted)]">{[b.company, b.location].filter(Boolean).join(" · ")}</span>}
                     </Td>
                     <Td><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${BID_STATUS_TONE[b.status]}`}>{BID_STATUS_LABEL[b.status]}</span></Td>
                     <Td className="text-xs">

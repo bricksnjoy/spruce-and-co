@@ -6,7 +6,7 @@
 import { tg, type Keyboard } from "./telegram";
 import { BID_STATUSES, BID_STATUS_LABEL, type Bid, type BidStatus } from "./bids";
 
-export type BoardBid = Pick<Bid, "id" | "name" | "company" | "gazette_url" | "status" | "prebid_meeting_at" | "prebid_attendance" | "submission_due_at">;
+export type BoardBid = Pick<Bid, "id" | "name" | "company" | "location" | "gazette_url" | "status" | "prebid_meeting_at" | "prebid_attendance" | "submission_due_at">;
 export type BidView = "cal" | "list" | "stage" | "help";
 
 /** The buttons under a view: each switches the message to another view. */

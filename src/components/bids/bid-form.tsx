@@ -32,6 +32,10 @@ export function BidForm({ bid, onDone }: { bid?: Bid; onDone?: () => void }) {
           <label htmlFor="b-company" className={label}>Company</label>
           <input id="b-company" name="company" defaultValue={bid?.company ?? ""} className={input} placeholder="Who put it out to tender" />
         </div>
+        <div>
+          <label htmlFor="b-location" className={label}>Location</label>
+          <input id="b-location" name="location" required={!bid} defaultValue={bid?.location ?? ""} className={input} placeholder="e.g. Th. Vilufushi" />
+        </div>
         {!bid && (
           <div>
             <label htmlFor="b-status" className={label}>Stage</label>
