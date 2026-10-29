@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { canWrite, dbMessage, getSession, type Session } from "@/server/session";
 import { bidMessage, isBidStatus, localToIso, type Bid } from "@/lib/bids";
+import { stagePeers, stageView, VIEW_KEYS, type BoardBid } from "@/lib/bid-views";
 import { sendTelegram, telegramReady } from "@/lib/telegram";
+import { ensureWebhook } from "@/server/bid-bot";
 
 export type BidResult = { error?: string; ok?: boolean; id?: string; note?: string };
 const isId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
@@ -25,16 +27,22 @@ function refresh(id?: string) {
   revalidatePath("/tasks");
 }
 
-/** Post to the Telegram group; a failure is reported back, never undoes the save. */
+/**
+ * Post to the Telegram group; a failure is reported back, never undoes the save.
+ * A new bid or a change of stage comes with every bid now at that stage.
+ */
 async function tell(kind: Parameters<typeof bidMessage>[0], b: Bid, s: Session, note?: string | null) {
   if (!telegramReady()) return undefined;
-  const [h, { data: me }] = await Promise.all([
+  const [h, { data: me }, { data: peers }] = await Promise.all([
     headers(),
     s.supabase.from("profiles").select("full_name, email").eq("id", s.userId).maybeSingle(),
+    kind === "dates" ? Promise.resolve({ data: null }) : s.supabase.from("bids").select(COLS).eq("status", b.status),
   ]);
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const link = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}/bids/${b.id}` : null;
-  const r = await sendTelegram(bidMessage(kind, b, { link, by: me?.full_name || me?.email || null, note }));
+  let text = bidMessage(kind, b, { link, by: me?.full_name || me?.email || null, note });
+  if (peers) text += `\n${stagePeers(peers as BoardBid[], b.status, b.id)}`;
+  const r = await sendTelegram(text);
   return r.ok ? undefined : `Saved, but the Telegram message did not go: ${r.error}`;
 }
 
@@ -116,4 +124,22 @@ export async function deleteBid(id: string): Promise<BidResult> {
   if (error) return { error: dbMessage(error) };
   refresh();
   return { ok: true };
+}
+
+/**
+ * Post every bid, stage by stage, to the Telegram group with the buttons for the
+ * calendar and the list (admin); this also connects the group's commands.
+ */
+export async function postBidBoard(): Promise<BidResult> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (w.s.role !== "admin") return { error: "Only an admin can post the board." };
+  if (!telegramReady()) return { error: "Telegram is not set up." };
+  const h = await headers();
+  const hook = await ensureWebhook(h.get("x-forwarded-host") ?? h.get("host"));
+  const { data, error } = await w.s.supabase.from("bids").select(COLS);
+  if (error) return { error: dbMessage(error) };
+  const r = await sendTelegram(stageView((data ?? []) as BoardBid[]), { keyboard: VIEW_KEYS });
+  if (!r.ok) return { error: `Telegram did not take it: ${r.error}` };
+  return { ok: true, note: hook.ok ? "Posted to the group. The /bids, /calendar and /list commands work there too." : `Posted, but the commands could not be connected: ${hook.error}` };
 }

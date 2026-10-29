@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { Card, Empty, PageHeader, Stat, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
 import { BidFormButton } from "@/components/bids/bid-form";
+import { TelegramBoardButton } from "@/components/bids/telegram-board";
+import { telegramReady } from "@/lib/telegram";
 import { BID_STATUSES, BID_STATUS_LABEL, BID_STATUS_TONE, OPEN_BID, when, type Bid, type BidStatus } from "@/lib/bids";
 
 export const dynamic = "force-dynamic";
@@ -43,10 +45,11 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
         <Stat label="Win rate" value={decided ? `${Math.round((won / decided) * 100)}%` : "—"} hint={`${decided} decided`} />
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {tab("open", "Open", open.length)}
         {BID_STATUSES.map((st) => tab(st, BID_STATUS_LABEL[st], bids.filter((b) => b.status === st).length))}
         {tab("all", "All", bids.length)}
+        {s.role === "admin" && telegramReady() && <div className="ml-auto"><TelegramBoardButton /></div>}
       </div>
 
       <Card>

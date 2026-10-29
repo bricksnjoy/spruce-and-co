@@ -440,7 +440,9 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 2. The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.
 3. The meeting and deadline show on Tasks & Calendar.
 
-> When Telegram is set up, the company group is told about each new bid, each stage change, and any change to its dates.
+> When Telegram is set up, the company group is told about each new bid, each stage change (with every bid now at that stage), and any change to its dates.
+> Every morning at 8:00 the group gets the week's pre-bid meetings and deadlines, any deadline passed without submitting, and a calendar of the bid dates; its buttons switch between the calendar, the list and every bid by stage.
+> In the group, /bids shows every bid by stage, /calendar the bid dates on a calendar and /list the upcoming dates as a list. An admin's "Post board to Telegram" posts the board with its buttons and connects these commands.
 
 ### Bid
 
