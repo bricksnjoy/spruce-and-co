@@ -409,13 +409,13 @@ export const HELP: Help[] = [
     path: "/bids", area: "Other", title: "Bids",
     purpose: "Tenders the company is chasing, from registering to won or lost.",
     steps: [
-      "\"+ New bid\": the bid's name, the company that put it out, where the work is (location), the Gazette link, the pre-bid meeting (compulsory or optional) and the submission deadline.",
+      "\"+ New bid\": the bid's name, the company that put it out, where the work is (location), the Gazette link, the pre-bid meeting (compulsory or optional), the submission deadline and when the papers should be ready (blank: 2 days before the deadline).",
       "The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.",
       "The meeting and deadline show on Tasks & Calendar.",
     ],
     tips: [
       "When Telegram is set up, the company group is told about each new bid, each stage change and any change to its dates: the stage in bold, then the bid's name and company, its pre-bid meeting (when there is one), the submission date in bold, the location and the Gazette notice. A new bid or stage change also lists every bid now at that stage.",
-      "Every morning at 8:00 the group gets the week's pre-bid meetings and deadlines, any deadline passed without submitting, and a calendar of the bid dates; its buttons switch between the calendar, the list and every bid by stage.",
+      "Every evening at 8 PM the group gets a bid reminder: tomorrow's pre-bid meetings (when there are any), the bids with papers to prepare (papers ready by, and submission, counted down: in 4 days, tomorrow, TODAY, overdue by 1 day), the bids with papers ready awaiting submission, and how many bids are open. Its buttons show the calendar, the list and every bid by stage.",
       "In the group, /bids shows every bid by stage, /calendar the bid dates on a calendar and /list the upcoming dates as a list. An admin's \"Post board to Telegram\" posts the board with its buttons and connects these commands.",
     ],
   },

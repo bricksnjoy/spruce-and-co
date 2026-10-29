@@ -5,6 +5,7 @@ import { canWrite, getSession } from "@/server/session";
 import { BidFormButton } from "@/components/bids/bid-form";
 import { DeleteBid, NoteForm, StageControl } from "@/components/bids/bid-controls";
 import { BID_STATUS_LABEL, BID_STATUS_TONE, isBidStatus, when, type Bid } from "@/lib/bids";
+import { papersDue, shortDay } from "@/lib/bid-views";
 import { dateTime } from "@/lib/format";
 import { telegramReady } from "@/lib/telegram";
 
@@ -17,7 +18,7 @@ export default async function BidPage({ params }: { params: Promise<{ id: string
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const [{ data }, { data: events }] = await Promise.all([
-    s.supabase.from("bids").select("id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id").eq("id", id).maybeSingle(),
+    s.supabase.from("bids").select("id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, papers_due_on, submission_due_at, notes, project_id").eq("id", id).maybeSingle(),
     s.supabase.from("bid_events").select("id, status, note, created_at, profiles:created_by(full_name, email)").eq("bid_id", id).order("created_at", { ascending: false }),
   ]);
   if (!data) notFound();
@@ -78,6 +79,7 @@ export default async function BidPage({ params }: { params: Promise<{ id: string
               {b.prebid_meeting_at ? <>{when(b.prebid_meeting_at)}{b.prebid_attendance && <span className={`ml-1 rounded px-1.5 text-[11px] ${b.prebid_attendance === "compulsory" ? "bg-red-50 text-red-700" : "bg-[var(--hover)]"}`}>{b.prebid_attendance}</span>}</> : "—"}
             </Row>
             <Row k="Submission deadline">{b.submission_due_at ? when(b.submission_due_at) : "—"}</Row>
+            <Row k="Papers ready by">{papersDue(b) ? <>{shortDay(papersDue(b)!)}{!b.papers_due_on && <span className="block text-xs text-[var(--muted)]">2 days before the deadline</span>}</> : "—"}</Row>
             {b.notes && <Row k="Notes"><span className="whitespace-pre-line">{b.notes}</span></Row>}
           </dl>
         </Card>

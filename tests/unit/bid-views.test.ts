@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { bidEvents, calendarView, dailyDigest, listView, monthGrid, stagePeers, stageView, type BoardBid } from "@/lib/bid-views";
+import { bidEvents, calendarView, dailyDigest, fromToday, listView, monthGrid, papersDue, stagePeers, stageView, type BoardBid } from "@/lib/bid-views";
 
-// Thursday 29 October 2026, 08:00 in the Maldives
-const NOW = new Date("2026-10-29T03:00:00Z");
+// Thursday 29 October 2026, 8 PM in the Maldives, when the reminder goes
+const NOW = new Date("2026-10-29T15:00:00Z");
 const bid = (x: Partial<BoardBid> & { id: string; name: string }): BoardBid => ({
   company: null, location: null, gazette_url: null, status: "registered", prebid_meeting_at: null, prebid_attendance: null, submission_due_at: null, ...x,
 });
@@ -66,14 +66,51 @@ describe("what the Telegram group sees of the bids", () => {
     expect(v).toContain("1 open bid has no dates yet.");
   });
 
-  it("reminds each morning of today, tomorrow and the week, and keeps quiet when the week is clear", () => {
+  it("counts days the way the group reads them", () => {
+    const t = "2026-10-29";
+    expect(["2026-11-02", "2026-10-31", "2026-10-30", "2026-10-29", "2026-10-28", "2026-10-26"].map((d) => fromToday(t, d)))
+      .toEqual(["in 4 days", "in 2 days", "tomorrow", "<b>TODAY</b>", "<b>overdue by 1 day</b>", "<b>overdue by 3 days</b>"]);
+  });
+
+  it("has the papers ready two days before the deadline, unless a date is set", () => {
+    expect(papersDue({ papers_due_on: null, submission_due_at: "2026-11-04T05:30:00Z" })).toBe("2026-11-02");
+    expect(papersDue({ papers_due_on: "2026-11-01", submission_due_at: "2026-11-04T05:30:00Z" })).toBe("2026-11-01");
+    expect(papersDue({ papers_due_on: null, submission_due_at: null })).toBeNull();
+  });
+
+  it("reminds each morning in the group's layout", () => {
+    const callCenter = bid({ id: "cc", name: "Call Center Reception Area Work", company: "Ministry of Health", location: "Malé",
+      prebid_meeting_at: "2026-10-30T05:00:00Z", submission_due_at: "2026-11-04T05:30:00Z" });
+    expect(dailyDigest([callCenter, bid({ id: "w", name: "Old", status: "won" })], NOW)).toBe([
+      "<b>Bid Reminder – 29 Oct 2026 Thursday</b>",
+      "",
+      "<b>Pre-bid meetings tomorrow</b>",
+      "• Call Center Reception Area Work – Ministry of Health",
+      "Fri, 30 Oct, 10:00 · Ministry of Health, Malé",
+      "",
+      "<b>Registered – papers to prepare</b>",
+      "• Call Center Reception Area Work – Ministry of Health",
+      "Papers ready by: Mon, 2 Nov (in 4 days)",
+      "Submission: Wed, 4 Nov, 10:30 (in 6 days)",
+      "",
+      "<b>Papers ready – awaiting submission</b>",
+      "• None",
+      "",
+      "📊 Open bids: 1",
+    ].join("\n"));
+  });
+
+  it("shows overdue papers and bids awaiting submission, and keeps quiet when nothing is being prepared", () => {
     const d = dailyDigest(BIDS, NOW)!;
-    expect(d).toMatch(/^⏰ <b>Bid reminders<\/b> · Thu 29 Oct/);
-    expect(d).toContain("<b>Today</b>\n• 10:00 · 🤝 Pre-bid meeting");
-    expect(d).toContain("<b>Tomorrow</b>\n• 14:00 · ⏳ Submission due — <b>Jetty</b>");
-    expect(d).toContain("<pre>October 2026");
-    expect(dailyDigest([BIDS[4], BIDS[5]], NOW)).toBeNull();
-    expect(dailyDigest([bid({ id: "z", name: "Far", submission_due_at: "2026-12-20T08:00:00Z" })], NOW)).toBeNull();
+    expect(d).toContain("• Road\nPapers ready by: Sun, 25 Oct (<b>overdue by 4 days</b>)\nSubmission: Tue, 27 Oct, 14:00 (<b>overdue by 2 days</b>)");
+    expect(d).toContain("<b>Papers ready – awaiting submission</b>\n• Jetty\nSubmission: Fri, 30 Oct, 14:00 (tomorrow)");
+    expect(d).not.toContain("Pre-bid meetings today"); // over by 8 PM
+    expect(dailyDigest([bid({ id: "t", name: "Today", status: "papers_ready", submission_due_at: "2026-10-29T05:30:00Z" })], NOW))
+      .toContain("Submission: Thu, 29 Oct, 10:30 (<b>overdue</b>)");
+    expect(dailyDigest([bid({ id: "n", name: "Tonight", status: "papers_ready", submission_due_at: "2026-10-29T18:00:00Z" })], NOW))
+      .toContain("Submission: Thu, 29 Oct, 23:00 (<b>TODAY</b>)");
+    expect(d).toMatch(/📊 Open bids: 5$/);
+    expect(dailyDigest([BIDS[3], BIDS[4]], NOW)).toBeNull(); // submitted and won only
   });
 
   it("stays under Telegram's size limit however many bids there are", () => {

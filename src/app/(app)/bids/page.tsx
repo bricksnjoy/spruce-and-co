@@ -15,7 +15,7 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
   if (!s) redirect("/login");
   const { status: filter } = await searchParams;
   const { data } = await s.supabase.from("bids")
-    .select("id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id")
+    .select("id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, papers_due_on, submission_due_at, notes, project_id")
     .order("submission_due_at", { ascending: true, nullsFirst: false });
   const bids = (data ?? []) as Bid[];
   const now = new Date().toISOString();
