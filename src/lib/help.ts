@@ -414,6 +414,7 @@ export const HELP: Help[] = [
       "The meeting and deadline show on Tasks & Calendar.",
     ],
     tips: [
+      "In a Telegram group with topics, everything about bids goes to one topic (Bid timelines); a command is answered in the topic it was typed in.",
       "When Telegram is set up, the company group is told about each new bid, each stage change and any change to its dates: the stage in bold, then the bid's name and company, its pre-bid meeting (when there is one), the submission date in bold, the location and the Gazette notice. A new bid or stage change also lists every bid now at that stage.",
       "Every evening at 8 PM the group gets a bid reminder: tomorrow's pre-bid meetings (when there are any), the bids with papers to prepare (papers ready by, and submission, counted down: in 4 days, tomorrow, TODAY, overdue by 1 day), the bids with papers ready awaiting submission, and how many bids are open. Its buttons show the calendar, the list and every bid by stage.",
       "Under the 8 PM reminder the bot asks who is going to each pre-bid meeting tomorrow and who is submitting each set of papers that is ready: tap a name (tap again to take it off), or \"✋ Me\". The names are the people the bot has seen in the group: its admins, anyone who joins, writes a command or taps a button (Telegram does not let a bot list a group's members). At 9 PM, anything still without a name calls everyone in the group. The bid's page shows who was picked.",

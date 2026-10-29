@@ -6,7 +6,7 @@ import { botAssign, botAssignments, botBids, botPeople, isBotSecret, personOf, p
 
 type TgUser = { id: number; is_bot?: boolean; first_name?: string; last_name?: string; username?: string };
 type Update = {
-  message?: { text?: string; chat?: { id?: number }; from?: TgUser; new_chat_members?: TgUser[]; left_chat_member?: TgUser };
+  message?: { text?: string; chat?: { id?: number }; message_thread_id?: number; is_topic_message?: boolean; from?: TgUser; new_chat_members?: TgUser[]; left_chat_member?: TgUser };
   callback_query?: { id: string; data?: string; from?: TgUser; message?: { message_id: number; chat?: { id?: number } } };
 };
 const VIEWS: Record<string, BidView> = { "v:cal": "cal", "v:list": "list", "v:stage": "stage" };
@@ -37,12 +37,14 @@ export async function POST(request: Request) {
 
   const command = msg?.text ? /^\/([a-z]+)(?:@\w+)?(?:\s|$)/i.exec(msg.text)?.[1]?.toLowerCase() : undefined;
   const asked = command ? COMMAND_VIEW[command] : undefined;
+  // answered in the topic it was asked in (the bids' topic when asked in General)
+  const topic = msg?.is_topic_message ? msg.message_thread_id : undefined;
   if (asked) {
     const r = await botBids();
-    await sendTelegram("error" in r ? `The bids could not be read: ${r.error}` : renderView(asked, r.bids, new Date()), { keyboard: VIEW_KEYS });
+    await sendTelegram("error" in r ? `The bids could not be read: ${r.error}` : renderView(asked, r.bids, new Date()), { keyboard: VIEW_KEYS, topic });
   } else if (command === "reminder") {
     const r = await postReminder(new Date());
-    if (!r.sent) await sendTelegram(`Nothing to remind: ${r.reason ?? "the reminder could not be sent."}`);
+    if (!r.sent) await sendTelegram(`Nothing to remind: ${r.reason ?? "the reminder could not be sent."}`, { topic });
   }
 
   if (press) {

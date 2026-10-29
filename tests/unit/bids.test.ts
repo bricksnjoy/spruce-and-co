@@ -60,3 +60,18 @@ describe("the bot token", () => {
     expect(botToken(undefined)).toBeNull();
   });
 });
+
+describe("the bids' topic", () => {
+  it("is the number from the topic's link, or none", async () => {
+    const { bidTopic } = await import("@/lib/telegram");
+    const was = process.env.TELEGRAM_TOPIC_ID;
+    try {
+      process.env.TELEGRAM_TOPIC_ID = "5";
+      expect(bidTopic()).toBe(5);
+      process.env.TELEGRAM_TOPIC_ID = "";
+      expect(bidTopic()).toBeUndefined();
+      process.env.TELEGRAM_TOPIC_ID = "Bid timelines";
+      expect(bidTopic()).toBeUndefined();
+    } finally { process.env.TELEGRAM_TOPIC_ID = was; }
+  });
+});
