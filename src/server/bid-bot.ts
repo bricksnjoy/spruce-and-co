@@ -1,8 +1,8 @@
 /**
  * The Telegram bot's side of the server: it reads the bids with its own key
- * (no one is signed in when Telegram or the morning timer calls), and keeps the
+ * (no one is signed in when Telegram or the evening timer calls), and keeps the
  * bot pointed at this site. The key is CRON_SECRET, which also signs the
- * morning timer's call (Vercel sends it) and Telegram's deliveries.
+ * evening timer's call (Vercel sends it) and Telegram's deliveries.
  */
 import { timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";

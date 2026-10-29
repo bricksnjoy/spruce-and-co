@@ -3,10 +3,10 @@ import { sendTelegram, telegramReady } from "@/lib/telegram";
 import { botBids, ensureWebhook, isBotSecret } from "@/server/bid-bot";
 
 /**
- * The morning reminder (Vercel's timer calls this at 8:00 Maldives time, see
- * vercel.json): the week's pre-bid meetings and deadlines and the calendar,
- * posted to the group when there is anything to say. It also keeps the bot's
- * commands connected.
+ * The evening reminder (Vercel's timer calls this at 8 PM Maldives time, 15:00
+ * UTC, see vercel.json): tomorrow's pre-bid meetings, the papers to prepare and
+ * the bids awaiting submission, posted to the group when there is anything to
+ * say. It also keeps the bot's commands connected.
  */
 export async function GET(request: Request) {
   const auth = request.headers.get("authorization") ?? "";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const r = await botBids();
   if ("error" in r) return Response.json({ sent: false, reason: r.error }, { status: 500 });
   const text = dailyDigest(r.bids, new Date());
-  if (!text) return Response.json({ sent: false, reason: "No bid dates this week.", commands: hook.ok });
+  if (!text) return Response.json({ sent: false, reason: "No bid is being prepared or awaiting submission.", commands: hook.ok });
   const sent = await sendTelegram(text, { keyboard: VIEW_KEYS });
   return Response.json({ sent: sent.ok, ...(sent.ok ? {} : { reason: sent.error }), commands: hook.ok ? true : hook.error });
 }

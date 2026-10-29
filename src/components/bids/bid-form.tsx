@@ -70,6 +70,11 @@ export function BidForm({ bid, onDone }: { bid?: Bid; onDone?: () => void }) {
           <p className={hint}>Both dates go on Tasks &amp; Calendar. Maldives time.</p>
         </div>
       </div>
+      <div className="sm:w-1/2">
+        <label htmlFor="b-papers" className={label}>Papers ready by</label>
+        <input id="b-papers" name="papers_due_on" type="date" defaultValue={bid?.papers_due_on ?? ""} className={input} />
+        <p className={hint}>Leave blank for 2 days before the submission deadline. The 8 PM reminder counts down to it.</p>
+      </div>
       <div>
         <label htmlFor="b-notes" className={label}>Notes</label>
         <textarea id="b-notes" name="notes" rows={2} defaultValue={bid?.notes ?? ""} className={input} />

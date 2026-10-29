@@ -11,7 +11,7 @@ import { ensureWebhook } from "@/server/bid-bot";
 export type BidResult = { error?: string; ok?: boolean; id?: string; note?: string };
 const isId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
 const text = (fd: FormData, k: string) => { const v = String(fd.get(k) ?? "").trim(); return v === "" ? null : v; };
-const COLS = "id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, submission_due_at, notes, project_id";
+const COLS = "id, name, company, location, gazette_url, status, prebid_meeting_at, prebid_attendance, papers_due_on, submission_due_at, notes, project_id";
 
 async function writer() {
   const s = await getSession();
@@ -56,6 +56,8 @@ export async function saveBid(_prev: unknown, fd: FormData): Promise<BidResult> 
   const meeting = localToIso(meetingRaw), due = localToIso(dueRaw);
   if (meetingRaw && !meeting) return { error: "Enter the pre-bid meeting as a date and time." };
   if (dueRaw && !due) return { error: "Enter the submission deadline as a date and time." };
+  const papers = text(fd, "papers_due_on");
+  if (papers && !/^\d{4}-\d{2}-\d{2}$/.test(papers)) return { error: "Enter when the papers should be ready as a date." };
   const attendance = text(fd, "prebid_attendance");
   if (attendance && attendance !== "optional" && attendance !== "compulsory") return { error: "Attendance is optional or compulsory." };
   const status = text(fd, "status") ?? "registered";
@@ -63,7 +65,7 @@ export async function saveBid(_prev: unknown, fd: FormData): Promise<BidResult> 
 
   const row = {
     name, company: text(fd, "company"), location: text(fd, "location"), gazette_url: gazette, prebid_meeting_at: meeting,
-    prebid_attendance: meeting ? attendance : null, submission_due_at: due, notes: text(fd, "notes"),
+    prebid_attendance: meeting ? attendance : null, papers_due_on: papers, submission_due_at: due, notes: text(fd, "notes"),
   };
   const { s } = w;
   if (!id) {

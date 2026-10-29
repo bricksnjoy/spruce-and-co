@@ -26,6 +26,8 @@ export const OPEN_BID: BidStatus[] = ["registered", "prebid_meeting", "papers_re
 export type Bid = {
   id: string; name: string; company: string | null; location: string | null; gazette_url: string | null; status: BidStatus;
   prebid_meeting_at: string | null; prebid_attendance: "optional" | "compulsory" | null;
+  /** yyyy-mm-dd; blank means two days before the submission deadline */
+  papers_due_on?: string | null;
   submission_due_at: string | null; notes: string | null; project_id: string | null;
 };
 
