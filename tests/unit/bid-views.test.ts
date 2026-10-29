@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { bidEvents, calendarView, dailyDigest, fromToday, listView, monthGrid, papersDue, stagePeers, stageView, type BoardBid } from "@/lib/bid-views";
+import {
+  assignKeyboard, assignMessage, assignTargets, bidEvents, calendarView, chaseMessage, dailyDigest, fromToday, listView, monthGrid, papersDue, stagePeers, stageView, unhex,
+  type BoardBid,
+} from "@/lib/bid-views";
 
 // Thursday 29 October 2026, 8 PM in the Maldives, when the reminder goes
 const NOW = new Date("2026-10-29T15:00:00Z");
@@ -119,5 +122,49 @@ describe("what the Telegram group sees of the bids", () => {
       expect(v.length).toBeLessThan(4096);
       expect(v.match(/<pre>/g)?.length ?? 0).toBe(v.match(/<\/pre>/g)?.length ?? 0);
     }
+  });
+});
+
+describe("who goes: the pre-bid meeting and the papers", () => {
+  const callCenter = bid({ id: "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0", name: "Call Center Reception Area Work", company: "Ministry of Health", location: "Malé",
+    prebid_meeting_at: "2026-10-30T05:00:00Z", submission_due_at: "2026-11-04T05:30:00Z" });
+  const ready = bid({ id: "11111111-2222-3333-4444-555555555555", name: "Jetty", status: "papers_ready", location: "Th. Vilufushi", submission_due_at: "2026-11-02T05:00:00Z" });
+  const people = [{ user_id: 1190901447, name: "Muaz" }, { user_id: 22, name: "Dhonbe" }, { user_id: 33, name: "beybe" }, { user_id: 44, name: "Ali" }];
+
+  it("asks tonight about tomorrow's pre-bid meetings and the papers that are ready", () => {
+    expect(assignTargets([callCenter, ready, bid({ id: "x", name: "Later", prebid_meeting_at: "2026-11-05T05:00:00Z" })], NOW)
+      .map((t) => `${t.bid.name}:${t.task}`)).toEqual(["Call Center Reception Area Work:prebid", "Jetty:submit"]);
+  });
+
+  it("asks with every name as a button, ticks who is on it, and fits Telegram's button limit", () => {
+    expect(assignMessage(callCenter, "prebid", [])).toBe([
+      "🤝 <b>Who is going to the pre-bid meeting?</b>",
+      "• Call Center Reception Area Work – Ministry of Health",
+      "Fri, 30 Oct, 10:00 · Ministry of Health, Malé",
+      "",
+      "No one yet: tap a name.",
+    ].join("\n"));
+    const assigned = [{ bid_id: ready.id, task: "submit" as const, user_id: 22, name: "Dhonbe" }];
+    expect(assignMessage(ready, "submit", assigned)).toContain("Submission: Mon, 2 Nov, 10:00 · Th. Vilufushi\n\nSubmitting: <b>Dhonbe</b>");
+    const keys = assignKeyboard(ready, "submit", people, assigned);
+    expect(keys.map((row) => row.map(([label]) => label))).toEqual([["Muaz", "✅ Dhonbe", "beybe"], ["Ali"], ["✋ Me"]]);
+    expect(keys[0][0][1]).toBe("as:11111111222233334444555555555555:s:1190901447");
+    expect(unhex("11111111222233334444555555555555")).toBe(ready.id);
+    for (const [, data] of keys.flat()) expect(Buffer.byteLength(data)).toBeLessThanOrEqual(64);
+  });
+
+  it("shows who goes in the reminder", () => {
+    const d = dailyDigest([callCenter, ready], NOW, [
+      { bid_id: callCenter.id, task: "prebid", user_id: 1, name: "Muaz" }, { bid_id: ready.id, task: "submit", user_id: 2, name: "Dhonbe" },
+    ])!;
+    expect(d).toContain("Fri, 30 Oct, 10:00 · Ministry of Health, Malé\nGoing: <b>Muaz</b>");
+    expect(d).toContain("• Jetty\nSubmission: Mon, 2 Nov, 10:00 (in 4 days)\nSubmitting: <b>Dhonbe</b>");
+  });
+
+  it("calls everyone by name at 9 PM when no one is on it", () => {
+    const m = chaseMessage(callCenter, "prebid", people.slice(0, 2));
+    expect(m).toMatch(/^⏰ <b>No one is going to tomorrow's pre-bid meeting yet<\/b>\n• Call Center/);
+    expect(m).toContain('📣 <a href="tg://user?id=1190901447">Muaz</a>, <a href="tg://user?id=22">Dhonbe</a>: tap a name below.');
+    expect(chaseMessage(ready, "submit", people, false)).toMatch(/No one is submitting these papers yet[\s\S]*\nTap a name below\.$/);
   });
 });

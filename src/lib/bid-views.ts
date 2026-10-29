@@ -13,7 +13,8 @@ export type BidView = "cal" | "list" | "stage" | "help";
 export const VIEW_KEYS: Keyboard = [[["📅 Calendar", "v:cal"], ["📋 List", "v:list"], ["📊 By stage", "v:stage"]]];
 /** The bot's commands in the group, as Telegram's menu lists them. */
 export const BOT_COMMANDS: [string, string][] = [
-  ["bids", "Every bid, by stage"], ["calendar", "Bid dates on a calendar"], ["list", "Upcoming bid dates as a list"], ["help", "What the bot does"],
+  ["bids", "Every bid, by stage"], ["calendar", "Bid dates on a calendar"], ["list", "Upcoming bid dates as a list"],
+  ["reminder", "Send the 8 PM bid reminder now"], ["help", "What the bot does"],
 ];
 export const COMMAND_VIEW: Record<string, BidView> = { bids: "stage", stages: "stage", calendar: "cal", list: "list", help: "help", start: "help" };
 
@@ -189,7 +190,7 @@ const byDate = (k: (b: BoardBid) => string | null) => (a: BoardBid, b: BoardBid)
  * dates counted down, the bids with papers ready awaiting submission, and how
  * many bids are open. Nothing when no bid is being prepared or awaiting submission.
  */
-export function dailyDigest(bids: BoardBid[], now: Date): string | null {
+export function dailyDigest(bids: BoardBid[], now: Date, assigned: Assignment[] = []): string | null {
   const today = dayOf(now.toISOString());
   const preparing = bids.filter((b) => TO_PREPARE.includes(b.status)).sort(byDate((b) => papersDue(b)));
   const ready = bids.filter((b) => b.status === "papers_ready").sort(byDate((b) => b.submission_due_at));
@@ -208,7 +209,7 @@ export function dailyDigest(bids: BoardBid[], now: Date): string | null {
     parts.push("", `<b>${title}</b>`);
     for (const b of list) {
       const where = [b.company, b.location].filter(Boolean).map((x) => tg(x!)).join(", ");
-      parts.push(bullet(b), `${dayTime(b.prebid_meeting_at!)}${where ? ` · ${where}` : ""}`);
+      parts.push(bullet(b), `${dayTime(b.prebid_meeting_at!)}${where ? ` · ${where}` : ""}`, ...goingLine(assigned, b.id, "prebid"));
     }
   };
   meetingSection("Pre-bid meetings tomorrow", meetTomorrow);
@@ -221,20 +222,89 @@ export function dailyDigest(bids: BoardBid[], now: Date): string | null {
   }
   parts.push("", "<b>Papers ready – awaiting submission</b>");
   if (!ready.length) parts.push("• None");
-  for (const b of ready) parts.push(bullet(b), ...submission(b));
+  for (const b of ready) parts.push(bullet(b), ...submission(b), ...goingLine(assigned, b.id, "submit"));
 
   parts.push("", `📊 Open bids: ${bids.filter((b) => OPEN.includes(b.status)).length}`);
   return fit(parts);
 }
 
+/* ── Who goes: the pre-bid meeting and handing in the papers ─────────────── */
+
+export type Task = "prebid" | "submit";
+export type Assignment = { bid_id: string; task: Task; user_id: number | string; name: string };
+/** Someone the bot has seen in the group. */
+export type Person = { user_id: number | string; name: string; username?: string | null };
+
+const TASK_WORD: Record<Task, string> = { prebid: "Going", submit: "Submitting" };
+const names = (assigned: Assignment[], bid: string, task: Task) => assigned.filter((a) => a.bid_id === bid && a.task === task).map((a) => tg(a.name));
+function goingLine(assigned: Assignment[], bid: string, task: Task): string[] {
+  const n = names(assigned, bid, task);
+  return n.length ? [`${TASK_WORD[task]}: <b>${n.join(", ")}</b>`] : [];
+}
+
+/** Tonight's choices: who goes to tomorrow's pre-bid meetings, and who hands in the papers that are ready. */
+export function assignTargets(bids: BoardBid[], now: Date): { bid: BoardBid; task: Task }[] {
+  const tomorrow = addDays(dayOf(now.toISOString()), 1);
+  return [
+    ...bids.filter((b) => TO_SUBMIT.includes(b.status) && b.prebid_meeting_at && dayOf(b.prebid_meeting_at) === tomorrow)
+      .sort(byDate((b) => b.prebid_meeting_at)).map((bid) => ({ bid, task: "prebid" as const })),
+    ...bids.filter((b) => b.status === "papers_ready").sort(byDate((b) => b.submission_due_at)).map((bid) => ({ bid, task: "submit" as const })),
+  ];
+}
+
+/** The question under the reminder, with who is on it so far. */
+export function assignMessage(b: BoardBid, task: Task, assigned: Assignment[]): string {
+  const where = [b.company, b.location].filter(Boolean).map((x) => tg(x!)).join(", ");
+  const when = task === "prebid" ? b.prebid_meeting_at : b.submission_due_at;
+  const n = names(assigned, b.id, task);
+  return [
+    task === "prebid" ? "🤝 <b>Who is going to the pre-bid meeting?</b>" : "📦 <b>Who is submitting the papers?</b>",
+    bullet(b),
+    `${task === "submit" ? "Submission: " : ""}${when ? dayTime(when) : "date not set"}${where ? ` · ${where}` : ""}`,
+    "",
+    n.length ? `${TASK_WORD[task]}: <b>${n.join(", ")}</b>` : "No one yet: tap a name.",
+  ].join("\n");
+}
+
+const hex = (id: string) => id.replace(/-/g, "");
+/** A bid's id back from the 32 characters a button carries. */
+export const unhex = (h: string) => `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+const T: Record<Task, string> = { prebid: "p", submit: "s" };
+export const TASK_OF: Record<string, Task> = { p: "prebid", s: "submit" };
+
+/** A button per person in the group (ticked when on it), three to a row, and "✋ Me". */
+export function assignKeyboard(b: BoardBid, task: Task, people: Person[], assigned: Assignment[]): Keyboard {
+  const on = new Set(assigned.filter((a) => a.bid_id === b.id && a.task === task).map((a) => String(a.user_id)));
+  const buttons: [string, string][] = people.map((p) => [`${on.has(String(p.user_id)) ? "✅ " : ""}${p.name}`, `as:${hex(b.id)}:${T[task]}:${p.user_id}`]);
+  const rows: Keyboard = [];
+  for (let i = 0; i < buttons.length; i += 3) rows.push(buttons.slice(i, i + 3));
+  rows.push([["✋ Me", `me:${hex(b.id)}:${T[task]}`]]);
+  return rows;
+}
+
+/** At 9 PM, still no one on it: everyone in the group is called (by name, so each is notified). */
+export function chaseMessage(b: BoardBid, task: Task, people: Person[], callEveryone = true): string {
+  const everyone = people.map((p) => `<a href="tg://user?id=${p.user_id}">${tg(p.name)}</a>`).join(", ");
+  return [
+    task === "prebid" ? "⏰ <b>No one is going to tomorrow's pre-bid meeting yet</b>" : "⏰ <b>No one is submitting these papers yet</b>",
+    assignMessage(b, task, []).split("\n").slice(1, 3).join("\n"),
+    "",
+    callEveryone ? `📣 ${everyone || "@everyone"}: tap a name below.` : "Tap a name below.",
+  ].join("\n");
+}
+
+/** Today's date in the Maldives (yyyy-mm-dd). */
+export const maldivesDay = (now: Date) => dayOf(now.toISOString());
+
 export const HELP = [
   "🤖 <b>Spruce &amp; Co bids</b>",
   "Each new bid and each change of stage is posted here, with every bid at that stage.",
-  "Every evening at 8 PM: tomorrow's pre-bid meetings, the papers to prepare and the bids awaiting submission, counted down.",
+  "Every evening at 8 PM: tomorrow's pre-bid meetings, the papers to prepare and the bids awaiting submission, counted down; tap a name to say who goes to each meeting and who submits the papers. At 9 PM, anything still without a name calls everyone.",
   "",
   "/bids — every bid, by stage",
   "/calendar — bid dates on a calendar",
   "/list — upcoming bid dates as a list",
+  "/reminder — the 8 PM reminder, now",
 ].join("\n");
 
 export function renderView(view: BidView, bids: BoardBid[], now: Date): string {
