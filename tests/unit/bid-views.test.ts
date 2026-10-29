@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  assignKeyboard, assignMessage, assignTargets, bidEvents, calendarView, chaseMessage, dailyDigest, fromToday, listView, monthGrid, papersDue, stagePeers, stageView, unhex,
+  assignKeyboard, assignMessage, assignTargets, bidEvents, calendarView, chaseMessage, dailyDigest, dueSoon, fromToday, listView, monthGrid, papersDue,
+  soonKey, soonMessage, stagePeers, stageView, unhex,
   type BoardBid,
 } from "@/lib/bid-views";
 
@@ -166,5 +167,39 @@ describe("who goes: the pre-bid meeting and the papers", () => {
     expect(m).toMatch(/^⏰ <b>No one is going to tomorrow's pre-bid meeting yet<\/b>\n• Call Center/);
     expect(m).toContain('📣 <a href="tg://user?id=1190901447">Muaz</a>, <a href="tg://user?id=22">Dhonbe</a>: tap a name below.');
     expect(chaseMessage(ready, "submit", people, false)).toMatch(/No one is submitting these papers yet[\s\S]*\nTap a name below\.$/);
+  });
+});
+
+describe("two hours before", () => {
+  const meet = bid({ id: "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0", name: "Call Center Reception Area Work", company: "Ministry of Health", location: "Malé",
+    status: "prebid_meeting", prebid_meeting_at: "2026-10-30T05:00:00Z", submission_due_at: "2026-11-04T05:30:00Z" });
+
+  it("picks what starts within the next two hours, not after it starts, nor for bids already submitted", () => {
+    const at = (iso: string) => dueSoon([meet, { ...meet, id: "s", status: "submitted" }], new Date(iso)).map((d) => `${d.bid.id}:${d.task}`);
+    expect(at("2026-10-30T02:59:00Z")).toEqual([]); // 10:00 meeting, 07:59 in the Maldives
+    expect(at("2026-10-30T03:00:00Z")).toEqual([`${meet.id}:prebid`]);
+    expect(at("2026-10-30T04:55:00Z")).toEqual([`${meet.id}:prebid`]);
+    expect(at("2026-10-30T05:00:00Z")).toEqual([]);
+    expect(at("2026-11-04T03:35:00Z")).toEqual([`${meet.id}:submit`]);
+  });
+
+  it("is sent once per meeting, and again only if its time changes", () => {
+    expect(soonKey(meet.id, "prebid", "2026-10-30T05:00:00Z")).toBe("2h:p:0f1e2d3c4b5a69788796a5b4c3d2e1f0:1793336400");
+    expect(soonKey(meet.id, "prebid", "2026-10-30T06:00:00Z")).not.toBe(soonKey(meet.id, "prebid", "2026-10-30T05:00:00Z"));
+  });
+
+  it("names whoever is going, and calls everyone when no one is", () => {
+    const people = [{ user_id: 11, name: "Muaz" }, { user_id: 22, name: "Dhonbe" }];
+    expect(soonMessage(meet, "prebid", [{ bid_id: meet.id, task: "prebid", user_id: 11, name: "Muaz" }], people)).toBe([
+      "<b>Reminder to attend the pre bid meeting</b>",
+      "",
+      "Name: Call Center Reception Area Work – Ministry of Health",
+      "Date: Fri, 30 Oct, 10:00",
+      "Location: Malé",
+      'Assigned: <a href="tg://user?id=11">Muaz</a>',
+    ].join("\n"));
+    const sub = soonMessage(meet, "submit", [], people);
+    expect(sub).toMatch(/^<b>Reminder to attend the bid submission meeting<\/b>\n\nName: Call Center[\s\S]*\nDate: Wed, 4 Nov, 10:30\n/);
+    expect(sub).toContain('Assigned: no one yet 📣 <a href="tg://user?id=11">Muaz</a>, <a href="tg://user?id=22">Dhonbe</a>');
   });
 });

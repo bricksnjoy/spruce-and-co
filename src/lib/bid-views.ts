@@ -284,12 +284,48 @@ export function assignKeyboard(b: BoardBid, task: Task, people: Person[], assign
 
 /** At 9 PM, still no one on it: everyone in the group is called (by name, so each is notified). */
 export function chaseMessage(b: BoardBid, task: Task, people: Person[], callEveryone = true): string {
-  const everyone = people.map((p) => `<a href="tg://user?id=${p.user_id}">${tg(p.name)}</a>`).join(", ");
+  const everyone = people.map((p) => mention(p.user_id, p.name)).join(", ");
   return [
     task === "prebid" ? "⏰ <b>No one is going to tomorrow's pre-bid meeting yet</b>" : "⏰ <b>No one is submitting these papers yet</b>",
     assignMessage(b, task, []).split("\n").slice(1, 3).join("\n"),
     "",
     callEveryone ? `📣 ${everyone || "@everyone"}: tap a name below.` : "Tap a name below.",
+  ].join("\n");
+}
+
+/* ── Two hours before: the pre-bid meeting and the submission ────────────── */
+
+const LEAD_MS = 2 * 3600_000;
+const mention = (id: number | string, name: string) => `<a href="tg://user?id=${id}">${tg(name)}</a>`;
+
+/** The pre-bid meetings and submissions of bids not yet submitted that start within the next two hours. */
+export function dueSoon(bids: BoardBid[], now: Date): { bid: BoardBid; task: Task; at: string }[] {
+  const out: { bid: BoardBid; task: Task; at: string }[] = [];
+  for (const b of bids) {
+    if (!TO_SUBMIT.includes(b.status)) continue;
+    for (const [task, at] of [["prebid", b.prebid_meeting_at], ["submit", b.submission_due_at]] as const) {
+      const t = at ? Date.parse(at) : NaN;
+      if (at && t > now.getTime() && t - LEAD_MS <= now.getTime()) out.push({ bid: b, task, at });
+    }
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** Once per event: the same key until its time changes. */
+export const soonKey = (bid: string, task: Task, at: string) => `2h:${T[task]}:${hex(bid)}:${Math.round(Date.parse(at) / 1000)}`;
+
+/** Two hours before: what, when, where, and who is going, called by name (everyone when no one is). */
+export function soonMessage(b: BoardBid, task: Task, assigned: Assignment[], people: Person[]): string {
+  const on = assigned.filter((a) => a.bid_id === b.id && a.task === task);
+  const at = task === "prebid" ? b.prebid_meeting_at! : b.submission_due_at!;
+  return [
+    `<b>Reminder to attend the ${task === "prebid" ? "pre bid meeting" : "bid submission meeting"}</b>`,
+    "",
+    `Name: ${tg(b.name)}${b.company ? ` – ${tg(b.company)}` : ""}`,
+    `Date: ${dayTime(at)}`,
+    `Location: ${b.location ? tg(b.location) : "—"}`,
+    on.length ? `Assigned: ${on.map((a) => mention(a.user_id, a.name)).join(", ")}`
+      : `Assigned: no one yet${people.length ? ` 📣 ${people.map((p) => mention(p.user_id, p.name)).join(", ")}` : ""}`,
   ].join("\n");
 }
 
@@ -299,7 +335,7 @@ export const maldivesDay = (now: Date) => dayOf(now.toISOString());
 export const HELP = [
   "🤖 <b>Spruce &amp; Co bids</b>",
   "Each new bid and each change of stage is posted here, with every bid at that stage.",
-  "Every evening at 8 PM: tomorrow's pre-bid meetings, the papers to prepare and the bids awaiting submission, counted down; tap a name to say who goes to each meeting and who submits the papers. At 9 PM, anything still without a name calls everyone.",
+  "Every evening at 8 PM: tomorrow's pre-bid meetings, the papers to prepare and the bids awaiting submission, counted down; tap a name to say who goes to each meeting and who submits the papers. At 9 PM, anything still without a name calls everyone. Two hours before each pre-bid meeting and each submission, whoever is going is reminded.",
   "",
   "/bids — every bid, by stage",
   "/calendar — bid dates on a calendar",
