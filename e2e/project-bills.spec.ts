@@ -123,6 +123,19 @@ test("bills inside a project: pop-up form, sheet upload with checking, download 
   await expect(page.getByText(/\d+ marked paid/)).toBeVisible();
   expect(sql(`select count(*) from document_balances_v d join transactions t on t.id = d.id where t.project_id = '${project}' and t.type = 'bill' and d.balance <> 0`)).toBe("0");
 
+  // labour paid on the spot needs no vendor: saved as a paid expense on the project
+  await page.getByRole("button", { name: "New receipt" }).click();
+  const crew = page.getByRole("dialog", { name: "New receipt" });
+  await expect(crew.getByLabel(/^Vendor/)).toHaveValue("");
+  const work = crew.getByLabel("Line 1 account");
+  await work.selectOption(await work.locator("option").filter({ hasText: /5020/ }).first().getAttribute("value") as string);
+  await crew.getByLabel("Line 1 description").fill(`Day work ${tag}`);
+  await crew.getByLabel("Line 1 amount before GST").fill("450");
+  await crew.getByRole("button", { name: "Save receipt" }).click();
+  await expect(crew).toBeHidden();
+  expect(sql(`select t.type || '/' || (t.contact_id is null) || '/' || l.amount::numeric(18,2) from transactions t join transaction_lines l on l.transaction_id = t.id
+    where l.description = 'Day work ${tag}' and t.project_id = '${project}'`)).toBe("expense/true/450.00");
+
   expect(sql(`select count(*) filter (where not ok) from health_check('live')`)).toBe("0");
   w.assertNone();
 });

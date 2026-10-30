@@ -54,19 +54,24 @@ export async function saveExpenseDoc(_prev: unknown, fd: FormData): Promise<Resu
   const w = await writer();
   if ("error" in w) return { error: w.error };
   const s = w.s;
-  const type = text(fd, "type") as DocType | null;
+  let type = text(fd, "type") as DocType | null;
   if (!type || !DOC_TYPES.includes(type)) return { error: "Unknown document." };
   const id = text(fd, "id");
   const date = text(fd, "date");
   const contact = text(fd, "contact_id");
   if (!isDate(date)) return { error: "Enter the date." };
+  let paidFrom = type === "bill" && !id ? text(fd, "paid_from") : null;
+  let bank = text(fd, "bank_account_id");
+  // a receipt paid on the spot with no vendor (labour, say) is saved as a paid expense
+  if (type === "bill" && !id && !isId(contact)) {
+    if (!paidFrom) return { error: "Choose the vendor to pay it later, or choose the account it was paid from." };
+    type = "expense"; bank = paidFrom; paidFrom = null;
+  }
   if (type !== "expense" && !isId(contact)) return { error: "Choose the vendor." };
   const due = text(fd, "due_date");
   if (due !== null && !isDate(due)) return { error: "Enter the due date as a date." };
   if (type === "bill" && due && due < date) return { error: "The due date cannot be before the receipt date." };
-  const bank = text(fd, "bank_account_id");
   if (type === "expense" && !isId(bank)) return { error: "Choose the account it was paid from." };
-  const paidFrom = type === "bill" && !id ? text(fd, "paid_from") : null;
   if (paidFrom !== null && !isId(paidFrom)) return { error: "Choose the account it was paid from, or \"Not paid yet\"." };
   const currency = text(fd, "currency") ?? "MVR";
   const fx = currency === "MVR" ? "1" : text(fd, "fx_rate");

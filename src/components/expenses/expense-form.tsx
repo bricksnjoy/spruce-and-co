@@ -44,6 +44,12 @@ export function ExpenseForm({ data, values, onSaved }: {
   const subtotal = v.lines.reduce((t, l) => t + lineAmount(l), 0n);
   const gst = v.lines.reduce((t, l) => t + (toLaari(l.tax_amount) ?? 0n), 0n);
   const claiming = v.type !== "purchase_order" && v.lines.some((l) => l.gst_claimable && (toLaari(l.tax_amount) ?? 0n) > 0n);
+  // a receipt paid on the spot (labour, a shop with no account) needs no vendor
+  const vendorOptional = v.type === "expense" || (v.type === "bill" && !v.id && Boolean(v.paid_from));
+  // the tax invoice only matters when there is GST to claim
+  const showTax = v.type !== "purchase_order" && (Boolean(vendor?.gst_registered) || gst > 0n || Boolean(v.tax_invoice_no || v.customs_ref));
+  const [detailed, setDetailed] = useState(() => values.lines.some((l) => l.qty !== "" || l.rate !== "" || l.project_id !== ""));
+  const [moreOpen] = useState(() => values.currency !== "MVR" || Boolean(values.memo || values.reference));
   const expired = vendor && [vendor.licence_expiry, vendor.insurance_expiry].some((d) => d && d < today());
 
   const chooseVendor = (id: string, x = vendors.find((y) => y.id === id)) => {
@@ -97,99 +103,82 @@ export function ExpenseForm({ data, values, onSaved }: {
       <input type="hidden" name="type" value={v.type} />
       {v.id && <input type="hidden" name="id" value={v.id} />}
 
-      {v.type !== "purchase_order" && (
-        <Card className="flex flex-wrap items-end gap-3 px-5 py-4">
+      <Card className="space-y-4 px-5 py-5">
+        {v.type !== "purchase_order" && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-[var(--hover)] px-3 py-2">
+            <label htmlFor="e-photo" className="text-sm font-medium">Photo of the receipt</label>
+            <input id="e-photo" ref={photoRef} name="photo" type="file" accept="image/*" capture="environment" className="min-w-0 flex-1 text-sm" />
+            <button type="button" onClick={readPhoto} className={small}>Fill in from the photo</button>
+            {reading && <p className="w-full text-xs text-[var(--muted)]">{reading}</p>}
+          </div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="e-photo" className={label}>Photo of the receipt</label>
-            <input id="e-photo" ref={photoRef} name="photo" type="file" accept="image/*" capture="environment" className="text-sm" />
+            <label htmlFor="e-vendor" className={label}>Vendor{vendorOptional ? " (optional)" : ""}</label>
+            <select id="e-vendor" name="contact_id" required={!vendorOptional} value={v.contact_id} className={input}
+              onChange={(e) => (e.target.value === NEW_VENDOR ? setAdding(true) : chooseVendor(e.target.value))}>
+              <option value="">{vendorOptional ? "No vendor (labour, paid on the spot)" : "Choose…"}</option>
+              {vendors.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+              <option value={NEW_VENDOR}>+ Add a new vendor…</option>
+            </select>
+            {expired && <p className="mt-1 text-xs text-amber-700">This vendor&apos;s licence or insurance has expired.</p>}
+            {v.type === "bill" && !v.id && !v.contact_id && !v.paid_from && <p className="mt-1 text-xs text-amber-700">To pay it later, choose the vendor.</p>}
           </div>
-          <button type="button" onClick={readPhoto} className={small}>Read the photo</button>
-          {reading && <p className="text-xs text-[var(--muted)]">{reading}</p>}
-        </Card>
-      )}
-
-      <Card className="grid gap-4 px-5 py-5 sm:grid-cols-3">
-        <div>
-          <label htmlFor="e-vendor" className={label}>Vendor{v.type === "expense" ? " (optional)" : ""}</label>
-          <select id="e-vendor" name="contact_id" required={v.type !== "expense"} value={v.contact_id} className={input}
-            onChange={(e) => (e.target.value === NEW_VENDOR ? setAdding(true) : chooseVendor(e.target.value))}>
-            <option value="">Choose…</option>
-            {vendors.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-            <option value={NEW_VENDOR}>+ Add a new vendor…</option>
-          </select>
-          {expired && <p className="mt-1 text-xs text-amber-700">This vendor&apos;s licence or insurance has expired.</p>}
-        </div>
-        {adding && (
-          <QuickVendor onCancel={() => setAdding(false)} onAdded={(x) => {
-            setVendors((o) => [...o, x].sort((a, b) => a.name.localeCompare(b.name)));
-            chooseVendor(x.id, x);
-            setAdding(false);
-          }} />
-        )}
-        <div>
-          <label htmlFor="e-proj" className={label}>Project</label>
-          <select id="e-proj" name="project_id" value={v.project_id} onChange={(e) => set("project_id", e.target.value)} className={input}>
-            <option value="">No project (overhead)</option>
-            {data.projects.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="e-date" className={label}>Date</label>
-          <input id="e-date" name="date" type="date" required value={v.date} className={input}
-            onChange={(e) => { const d = e.target.value; setV((o) => ({ ...o, date: d, due_date: d ? addDays(d, vendor?.terms_days ?? 0) : o.due_date })); }} />
-        </div>
-        {v.type === "bill" && !v.id && (
-          <div><label htmlFor="e-paid" className={label}>Paid from</label>
-            <select id="e-paid" name="paid_from" value={v.paid_from ?? ""} onChange={(e) => set("paid_from", e.target.value)} className={input}>
-              {data.payFrom.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
-              <option value="">Not paid yet (pay later)</option>
-            </select></div>
-        )}
-        {v.type === "bill" && (v.id || !v.paid_from) && (
-          <div><label htmlFor="e-due" className={label}>Due</label>
-            <input id="e-due" name="due_date" type="date" value={v.due_date} onChange={(e) => set("due_date", e.target.value)} className={input} /></div>
-        )}
-        {v.type === "expense" && (
-          <div><label htmlFor="e-bank" className={label}>Paid from</label>
-            <select id="e-bank" name="bank_account_id" required value={v.bank_account_id} onChange={(e) => set("bank_account_id", e.target.value)} className={input}>
-              <option value="">Choose…</option>
-              {data.payFrom.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
-            </select></div>
-        )}
-        <div>
-          <label htmlFor="e-cur" className={label}>Currency</label>
-          <div className="flex gap-2">
-            <select id="e-cur" name="currency" value={v.currency} onChange={(e) => set("currency", e.target.value)} className={input}><option>MVR</option><option>USD</option></select>
-            {v.currency !== "MVR" && <input name="fx_rate" aria-label="MVR per unit" value={v.fx_rate} onChange={(e) => set("fx_rate", e.target.value)} className={`${input} w-28 tabular-nums`} placeholder="15.42" />}
+          {adding && (
+            <QuickVendor onCancel={() => setAdding(false)} onAdded={(x) => {
+              setVendors((o) => [...o, x].sort((a, b) => a.name.localeCompare(b.name)));
+              chooseVendor(x.id, x);
+              setAdding(false);
+            }} />
+          )}
+          <div>
+            <label htmlFor="e-proj" className={label}>Project</label>
+            <select id="e-proj" name="project_id" value={v.project_id} onChange={(e) => set("project_id", e.target.value)} className={input}>
+              <option value="">No project (overhead)</option>
+              {data.projects.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+            </select>
           </div>
-        </div>
-        <div>
-          <label htmlFor="e-ref" className={label}>{v.type === "purchase_order" ? "Quote reference" : "Reference"}</label>
-          <input id="e-ref" name="reference" value={v.reference} onChange={(e) => set("reference", e.target.value)} className={input} />
+          <div>
+            <label htmlFor="e-date" className={label}>Date</label>
+            <input id="e-date" name="date" type="date" required value={v.date} className={input}
+              onChange={(e) => { const d = e.target.value; setV((o) => ({ ...o, date: d, due_date: d ? addDays(d, vendor?.terms_days ?? 0) : o.due_date })); }} />
+          </div>
+          {v.type === "bill" && !v.id && (
+            <div><label htmlFor="e-paid" className={label}>Paid from</label>
+              <select id="e-paid" name="paid_from" value={v.paid_from ?? ""} onChange={(e) => set("paid_from", e.target.value)} className={input}>
+                {data.payFrom.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
+                <option value="">Not paid yet (pay later)</option>
+              </select></div>
+          )}
+          {v.type === "bill" && (v.id || !v.paid_from) && (
+            <div><label htmlFor="e-due" className={label}>Due</label>
+              <input id="e-due" name="due_date" type="date" value={v.due_date} onChange={(e) => set("due_date", e.target.value)} className={input} /></div>
+          )}
+          {v.type === "expense" && (
+            <div><label htmlFor="e-bank" className={label}>Paid from</label>
+              <select id="e-bank" name="bank_account_id" required value={v.bank_account_id} onChange={(e) => set("bank_account_id", e.target.value)} className={input}>
+                <option value="">Choose…</option>
+                {data.payFrom.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
+              </select></div>
+          )}
         </div>
       </Card>
 
-      {v.type !== "purchase_order" && (
-        <Card className="grid gap-4 px-5 py-5 sm:grid-cols-4">
-          <p className="text-sm font-medium sm:col-span-4">Tax invoice <span className="font-normal text-[var(--muted)]">— needed to claim the GST back{vendor && !vendor.gst_registered ? "; this vendor is not marked GST-registered, so none can be claimed" : ""}</span></p>
-          <div><label htmlFor="e-tin" className={label}>Supplier TIN</label><input id="e-tin" name="supplier_tin" value={v.supplier_tin} onChange={(e) => set("supplier_tin", e.target.value)} className={`${input} font-mono`} /></div>
-          <div><label htmlFor="e-tino" className={label}>Tax invoice no.</label><input id="e-tino" name="tax_invoice_no" value={v.tax_invoice_no} onChange={(e) => set("tax_invoice_no", e.target.value)} className={input} /></div>
-          <div><label htmlFor="e-tid" className={label}>Tax invoice date</label><input id="e-tid" name="tax_invoice_date" type="date" value={v.tax_invoice_date} onChange={(e) => set("tax_invoice_date", e.target.value)} className={input} /></div>
-          <div><label htmlFor="e-cus" className={label}>Customs declaration</label><input id="e-cus" name="customs_ref" value={v.customs_ref} onChange={(e) => set("customs_ref", e.target.value)} className={input} placeholder="For imports" /></div>
-          {claiming && (!v.supplier_tin || !v.tax_invoice_no) && !v.customs_ref && (
-            <p className="text-xs text-amber-700 sm:col-span-4">GST is ticked as claimable: enter the supplier&apos;s TIN and tax invoice number (or a customs declaration), or untick it.</p>
-          )}
-        </Card>
-      )}
-
       <Card>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-5 pt-4">
+          <p className="text-sm font-medium">What was bought</p>
+          <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+            <input type="checkbox" checked={detailed} disabled={detailed && v.lines.some((l) => l.qty !== "" || l.rate !== "" || l.project_id !== "")}
+              onChange={(e) => setDetailed(e.target.checked)} /> Quantity × rate, and a project per line
+          </label>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--muted)]">
-              <th className="w-52 px-3 py-2 font-medium">For</th><th className="px-2 py-2 font-medium">Description</th>
-              <th className="w-20 px-2 py-2 font-medium">Qty</th><th className="w-24 px-2 py-2 font-medium">Rate</th>
-              <th className="w-32 px-2 py-2 font-medium">Amount</th><th className="w-36 px-2 py-2 font-medium">GST charged</th>
-              <th className="w-40 px-2 py-2 font-medium">Project</th><th className="w-8" />
+              <th className="w-56 px-3 py-2 font-medium">For</th><th className="px-2 py-2 font-medium">Description</th>
+              {detailed && <><th className="w-20 px-2 py-2 font-medium">Qty</th><th className="w-24 px-2 py-2 font-medium">Rate</th></>}
+              <th className="w-32 px-2 py-2 font-medium">Amount</th><th className="w-36 px-2 py-2 font-medium">GST</th>
+              {detailed && <th className="w-40 px-2 py-2 font-medium">Project</th>}<th className="w-8" />
             </tr></thead>
             <tbody>
               {v.lines.map((l, i) => {
@@ -208,8 +197,10 @@ export function ExpenseForm({ data, values, onSaved }: {
                       </select>
                     </td>
                     <td className="px-2 py-2"><input aria-label={`Line ${i + 1} description`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} className={input} /></td>
-                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} quantity`} inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} className={`${input} tabular-nums`} /></td>
-                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} rate`} inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} className={`${input} tabular-nums`} /></td>
+                    {detailed && <>
+                      <td className="px-2 py-2"><input aria-label={`Line ${i + 1} quantity`} inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} className={`${input} tabular-nums`} /></td>
+                      <td className="px-2 py-2"><input aria-label={`Line ${i + 1} rate`} inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} className={`${input} tabular-nums`} /></td>
+                    </>}
                     <td className="px-2 py-2">
                       {byQty ? <p className="px-3 py-2 text-right tabular-nums">{money(laariToNumber(lineAmount(l)))}</p>
                         : <input aria-label={`Line ${i + 1} amount before GST`} inputMode="decimal" value={l.amount} onChange={(e) => setLine(i, { amount: e.target.value })} className={`${input} text-right tabular-nums`} />}
@@ -221,19 +212,21 @@ export function ExpenseForm({ data, values, onSaved }: {
                         <button type="button" title={`${Number(data.gstRate)}% of the amount`} className="rounded border border-[var(--border)] px-1.5 text-xs"
                           onClick={() => setLine(i, { tax_amount: laariToDb(percentOf(lineAmount(l), data.gstRate)) })}>{Number(data.gstRate)}%</button>
                       </div>
-                      {v.type !== "purchase_order" && (
+                      {v.type !== "purchase_order" && (toLaari(l.tax_amount) ?? 0n) > 0n && (
                         <label className="mt-1 flex items-center gap-1 text-xs text-[var(--muted)]">
                           <input type="checkbox" checked={l.gst_claimable} onChange={(e) => setLine(i, { gst_claimable: e.target.checked })} /> claim it back
                         </label>
                       )}
                       </>}
                     </td>
-                    <td className="px-2 py-2">
-                      <select aria-label={`Line ${i + 1} project`} value={l.project_id} onChange={(e) => setLine(i, { project_id: e.target.value })} className={input}>
-                        <option value="">{v.project_id ? "As above" : "Overhead"}</option>
-                        {data.projects.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
-                      </select>
-                    </td>
+                    {detailed && (
+                      <td className="px-2 py-2">
+                        <select aria-label={`Line ${i + 1} project`} value={l.project_id} onChange={(e) => setLine(i, { project_id: e.target.value })} className={input}>
+                          <option value="">{v.project_id ? "As above" : "Overhead"}</option>
+                          {data.projects.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
+                        </select>
+                      </td>
+                    )}
                     <td className="py-2 pr-2">
                       {v.lines.length > 1 && <button type="button" aria-label={`Remove line ${i + 1}`} onClick={() => setV((o) => ({ ...o, lines: o.lines.filter((_, j) => j !== i) }))} className="px-1 py-2 text-[var(--muted)] hover:text-red-700">×</button>}
                     </td>
@@ -251,13 +244,42 @@ export function ExpenseForm({ data, values, onSaved }: {
             <dt className="font-semibold">Total{v.currency !== "MVR" ? ` (${v.currency})` : ""}</dt><dd className="text-right font-semibold">{money(laariToNumber(subtotal + gst))}</dd>
           </dl>
         </div>
-        <p className="px-5 pb-3 text-xs text-[var(--muted)]">GST that is not claimed back is added to the cost of the line.</p>
+        {gst > 0n && <p className="px-5 pb-3 text-xs text-[var(--muted)]">GST that is not claimed back is added to the cost of the line.</p>}
       </Card>
 
-      <Card className="px-5 py-5">
-        <label htmlFor="e-memo" className={label}>Note</label>
-        <textarea id="e-memo" name="memo" rows={2} value={v.memo} onChange={(e) => set("memo", e.target.value)} className={input} />
-      </Card>
+      {showTax && (
+        <Card className="grid gap-4 px-5 py-5 sm:grid-cols-4">
+          <p className="text-sm font-medium sm:col-span-4">Tax invoice <span className="font-normal text-[var(--muted)]">— needed to claim the GST back{vendor && !vendor.gst_registered ? "; this vendor is not marked GST-registered, so none can be claimed" : ""}</span></p>
+          <div><label htmlFor="e-tin" className={label}>Supplier TIN</label><input id="e-tin" name="supplier_tin" value={v.supplier_tin} onChange={(e) => set("supplier_tin", e.target.value)} className={`${input} font-mono`} /></div>
+          <div><label htmlFor="e-tino" className={label}>Tax invoice no.</label><input id="e-tino" name="tax_invoice_no" value={v.tax_invoice_no} onChange={(e) => set("tax_invoice_no", e.target.value)} className={input} /></div>
+          <div><label htmlFor="e-tid" className={label}>Tax invoice date</label><input id="e-tid" name="tax_invoice_date" type="date" value={v.tax_invoice_date} onChange={(e) => set("tax_invoice_date", e.target.value)} className={input} /></div>
+          <div><label htmlFor="e-cus" className={label}>Customs declaration</label><input id="e-cus" name="customs_ref" value={v.customs_ref} onChange={(e) => set("customs_ref", e.target.value)} className={input} placeholder="For imports" /></div>
+          {claiming && (!v.supplier_tin || !v.tax_invoice_no) && !v.customs_ref && (
+            <p className="text-xs text-amber-700 sm:col-span-4">GST is ticked as claimable: enter the supplier&apos;s TIN and tax invoice number (or a customs declaration), or untick it.</p>
+          )}
+        </Card>
+      )}
+
+      <details open={moreOpen} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-3">
+        <summary className="cursor-pointer text-sm font-medium">More details <span className="font-normal text-[var(--muted)]">— currency, {v.type === "purchase_order" ? "quote reference" : "reference"}, note</span></summary>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="e-cur" className={label}>Currency</label>
+            <div className="flex gap-2">
+              <select id="e-cur" name="currency" value={v.currency} onChange={(e) => set("currency", e.target.value)} className={input}><option>MVR</option><option>USD</option></select>
+              {v.currency !== "MVR" && <input name="fx_rate" aria-label="MVR per unit" value={v.fx_rate} onChange={(e) => set("fx_rate", e.target.value)} className={`${input} w-28 tabular-nums`} placeholder="15.42" />}
+            </div>
+          </div>
+          <div>
+            <label htmlFor="e-ref" className={label}>{v.type === "purchase_order" ? "Quote reference" : "Reference"}</label>
+            <input id="e-ref" name="reference" value={v.reference} onChange={(e) => set("reference", e.target.value)} className={input} />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="e-memo" className={label}>Note</label>
+            <textarea id="e-memo" name="memo" rows={2} value={v.memo} onChange={(e) => set("memo", e.target.value)} className={input} />
+          </div>
+        </div>
+      </details>
 
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : v.id ? "Save changes" : `Save ${TITLES[v.type].toLowerCase()}`}</button>
@@ -288,7 +310,7 @@ function QuickVendor({ onAdded, onCancel }: { onAdded: (v: VendorOpt) => void; o
     onAdded({ id: r.id, name: f.name.trim(), tin, gst_registered: f.gst, terms_days: null, currency: "MVR", licence_expiry: null, insurance_expiry: null, vendor_kind: null });
   });
   return (
-    <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--hover)] p-4 sm:col-span-3">
+    <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--hover)] p-4 sm:col-span-2">
       <p className="text-sm font-medium">New vendor <span className="font-normal text-[var(--muted)]">— added to Vendors; fill in the rest of their details there</span></p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div><label htmlFor="nv-name" className={label}>Name</label>

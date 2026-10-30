@@ -171,12 +171,13 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 `/expenses/new` — Record what you bought from a vendor (receipt), something paid with no vendor (expense), a vendor's credit, or an order not yet bought.
 
-1. Optional: upload a photo of the receipt and press "Read the photo" to fill in the vendor, TIN, invoice number and lines.
-2. Choose the vendor and the project (or overhead). A vendor not on the list: pick "+ Add a new vendor…", type the name (and TIN if they are GST registered) and press "Add vendor"; they are added to Vendors and chosen.
-3. "Paid from": the account the receipt was paid from; it is saved as paid on its date. Pick "Not paid yet" to pay it later (it then has a due date). For an expense, choose the account it was paid from.
-4. Enter the supplier's TIN, tax invoice number and date — needed to claim the GST.
-5. Add lines: account, description, amount before GST, the supplier's GST figure, and the project. Untick "claimable" when the GST cannot be claimed (it then becomes cost). Labour (Direct Labour) has no GST, so its line has no GST box.
-6. Press "Save receipt" (or expense …).
+1. Optional: choose a photo of the receipt and press "Fill in from the photo" to fill in the vendor, TIN, invoice number and lines.
+2. Choose the vendor, the project (or overhead), the date and "Paid from" (the account it was paid from; it is saved as paid). A vendor not on the list: pick "+ Add a new vendor…", type the name and press "Add vendor".
+3. Labour or anything paid on the spot needs no vendor: leave it on "No vendor". To pay a vendor later, pick "Not paid yet" (the vendor is then needed and it gets a due date).
+4. Under "What was bought" add lines: account, description, amount before GST and the GST charged. Labour has no GST. Tick "Quantity × rate, and a project per line" when you need those.
+5. When the vendor charges GST, the Tax invoice box appears: enter the supplier's TIN and tax invoice number to claim the GST back (untick "claim it back" when it cannot be claimed; it then becomes cost).
+6. Currency, reference and a note are under "More details".
+7. Press "Save receipt" (or expense …).
 
 > Receipts above the approval limit (Settings → Accounting) wait for an admin's approval before they post; mark them paid once approved.
 
