@@ -4,6 +4,8 @@ import { useActionState, useState, type ReactNode } from "react";
 import { DocumentSheet } from "@/components/document-sheet";
 import { saveTemplate, type DocResult } from "@/app/actions/documents";
 import {
+  BOXED_BODY,
+  addDays,
   docNumber,
   signerFor,
   type SigningKit,
@@ -92,6 +94,18 @@ export function TemplateEditor({
         <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
           {part === "header" && (
             <>
+              <Field id="h-layout" text="Layout">
+                <select id="h-layout" value={header.layout ?? "modern"} className={input}
+                  onChange={(e) => {
+                    const v = e.target.value as "boxed" | "modern";
+                    h("layout", v);
+                    // the boxed page's own column names, and room for the customer to confirm
+                    if (v === "boxed") { setBody((x) => ({ ...x, ...BOXED_BODY })); t("show_client_signature", true); }
+                  }}>
+                  <option value="boxed">Boxed — ruled grid, amount in words, customer confirmation</option>
+                  <option value="modern">Modern — coloured header and total</option>
+                </select>
+              </Field>
               <Check checked={header.show_logo} onChange={(v) => h("show_logo", v)}>Show the Spruce &amp; Co logo</Check>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="h-name" text="Company name">
@@ -104,7 +118,7 @@ export function TemplateEditor({
               <Field id="h-addr" text="Address block" note="One line per line — include the email if it should show.">
                 <textarea id="h-addr" rows={5} value={header.address} onChange={(e) => h("address", e.target.value)} className={input} />
               </Field>
-              <Field id="h-tin" text="TIN" note="Leave empty to leave it off the page.">
+              <Field id="h-tin" text="TIN" note={header.layout === "boxed" ? "Leave empty to use the TIN in Settings." : "Leave empty to leave it off the page."}>
                 <input id="h-tin" value={header.tin} onChange={(e) => h("tin", e.target.value)} className={input} />
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -124,13 +138,13 @@ export function TemplateEditor({
                     onChange={(e) => h("number_pad", Number(e.target.value))} className={input} />
                 </Field>
               </div>
-              <Field id="h-acc" text="Colour" note="Used for the title, table header and total.">
+              {header.layout !== "boxed" && <Field id="h-acc" text="Colour" note="Used for the title, table header and total.">
                 <div className="flex items-center gap-3">
                   <input id="h-acc" type="color" value={header.accent} onChange={(e) => h("accent", e.target.value)}
                     className="h-10 w-14 cursor-pointer rounded border border-[var(--border)]" />
                   <input value={header.accent} onChange={(e) => h("accent", e.target.value)} className={input} />
                 </div>
-              </Field>
+              </Field>}
             </>
           )}
 
@@ -179,7 +193,7 @@ export function TemplateEditor({
 
           {part === "tail" && (
             <>
-              <Field id="t-terms" text="Terms & conditions" note="One per line. Each new document starts with these, and can be changed on it.">
+              <Field id="t-terms" text={header.layout === "boxed" ? "Conditions" : "Terms & conditions"} note="One per line. Each new document starts with these, and can be changed on it.">
                 <textarea id="t-terms" rows={8} value={tail.terms} onChange={(e) => t("terms", e.target.value)} className={input} />
               </Field>
               <Field id="t-close" text="Closing note" note="Who to call, how long the quote stands.">
@@ -195,9 +209,10 @@ export function TemplateEditor({
                   names={{ signer: "tpl-signer", stamp: "tpl-stamp" }} />
               </div>
               <Check checked={tail.show_client_signature} onChange={(v) => t("show_client_signature", v)}>
-                Space for the client to sign
+                {header.layout === "boxed" ? "\"Received by\" and the customer's confirmation box" : "Space for the client to sign"}
               </Check>
-              <Field id="t-foot" text="Footer band" note="Optional — a coloured strip at the bottom of the page.">
+              <Field id="t-foot" text={header.layout === "boxed" ? "Footer line" : "Footer band"}
+                note={header.layout === "boxed" ? "Optional — empty prints the address, reg no and phone from Settings." : "Optional — a coloured strip at the bottom of the page."}>
                 <input id="t-foot" value={tail.footer_text} onChange={(e) => t("footer_text", e.target.value)} className={input} />
               </Field>
             </>
@@ -224,13 +239,13 @@ export function TemplateEditor({
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Preview</p>
         <div className="sticky top-4 overflow-auto rounded-xl border border-[var(--border)] bg-[#e9ecf0] p-4">
           <div style={{ zoom: 0.72 }}>
-            <DocumentSheet header={header} body={body} tail={tail} signer={signerFor(kit, tail, null, null)}
+            <DocumentSheet header={header} body={body} tail={tail} signer={signerFor(kit, tail, null, null)} company={kit.company}
               data={{
                 kind: template.kind,
                 number: sampleNumber,
                 quotationNumber: isQuote ? null : "SC-Q/26/06",
                 date: todayIso,
-                untilDate: null,
+                untilDate: isQuote && body.valid_days ? addDays(todayIso, body.valid_days) : null,
                 duration: "13 days",
                 toName: "Huzam (7458876)",
                 title: null,

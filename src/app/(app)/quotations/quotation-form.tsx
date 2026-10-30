@@ -184,7 +184,7 @@ export function QuotationForm({
             </div>
             <DueIn id="q-valid" label="Valid until" from={q.issue_date} value={q.valid_until ?? ""} onChange={(d) => set("valid_until", d || null)} />
             <div>
-              <label htmlFor="q-duration" className={label}>Duration</label>
+              <label htmlFor="q-duration" className={label}>Duration of the work</label>
               <input id="q-duration" value={q.duration} onChange={(e) => set("duration", e.target.value)}
                 className={input} placeholder="13 days" />
             </div>
@@ -281,7 +281,7 @@ export function QuotationForm({
 
         <Section title="Terms & notes">
           <div>
-            <label htmlFor="q-terms" className={label}>Terms &amp; conditions</label>
+            <label htmlFor="q-terms" className={label}>{template?.header.layout === "boxed" ? "Conditions" : <>Terms &amp; conditions</>}</label>
             <textarea id="q-terms" rows={7} value={q.terms} onChange={(e) => set("terms", e.target.value)} className={input} />
             <p className="mt-1 text-xs text-[var(--muted)]">One per line. Changing them here changes this quotation only.</p>
           </div>
@@ -312,7 +312,7 @@ export function QuotationForm({
           <div className="sticky top-4 overflow-auto rounded-xl border border-[var(--border)] bg-[#e9ecf0] p-4">
             <div style={{ zoom: 0.7 }}>
               <DocumentSheet header={template.header} body={template.body} tail={template.tail}
-                signer={signerFor(kit, template.tail, q.signatory_id, q.show_stamp)}
+                signer={signerFor(kit, template.tail, q.signatory_id, q.show_stamp)} company={kit.company}
                 data={{
                   kind: "quotation",
                   number: shownNumber,

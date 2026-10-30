@@ -463,6 +463,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 1. "New quotation", fill in the lines, save (type the days it is valid for, or pick the date); print it with your template and signature.
 2. Mark it won, then "Convert to invoice" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.
 3. Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices.
+4. Quotations print in the boxed layout: a ruled grid with Job No., Qty, Unit, Rate and Amount, the grand total in words, "Quotation Received by", the customer's confirmation box and the conditions. Templates → Layout switches a template back to Modern.
 
 ### Cabinet estimator
 

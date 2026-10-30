@@ -16,7 +16,7 @@ export default async function PrintQuotation({ params }: { params: Promise<{ id:
       <title>{doc.q.number}</title>
       <PrintToolbar back={`/quotations/${id}`} filename={`${doc.q.number.replace(/[\\/]+/g, "-")}${doc.q.title ? ` ${doc.q.title}` : ""}`} />
       <DocumentSheet header={doc.template.header} body={doc.template.body} tail={doc.template.tail}
-        signer={doc.signer} data={doc.sheet} />
+        signer={doc.signer} company={doc.kit.company} data={doc.sheet} />
     </>
   );
 }
