@@ -25,7 +25,7 @@ export const sheetTitle = (type: string, company: Company) =>
 const TIMES = { fontFamily: '"Times New Roman", Times, "Liberation Serif", serif' };
 const ARIAL = { fontFamily: 'Arial, Helvetica, "Liberation Sans", sans-serif' };
 /** the grid lines of the printed table */
-const cell = "border border-black px-1.5 py-[3px] align-middle";
+const cell = "border border-black! px-1.5 py-[3px] align-middle";
 /** an empty row of the grid, as the paper invoice leaves room between sections */
 const Blank = () => <tr>{Array.from({ length: 6 }, (_, i) => <td key={i} className={`${cell} h-[15px]`} />)}</tr>;
 /** a section letter (A, B …) heads its section on a grey band */
@@ -190,7 +190,7 @@ export function SalesSheet({ type, company, number, voided = false, customer, da
       </div>
 
       {/* the terms, and room to sign for the payment */}
-      <div className="mt-6 flex border border-black text-[8.5px] leading-[1.45]">
+      <div className="mt-6 flex border border-black! text-[8.5px] leading-[1.45]">
         <div className="flex-1 px-1.5 py-1">
           <p className="font-bold underline">Terms:</p>
           {termLines.length > 0
@@ -198,7 +198,7 @@ export function SalesSheet({ type, company, number, voided = false, customer, da
             : company.bank_details && <p className="whitespace-pre-line font-bold">All transfers should be made to {company.bank_details}</p>}
         </div>
         {isInvoice && (
-          <div className="w-[62mm] border-l border-black px-1.5 py-1 leading-[2]">
+          <div className="w-[62mm] border-l border-black! px-1.5 py-1 leading-[2]">
             <p className="font-bold leading-[1.45]">Payment Received by:</p>
             <p className="mt-2">Name: ………………………………</p>
             <p>Date: ………………………………</p>

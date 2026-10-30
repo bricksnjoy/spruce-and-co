@@ -4,6 +4,8 @@
  * (terms, signatures and the footer band).
  */
 
+import type { Company } from "@/components/sales/ledger-sheet";
+
 export type DocKind = "quotation" | "invoice";
 
 export interface TemplateHeader {
@@ -23,6 +25,8 @@ export interface TemplateHeader {
   /** pad the running number to this many digits — 2 gives 06 */
   number_pad: number;
   accent: string;
+  /** boxed: the ruled, tender-style page; modern: the coloured one */
+  layout?: "boxed" | "modern";
 }
 
 export interface TemplateBody {
@@ -71,8 +75,10 @@ export interface Signatory {
   signatureUrl: string | null;
 }
 
-/** The company stamp and everyone who can sign, ready to put on a page. */
+/** The company's details and stamp, and everyone who can sign, ready to put on a page. */
 export interface SigningKit {
+  /** name, TIN, registration and contact details from Settings */
+  company?: Company | null;
   stampUrl: string | null;
   signatories: Signatory[];
 }
@@ -135,6 +141,17 @@ export const DEFAULT_BODY: TemplateBody = {
   due_days: 2,
 };
 
+/** What the boxed page calls things, set when a template switches to it. */
+export const BOXED_BODY: Partial<TemplateBody> = {
+  to_label: "CUSTOMER:",
+  col_description: "Description",
+  col_unit: "Unit",
+  col_qty: "Qty",
+  col_rate: "Rate",
+  col_total: "Amount (MVR)",
+  show_unit: true,
+};
+
 export const DEFAULT_TAIL: TemplateTail = {
   terms: "",
   closing_note: "",
@@ -158,6 +175,9 @@ export function toTemplate(row: {
   tail: unknown;
 }): Template {
   const kind = row.kind as DocKind;
+  const stored = (row.header as Partial<TemplateHeader>) ?? {};
+  // quotation templates saved before the boxed page existed move to it, with its column names
+  const toBoxed = kind === "quotation" && !stored.layout;
   return {
     id: row.id,
     kind,
@@ -168,15 +188,17 @@ export function toTemplate(row: {
       title: kind === "invoice" ? "INVOICE" : "QUOTATION",
       number_label: kind === "invoice" ? "Invoice#" : "Quote#",
       number_prefix: kind === "invoice" ? "SC-INV/{YY}/" : "SC-Q/{YY}/",
-      ...((row.header as Partial<TemplateHeader>) ?? {}),
+      layout: kind === "quotation" ? "boxed" : "modern",
+      ...stored,
     },
     body: {
       ...DEFAULT_BODY,
       to_label: kind === "invoice" ? "Bill To:" : "Quote To:",
       show_duration: kind !== "invoice",
       ...((row.body as Partial<TemplateBody>) ?? {}),
+      ...(toBoxed ? BOXED_BODY : {}),
     },
-    tail: { ...DEFAULT_TAIL, ...((row.tail as Partial<TemplateTail>) ?? {}) },
+    tail: { ...DEFAULT_TAIL, ...((row.tail as Partial<TemplateTail>) ?? {}), ...(toBoxed ? { show_client_signature: true } : {}) },
   };
 }
 

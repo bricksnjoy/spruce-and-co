@@ -19,7 +19,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
     supabase.from("quotation_totals").select("*").eq("quotation_id", id).maybeSingle(),
   ]);
   if (!doc) notFound();
-  const { q, project, template, signer, sheet } = doc;
+  const { q, project, template, signer, sheet, kit } = doc;
 
   // invoices in the books carry the quotation's number as their reference
   const invoices = (await quotationInvoices(supabase, [q.number])).get(q.number) ?? [];
@@ -57,7 +57,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
         <div className="min-w-0 overflow-auto rounded-xl border border-[var(--border)] bg-[#e9ecf0] p-4">
           <div style={{ zoom: 0.8 }}>
             <DocumentSheet header={template.header} body={template.body} tail={template.tail}
-              signer={signer} data={sheet} />
+              signer={signer} company={kit.company} data={sheet} />
           </div>
         </div>
 
