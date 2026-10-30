@@ -185,7 +185,7 @@ Estimates stay on the existing Quotations screens (Live only) for now; convertin
 |---|---|---|
 | Expenses hub `/expenses` | Money bar: Unpaid bills · Overdue · Paid in the last 30 days · Awaiting approval; every bill, expense, payment, vendor credit and purchase order with vendor, project, balance and status | `expenses.test` |
 | Bill, expense, vendor credit, purchase order | One form: vendor (terms set the due date), project, lines by account (job costs, overheads, assets) with quantity × rate or amount, the supplier's own GST figure (or one tap for the current rate), "claim it back" per line, tax-invoice evidence (TIN, number, date, customs); GST not claimed is added to cost; MVR or USD | `posting.test`, `gst.test` |
-| Receipt scanning | "Read the photo" fills vendor (matched by TIN, then name), TIN, invoice number, date, amount and GST, using the server reader when set up, otherwise on the device; the photo is kept with the document | build, types |
+| Receipt scanning | "Fill in from the photo" fills vendor (matched by TIN, then name), TIN, invoice number, date, amount and GST, using the server reader when set up, otherwise on the device; the photo is kept with the document | build, types |
 | Approval workflow | A bill over the limit in Settings is saved as a draft and sent to an admin (an admin's own bill is approved as saved); it posts only on approval and only up to the approved amount; the database refuses otherwise | `expenses.test` |
 | Pay bills | Tick bills across vendors; one payment per vendor, applied to its bills, all or nothing; warns when a vendor's licence or insurance has expired | `expenses.test` |
 | Vendor credits | Applied to the vendor's open bills from the credit's page | `expenses.test` |
