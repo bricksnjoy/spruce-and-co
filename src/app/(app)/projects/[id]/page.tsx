@@ -22,7 +22,7 @@ import { blankExpense } from "@/lib/expense-doc";
 export const dynamic = "force-dynamic";
 
 const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
-const TABS: [string, string][] = [["overview", "Overview"], ["variations", "Variations"], ["bills", "Receipts"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
+const TABS: [string, string][] = [["overview", "Overview"], ["variations", "Variations"], ["bills", "Expenses"], ["billing", "Billing plan"], ["financing", "Financing"], ["split", "Profit split"], ["payouts", "Payouts"], ["transactions", "Transactions"]];
 
 export default async function ProjectPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; new?: string; lender?: string }>;
