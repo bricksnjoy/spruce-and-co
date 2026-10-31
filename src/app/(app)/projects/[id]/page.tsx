@@ -228,7 +228,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
     s.supabase.from("project_financing_v").select("contact_id, source_type, received, repaid, outstanding").eq("project_id", p.id),
     s.supabase.from("contacts").select("id, name, kinds, profit_percent").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
-    s.supabase.from("transactions").select("id, date, due_date, number, type, contact_id, bank_account_id, total_amount, reference, voided_at")
+    s.supabase.from("transactions").select("id, date, due_date, number, type, contact_id, bank_account_id, total_amount, reference, voided_at, profit_percent")
       .eq("project_id", p.id).in("type", ["loan_receipt", "capital_contribution"]).order("date"),
     s.supabase.rpc("company_funding", { p_project: p.id }),
     // only an admin finances from the Capital Pool, so only an admin is shown what it holds
@@ -282,12 +282,14 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
         <Card>
           <CardHeader title="Funding history" />
           <Table>
-            <thead><tr><Th>Date</Th><Th>No.</Th><Th>From</Th><Th>Reference</Th><Th right>Amount</Th>{writer && <Th>{""}</Th>}</tr></thead>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>From</Th><Th>Reference</Th><Th right>Profit share</Th><Th right>Amount</Th>{writer && <Th>{""}</Th>}</tr></thead>
             <tbody>
               {(txns ?? []).filter((t) => !t.voided_at).map((t) => (
                 <tr key={t.id}>
                   <Td className="whitespace-nowrap">{date(t.date)}</Td><Td className="font-mono text-xs">{t.number}</Td>
-                  <Td>{names.get(t.contact_id!) ?? "—"}</Td><Td>{t.reference ?? ""}</Td><Td right>{m(t.total_amount)}</Td>
+                  <Td>{names.get(t.contact_id!) ?? "—"}</Td><Td>{t.reference ?? ""}</Td>
+                  <Td right className={Number(t.profit_percent) === 0 && t.profit_percent != null ? "font-medium text-amber-700" : ""}>{t.profit_percent == null ? "20% (usual)" : `${Number(t.profit_percent)}%`}</Td>
+                  <Td right>{m(t.total_amount)}</Td>
                   {writer && <Td right className="w-24 whitespace-nowrap py-1">
                     {(t.type === "loan_receipt" || t.type === "capital_contribution") && (
                       <EditFinancingButton projectId={p.id} entry={t} banks={banks ?? []}

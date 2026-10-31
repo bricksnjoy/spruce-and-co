@@ -128,14 +128,17 @@ describe("the payouts view", () => {
   });
 });
 
-describe("a lender's own profit percentage (048)", () => {
+describe("a loan's own profit percentage (048, 049)", () => {
   it("takes that share of the profit instead of the scheme's 20%, and blank keeps 20%", async () => {
     const p = await project(db, "PCT-1", client, 400000, { start: "2026-01-01" });
     await doc(db, { type: "capital_contribution", date: "2026-01-05", contact: mujahid, project: p, bank: "1010", total: 200000 });
     const ret = async () => (await one<{ a: string | null }>(db,
       `select sum(amount)::numeric(18,2)::text a from split_profit($1, 100000) where component = 'financing_return'`, [p])).a;
     expect(await ret()).toBe("20000.00");
-    await db.query(`update contacts set profit_percent = 30 where id = $1`, [mujahid]);
+    // the percentage is the loan's own (049): set on this loan, it changes only this project
+    await db.query(`update transactions set profit_percent = 30 where project_id = $1 and type = 'capital_contribution'`, [p]);
+    expect(await ret()).toBe("30000.00");
+    await db.query(`update contacts set profit_percent = 0 where id = $1`, [mujahid]);
     expect(await ret()).toBe("30000.00");
   });
 });
