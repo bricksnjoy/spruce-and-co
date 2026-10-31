@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession, type Session } from "@/server/session";
 import { deletedDocs } from "@/server/deleted-docs";
+import { DeleteFinancingButton } from "@/components/partners/delete-financing";
 import { addDays, date, money, pct, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
@@ -275,16 +276,17 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
             capital={(capital as { contact_id: string | null; name: string; available: string | number }[] | null)?.map((c) => ({ contact_id: c.contact_id, name: c.name, available: String(c.available) })) ?? null} />
         </Card>
       )}
-      {(txns ?? []).length > 0 && (
+      {(txns ?? []).some((t) => !t.voided_at) && (
         <Card>
           <CardHeader title="Financing received" />
           <Table>
-            <thead><tr><Th>Date</Th><Th>No.</Th><Th>From</Th><Th>Reference</Th><Th right>Amount</Th></tr></thead>
+            <thead><tr><Th>Date</Th><Th>No.</Th><Th>From</Th><Th>Reference</Th><Th right>Amount</Th>{writer && <Th>{""}</Th>}</tr></thead>
             <tbody>
-              {(txns ?? []).map((t) => (
-                <tr key={t.id} className={t.voided_at ? "text-[var(--muted)] line-through" : ""}>
+              {(txns ?? []).filter((t) => !t.voided_at).map((t) => (
+                <tr key={t.id}>
                   <Td className="whitespace-nowrap">{date(t.date)}</Td><Td className="font-mono text-xs">{t.number}</Td>
                   <Td>{names.get(t.contact_id!) ?? "—"}</Td><Td>{t.reference ?? ""}</Td><Td right>{m(t.total_amount)}</Td>
+                  {writer && <Td right className="w-12 py-1"><DeleteFinancingButton id={t.id} number={t.number} /></Td>}
                 </tr>
               ))}
             </tbody>
