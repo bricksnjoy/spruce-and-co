@@ -4,9 +4,13 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { markSent, voidSalesDoc } from "@/app/actions/sales";
 import { input, small } from "@/components/form-styles";
+import { DeleteInvoiceButton } from "./delete-invoice";
 
-export function DocActions({ id, type, status, voided, sent, canEdit, editable, balance, contactId }: {
+export function DocActions({ id, type, status, voided, sent, canEdit, editable, balance, contactId, number = null, paid = 0 }: {
   id: string; type: string; status: string; voided: boolean; sent: boolean; canEdit: boolean; editable: boolean; balance: string; contactId: string | null;
+  number?: string | null;
+  /** what has been paid or credited on it, offered for deleting with it */
+  paid?: number;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +38,7 @@ export function DocActions({ id, type, status, voided, sent, canEdit, editable, 
           ) : (
             <button type="button" onClick={() => setVoiding(true)} className="text-xs font-medium text-red-700 hover:underline">Void…</button>
           )}
+          {printable && <DeleteInvoiceButton id={id} number={number} paid={paid} />}
         </>
       )}
       {error && <span className="text-xs text-red-700">{error}</span>}

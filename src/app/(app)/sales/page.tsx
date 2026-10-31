@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge, Card, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
+import { deletedDocs } from "@/server/deleted-docs";
 import { addDays, date, money, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
 import { bookLabel } from "@/lib/books";
@@ -23,20 +24,23 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
   const t = today();
   const since = addDays(t, -30);
 
-  const [{ data }, { data: paid }, { data: und }] = await Promise.all([
+  const [{ data }, { data: paid }, { data: und }, deleted] = await Promise.all([
     s.supabase.from("sales_list_v").select("id, type, number, date, due_date, total, balance, customer_name, project_code, status, voided_at")
       .order("date", { ascending: false }).order("number", { ascending: false }).limit(500),
     s.supabase.rpc("sales_paid_since", { p_since: since }),
     s.supabase.from("accounts").select("id").eq("subtype", "undeposited").maybeSingle(),
+    deletedDocs(s),
   ]);
-  const rows = (data ?? []) as Row[];
+  // deleted documents, and the payments deleted with them, leave the list; "Deleted" shows them to restore
+  const all = (data ?? []) as Row[];
+  const rows = all.filter((r) => !deleted.has(r.id));
   const open = rows.filter((r) => r.type === "invoice" && ["open", "sent", "partial", "overdue"].includes(r.status));
   const unpaid = open.reduce((a, r) => a + dbToLaari(r.balance), 0n);
   const overdue = open.filter((r) => r.status === "overdue").reduce((a, r) => a + dbToLaari(r.balance), 0n);
   const { data: undLines } = und ? await s.supabase.rpc("rpc_account_balances", {}) : { data: [] };
   const undeposited = dbToLaari(((undLines ?? []) as { account_id: string; balance: number }[]).find((b) => b.account_id === und?.id)?.balance);
 
-  const shown = rows.filter((r) => show === "all" ? true : show === "unpaid" ? open.includes(r) : show === "overdue" ? r.status === "overdue" : r.type === show);
+  const shown = show === "deleted" ? all.filter((r) => deleted.has(r.id)) : rows.filter((r) => show === "all" ? true : show === "unpaid" ? open.includes(r) : show === "overdue" ? r.status === "overdue" : r.type === show);
   const writer = canWrite(s.role);
 
   return (
@@ -68,6 +72,9 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
         {FILTERS.map(([k, l]) => (
           <Link key={k} href={`/sales?show=${k}`} className={`rounded-full px-3 py-1 text-xs font-medium ${show === k ? "bg-[var(--brand)] text-white" : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
         ))}
+        {all.some((r) => deleted.has(r.id)) && (
+          <Link href="/sales?show=deleted" className={`rounded-full px-3 py-1 text-xs font-medium ${show === "deleted" ? "bg-[var(--brand)] text-white" : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"}`}>Deleted</Link>
+        )}
         {s.book === "live" && <Link href="/quotations" className="ml-auto text-xs text-[var(--muted)] hover:underline">Estimates (quotations) →</Link>}
       </div>
 

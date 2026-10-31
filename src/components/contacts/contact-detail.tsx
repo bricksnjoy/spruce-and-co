@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, type Session } from "@/server/session";
+import { deletedDocs } from "@/server/deleted-docs";
 import { date, money, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
@@ -86,10 +87,13 @@ export async function ContactDetail({ s, side, id, tab, from, to }: {
 }
 
 async function Transactions({ s, id, today }: { s: Session; id: string; today: string }) {
-  const { data } = await s.supabase.from("document_balances_v")
-    .select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at")
-    .eq("contact_id", id).order("date", { ascending: false }).limit(300);
-  const rows = (data ?? []) as (DocBalance & { id: string; number: string | null; date: string })[];
+  const [{ data }, deleted] = await Promise.all([
+    s.supabase.from("document_balances_v")
+      .select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at")
+      .eq("contact_id", id).order("date", { ascending: false }).limit(300),
+    deletedDocs(s),
+  ]);
+  const rows = ((data ?? []) as (DocBalance & { id: string; number: string | null; date: string })[]).filter((r) => !deleted.has(r.id));
   return (
     <Card>
       {rows.length === 0 ? <Empty message="No documents yet." /> : (
