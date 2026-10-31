@@ -46,8 +46,6 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
         action={<Link href="/partners" className="text-sm font-medium text-[var(--brand)] hover:underline">Partners & financing</Link>} />
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Lent to projects" value={m(total("lent"))} hint="Every loan received from these lenders" />
-        <Stat label="Principal owed" value={m(total("principal"))} hint="Loans not yet repaid" />
-        <Stat label="Financing return owed" value={m(total("ret"))} hint="Their share of the financing pool, posted but not paid" />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

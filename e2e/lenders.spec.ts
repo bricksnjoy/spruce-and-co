@@ -22,7 +22,7 @@ test("lenders: add one, record a loan from their page, add another from the proj
   await page.getByRole("link", { name: "Lenders", exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "Lenders", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: "New lender" }).click();
-  await expect(page.getByLabel("Lender", { exact: true })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /External lender/ })).toBeChecked();
   await page.getByLabel("Name", { exact: true }).fill(`Bank ${tag}`);
   await page.getByLabel("Phone").fill("7771234");
   await page.getByRole("button", { name: "Add contact" }).click();
