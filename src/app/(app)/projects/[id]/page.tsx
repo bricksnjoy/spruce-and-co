@@ -250,7 +250,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
               {rows.map((r) => (
                 <tr key={r.contact_id}>
                   <Td><Link href={`/partners/${r.contact_id}`} className="text-[var(--brand)] hover:underline">{names.get(r.contact_id) ?? "—"}</Link></Td>
-                  <Td>{r.source_type === "external" ? <Link href="/partners/lenders" className="hover:underline">External lender</Link> : "Capital Pool"}</Td>
+                  <Td>{r.source_type === "external" ? <Link href="/partners/lenders" className="hover:underline">Lender</Link> : "Capital Pool"}</Td>
                   <Td right>{m(r.received)}</Td><Td right>{pct(ratio(r.received), 2)}</Td><Td right>{m(r.repaid)}</Td><Td right>{m(r.outstanding)}</Td>
                 </tr>
               ))}

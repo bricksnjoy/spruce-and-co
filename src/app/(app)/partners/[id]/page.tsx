@@ -69,7 +69,7 @@ export default async function PartnerStatementPage({ params }: { params: Promise
           {writer && <ReviewButtons id={id} archived={!person.active} />}
         </div>
       )}
-      <PageHeader title={person.name} subtitle={`Statement · ${kinds.filter((k) => k === "partner" || k === "lender").map((k) => k === "partner" ? "Capital Pool member" : "External lender").join(", ") || "Contact"}`} />
+      <PageHeader title={person.name} subtitle={`Statement · ${kinds.filter((k) => k === "partner" || k === "lender").map((k) => k === "partner" ? "Capital Pool member" : "Lender").join(", ") || "Contact"}`} />
       <div className="grid gap-4 sm:grid-cols-3">
         {COMPONENTS.map((c) => (
           <Stat key={c} label={`${COMPONENT_LABEL[c]} owed`} value={m(sum(c, "outstanding"))} hint={`${m(sum(c, "accrued"))} accrued · ${m(sum(c, "paid"))} paid`} />

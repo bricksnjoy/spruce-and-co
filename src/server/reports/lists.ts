@@ -453,7 +453,7 @@ export const lists: ReportDef[] = [
       const list = (data ?? []) as { contact_id: string; project_id: string; source_type: string; received: number; repaid: number; outstanding: number }[];
       const [nm, pn] = await Promise.all([names(s, "contacts", [...new Set(list.map((x) => x.contact_id))]), names(s, "projects", [...new Set(list.map((x) => x.project_id))])]);
       const rows: Row[] = list.sort((a, b) => a.source_type.localeCompare(b.source_type) || (nm.get(a.contact_id) ?? "").localeCompare(nm.get(b.contact_id) ?? ""))
-        .map((x) => ({ cells: { label: nm.get(x.contact_id) ?? "—", type: x.source_type === "external" ? "External lender" : "Capital Pool", project: pn.get(x.project_id) ?? "—",
+        .map((x) => ({ cells: { label: nm.get(x.contact_id) ?? "—", type: x.source_type === "external" ? "Lender" : "Capital Pool", project: pn.get(x.project_id) ?? "—",
           received: L(x.received), repaid: L(x.repaid), outstanding: L(x.outstanding) }, href: `/partners/${x.contact_id}` }));
       rows.push(sumRow(rows, ["received", "repaid", "outstanding"]));
       return { title: "Loans", columns: [text("label", "Lender"), text("type", "Type"), text("project", "Project"), money("received", "Received"), money("repaid", "Repaid"), money("outstanding", "Outstanding")], rows,

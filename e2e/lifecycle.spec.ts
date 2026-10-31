@@ -97,14 +97,17 @@ test("a project from customer to payouts, through the screens", async ({ page })
 
   // 6. financing: a Capital Pool contribution and an external loan
   await page.goto(`/projects/${projectId}?tab=financing`);
-  await pick(page, "From", "One member, new money");
-  await pick(page, "Member", "Mujahid");
+  // a director putting in new money is one of the lenders
+  sql(`update contacts set kinds = array_append(kinds, 'lender') where name = 'Mujahid' and book = 'live' and not 'lender' = any (kinds)`);
+  await page.reload();
+  await pick(page, "From", /^Lender$/);
+  await pick(page, "Lender", "Mujahid");
   await pick(page, "Paid into", /1010/);
   await page.getByLabel("Amount (MVR)").fill("200000");
   await page.getByRole("button", { name: "Record financing" }).click();
   await expect(page.getByText("Recorded.")).toBeVisible();
   await page.waitForLoadState("networkidle"); // let the refresh after saving land before the next entry
-  await pick(page, "From", "External lender");
+  await pick(page, "From", /^Lender$/);
   await pick(page, "Lender", LENDER);
   await pick(page, "Paid into", /1010/);
   await page.getByLabel("Amount (MVR)").fill("100000");
