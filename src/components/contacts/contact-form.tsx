@@ -10,6 +10,7 @@ export type ContactFields = {
   email: string | null; phone: string | null; address: string | null; tin: string | null; gst_registered: boolean;
   taxable_activity_no: string | null; bank_details: string | null; terms_days: number | null; currency: string;
   vendor_kind: string | null; trade: string | null; licence_expiry: string | null; insurance_expiry: string | null; notes: string | null;
+  profit_percent?: number | string | null;
 };
 
 export const blankContact = (kind: string): ContactFields => ({
@@ -84,6 +85,16 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
           <input id="c-company" name="company_name" defaultValue={f("company_name")} className={input} />
         </div>
       </>}
+      {(lenderChoice || c.kinds.includes("lender")) && (
+        <div className="sm:col-span-2">
+          <label htmlFor="c-pct" className={label}>Profit share (%)</label>
+          <div className="relative max-w-48">
+            <input id="c-pct" name="profit_percent" inputMode="decimal" defaultValue={f("profit_percent")} placeholder="20" className={`${input} pr-8 tabular-nums`} />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-[var(--muted)]">%</span>
+          </div>
+          <p className={hint}>Their share of each project&apos;s profit, split by how much each lender put in. Leave blank for the usual 20%.</p>
+        </div>
+      )}
       <div>
         <label htmlFor="c-phone" className={label}>Phone</label>
         <input id="c-phone" name="phone" type="tel" defaultValue={f("phone")} className={input} />
