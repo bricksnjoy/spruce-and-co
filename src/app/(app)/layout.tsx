@@ -85,7 +85,7 @@ export default async function AppLayout({
                 </form>
               </div>
               <form action="/search" method="get" role="search" className="border-b border-[var(--border)] px-5 py-3">
-                <input name="q" type="search" placeholder="Search number, name or amount" aria-label="Search"
+                <input name="q" type="search" placeholder="Search" aria-label="Search"
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-2 text-base outline-none focus:border-[var(--brand)]" />
               </form>
               <Sidebar groups={groups} quickActions={quickActions} />
@@ -96,7 +96,7 @@ export default async function AppLayout({
             <NewMenu canWrite={["admin", "manager", "finance"].includes(profile?.role ?? "")}
               canPayroll={profile?.role === "admin" || profile?.role === "finance" || Boolean(profile?.can_payroll)} live={book === "live"} />
             <form action="/search" method="get" role="search" className="hidden sm:block">
-              <input name="q" type="search" placeholder="Search number, name or amount" aria-label="Search"
+              <input name="q" type="search" placeholder="Search" aria-label="Search"
                 className="w-64 rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-1.5 text-sm outline-none focus:border-[var(--brand)]" />
             </form>
           </div>
