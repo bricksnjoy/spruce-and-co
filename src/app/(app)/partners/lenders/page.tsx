@@ -42,7 +42,7 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="max-w-6xl space-y-5">
-      <PageHeader title="Lenders" subtitle={`External lenders who finance projects · ${bookLabel(s.book)} book`}
+      <PageHeader title="Lenders" subtitle={`Lenders and directors who finance projects · ${bookLabel(s.book)} book`}
         action={<Link href="/partners" className="text-sm font-medium text-[var(--brand)] hover:underline">Partners & financing</Link>} />
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Lent to projects" value={m(total("lent"))} hint="Every loan received from these lenders" />

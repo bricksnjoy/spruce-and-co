@@ -41,7 +41,7 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
   // the choices are held here so a refresh after saving never clears them; the amount and reference start afresh after each save
   const start = initialLender && lenders.some((l) => l.id === initialLender) ? initialLender : "";
   // an admin starts on the Capital Pool
-  const [type, setType] = useState<"capital_contribution" | "loan_receipt" | "company_capital">(start ? "loan_receipt" : capital ? "company_capital" : "capital_contribution");
+  const [type, setType] = useState<"capital_contribution" | "loan_receipt" | "company_capital">(start ? "loan_receipt" : capital ? "company_capital" : "loan_receipt");
   const [contact, setContact] = useState(start);
   const [bank, setBank] = useState("");
   const [currency, setCurrency] = useState("MVR");
@@ -53,8 +53,7 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
     <div className="px-5 pt-4 sm:w-1/3"><label htmlFor="fin-type" className={label}>From</label>
       <select id="fin-type" value={type} onChange={(e) => { setType(e.target.value as typeof type); setContact(""); }} className={input}>
         {capital && <option value="company_capital">Capital Pool (directors&apos; accounts and the company)</option>}
-        <option value="capital_contribution">One member, new money</option>
-        <option value="loan_receipt">External lender</option>
+        <option value="loan_receipt">Lender</option>
       </select></div>
   );
   if (type === "company_capital" && capital) return <>{from}<CapitalPoolForm projectId={projectId} capital={capital} /></>;
