@@ -22,10 +22,12 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
     .contains("kinds", ["lender"]).eq("active", view !== "archived").order("name");
   if (query) req = req.ilike("name", `%${query.replace(/[%_\\]/g, (x) => `\\${x}`)}%`);
 
-  const [{ data: rows }, { data: fin }, { data: returns }] = await Promise.all([
+  const [{ data: rows }, { data: fin }, { data: returns }, { data: directors }] = await Promise.all([
     req,
     s.supabase.from("project_financing_v").select("contact_id, project_id, received, repaid, outstanding").eq("source_type", "external"),
     s.supabase.from("partner_statement_v").select("contact_id, accrued, paid, outstanding").eq("component", "financing_return"),
+    // the directors not yet on Lenders, to pick from when one lends
+    s.supabase.from("contacts").select("id, name, kinds").contains("kinds", ["partner"]).eq("active", true).order("name"),
   ]);
   const list = (rows ?? []) as Row[];
   const sum = <T extends { contact_id: string }>(xs: T[] | null, id: string, k: keyof T) =>
@@ -54,7 +56,7 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
         </form>
       </div>
 
-      {canWrite(s.role) && <NewContact kind="lender" base="/partners" singular="lender" />}
+      {canWrite(s.role) && <NewContact kind="lender" base="/partners" singular="lender" directors={(directors ?? []).filter((d) => !(d.kinds as string[]).includes("lender"))} />}
 
       <Card>
         {per.length === 0 ? <Empty message={query ? `No lenders match "${query}".` : "No lenders yet. Press \"New lender\" to add one."} /> : (

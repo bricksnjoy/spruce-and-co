@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { input, label, hint, primary } from "@/components/form-styles";
 import { clearDraft, useFormDraft } from "@/lib/form-draft";
@@ -23,11 +23,15 @@ export const blankContact = (kind: string): ContactFields => ({
  * Add or edit a customer, vendor or lender. `base` is where the new contact's page lives;
  * with `onCreated` a new contact is handed back instead (a pick list adding one in place).
  */
-export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice = false }: {
+export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice = false, directors = [] }: {
   contact: ContactFields; base: string; onDone?: () => void; onCreated?: (id: string, name: string) => void;
   /** a new lender: an external lender or one of the company's directors, nothing else */
   lenderChoice?: boolean;
+  /** the directors already in the app, to pick from when a director lends */
+  directors?: { id: string; name: string }[];
 }) {
+  const [who, setWho] = useState<"external" | "director">("external");
+  const dir = lenderChoice && who === "director";
   const [state, action, pending] = useActionState(c.id ? updateContact : createContact, null as Result | null);
   const router = useRouter();
   const isVendor = c.kinds.includes("vendor");
@@ -50,9 +54,9 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
     <form ref={formRef} className="grid gap-4 sm:grid-cols-2"
       onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); typed.current = String(fd.get("name") ?? "").trim(); startTransition(() => action(fd)); }}>
       {c.id && <input type="hidden" name="id" value={c.id} />}
-      <div className="sm:col-span-2">
+      <div className={`sm:col-span-2 ${dir ? "hidden" : ""}`}>
         <label htmlFor="c-name" className={label}>Name</label>
-        <input id="c-name" name="name" required defaultValue={c.name} className={input} />
+        <input id="c-name" name="name" required={!dir} defaultValue={c.name} className={input} />
       </div>
       {lenderChoice ? (
         <fieldset className="sm:col-span-2">
@@ -60,11 +64,21 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
           <div className="grid gap-2 sm:grid-cols-2">
             {[["external", "External lender", "A bank, a friend or another company"], ["director", "Company director", "One of the directors, lending from their own money"]].map(([v, l, h]) => (
               <label key={v} className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] p-3 text-sm transition-colors hover:bg-[var(--hover)] has-[:checked]:border-[var(--brand)] has-[:checked]:bg-[var(--brand-soft)]">
-                <input type="radio" name="lender_type" value={v} defaultChecked={v === "external"} className="mt-0.5 h-4 w-4 accent-[var(--brand)]" />
+                <input type="radio" name="lender_type" value={v} checked={who === v} onChange={() => setWho(v as typeof who)} className="mt-0.5 h-4 w-4 accent-[var(--brand)]" />
                 <span><span className="font-medium">{l}</span><span className="block text-xs text-[var(--muted)]">{h}</span></span>
               </label>
             ))}
           </div>
+          {dir && (
+            <div className="mt-4">
+              <label htmlFor="c-director" className={label}>Director</label>
+              <select id="c-director" name="director_id" required className={input} defaultValue="">
+                <option value="">Choose…</option>
+                {directors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              <p className={hint}>Their details are already in the app; they are added to Lenders.</p>
+            </div>
+          )}
         </fieldset>
       ) : (
       <fieldset className="sm:col-span-2">
@@ -79,6 +93,7 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
         </div>
       </fieldset>
       )}
+      <div className={dir ? "hidden" : "contents"}>
       {/* a new lender needs only who they are and how to reach them */}
       {!lenderChoice && <>
         <div>
@@ -161,13 +176,14 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
         <label htmlFor="c-notes" className={label}>Notes</label>
         <textarea id="c-notes" name="notes" rows={2} defaultValue={f("notes")} className={input} />
       </div>
+      </div>
       {!c.id && state?.error && /already/.test(state.error) && (
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input type="checkbox" name="allow_duplicate" className="h-4 w-4" /> Add anyway — it is a different contact
         </label>
       )}
       <div className="flex items-center gap-3 sm:col-span-2">
-        <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : c.id ? "Save changes" : "Add contact"}</button>
+        <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : c.id ? "Save changes" : dir ? "Add as lender" : "Add contact"}</button>
         {onDone && <button type="button" onClick={onDone} className="text-sm text-[var(--muted)] hover:underline">Cancel</button>}
         {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
         {state?.ok && c.id && <p className="text-sm text-[var(--muted)]">Saved.</p>}
