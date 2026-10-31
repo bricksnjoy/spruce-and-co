@@ -36,10 +36,24 @@ export async function recordFinancing(_prev: unknown, fd: FormData): Promise<Res
   if (!isDate(date)) return { error: "Enter the date it was received." };
   const amount = moneyToDb(text(fd, "amount"));
   if (amount === null || Number(amount) <= 0) return { error: "Enter the amount received." };
+  const currency = text(fd, "currency") ?? "MVR";
+  const fx = currency === "MVR" ? "1" : text(fd, "fx_rate");
+  if (!fx || !/^\d{1,6}(\.\d{1,6})?$/.test(fx) || Number(fx) <= 0) return { error: "Enter the exchange rate: MVR for one unit." };
+  const pct = text(fd, "profit_percent");
+  if (pct !== null && !(/^\d{1,3}(\.\d{1,2})?$/.test(pct) && Number(pct) <= 100)) return { error: "The profit share is a number from 0 to 100, e.g. 20." };
+  const days = text(fd, "terms_days");
+  if (days !== null && !/^\d{1,4}$/.test(days)) return { error: "Repay within is a number of days, e.g. 180." };
+  const due = days === null ? null : new Date(Date.parse(`${date}T00:00:00Z`) + Number(days) * 86_400_000).toISOString().slice(0, 10);
   const { data, error } = await w.s.supabase.rpc("rpc_save_transaction", {
-    p: { type, date, contact_id: contact, project_id: project, bank_account_id: bank, total_amount: amount, reference: text(fd, "reference"), memo: text(fd, "memo") },
+    p: { type, date, due_date: due, contact_id: contact, project_id: project, bank_account_id: bank, total_amount: amount, currency, fx_rate: fx,
+      reference: text(fd, "reference"), memo: text(fd, "memo") },
   });
   if (error) return { error: dbMessage(error) };
+  // their share of the profit is kept on the lender (or member): blank is the usual 20%
+  if (fd.has("profit_percent")) {
+    const { error: e2 } = await w.s.supabase.from("contacts").update({ profit_percent: pct === null ? null : Number(pct) }).eq("id", contact);
+    if (e2) return { error: `Recorded, but the profit share was not saved: ${dbMessage(e2)}`, id: data as string };
+  }
   refresh();
   return { ok: true, id: data as string };
 }

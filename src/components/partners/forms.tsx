@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/modal";
 import { ContactForm, blankContact } from "@/components/contacts/contact-form";
 
-type Opt = { id: string; name: string };
+type Opt = { id: string; name: string; profit_percent?: number | string | null };
 type Bank = { id: string; code: string; name: string };
 type Capital = { contact_id: string | null; name: string; available: string };
 
@@ -44,6 +44,7 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
   const [type, setType] = useState<"capital_contribution" | "loan_receipt" | "company_capital">(start ? "loan_receipt" : capital ? "company_capital" : "capital_contribution");
   const [contact, setContact] = useState(start);
   const [bank, setBank] = useState("");
+  const [currency, setCurrency] = useState("MVR");
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<Opt[]>([]);   // shown until the page's list catches up
   const from = (
@@ -76,8 +77,22 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
           {banks.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
         </select></div>
       <div><label htmlFor="fin-date" className={label}>Date received</label><input id="fin-date" name="date" type="date" required defaultValue={today()} className={input} /></div>
-      <div key={`a-${state?.id ?? ""}`}><label htmlFor="fin-amt" className={label}>Amount (MVR)</label><input id="fin-amt" name="amount" inputMode="decimal" required className={`${input} tabular-nums`} /></div>
+      <div key={`a-${state?.id ?? ""}`}><label htmlFor="fin-amt" className={label}>Amount ({currency})</label><input id="fin-amt" name="amount" inputMode="decimal" required className={`${input} tabular-nums`} /></div>
+      <div><label htmlFor="fin-cur" className={label}>Currency</label>
+        <div className="flex gap-2">
+          <select id="fin-cur" name="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={input}><option>MVR</option><option>USD</option></select>
+          {currency !== "MVR" && <input name="fx_rate" aria-label="MVR per unit" required placeholder="15.42" inputMode="decimal" className={`${input} w-28 tabular-nums`} />}
+        </div></div>
       <div key={`r-${state?.id ?? ""}`}><label htmlFor="fin-ref" className={label}>Reference</label><input id="fin-ref" name="reference" className={input} /></div>
+      <div key={`p-${contact}`}><label htmlFor="fin-pct" className={label}>Profit share (%)</label>
+        <div className="relative">
+          <input id="fin-pct" name="profit_percent" inputMode="decimal" placeholder="20" defaultValue={who.find((c) => c.id === contact)?.profit_percent ?? ""} className={`${input} pr-8 tabular-nums`} />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-[var(--muted)]">%</span>
+        </div>
+        <p className="mt-1 text-xs text-[var(--muted)]">Their share of the profit, split by how much each put in. Blank is 20%.</p></div>
+      <div><label htmlFor="fin-terms" className={label}>Repay within (days)</label>
+        <input id="fin-terms" name="terms_days" inputMode="numeric" placeholder="e.g. 180" className={`${input} tabular-nums`} />
+        <p className="mt-1 text-xs text-[var(--muted)]">Optional: sets when it is due back.</p></div>
       <div className="flex items-center gap-3 sm:col-span-3">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : "Record financing"}</button>
         {state?.error && <p className="text-sm text-red-700">{state.error}</p>}

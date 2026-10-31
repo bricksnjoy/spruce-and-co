@@ -223,7 +223,7 @@ async function Transactions({ s, id }: { s: Session; id: string }) {
 async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigures; writer: boolean; lender?: string }) {
   const [{ data: sources }, { data: contacts }, { data: banks }, { data: txns }, { data: company }, { data: capital }] = await Promise.all([
     s.supabase.from("project_financing_v").select("contact_id, source_type, received, repaid, outstanding").eq("project_id", p.id),
-    s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
+    s.supabase.from("contacts").select("id, name, kinds, profit_percent").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
     s.supabase.from("transactions").select("id, date, number, type, contact_id, total_amount, reference, voided_at")
       .eq("project_id", p.id).in("type", ["loan_receipt", "capital_contribution"]).order("date"),
