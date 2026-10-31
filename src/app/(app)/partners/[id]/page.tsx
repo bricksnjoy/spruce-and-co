@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Stat, Table, Th, Td } from "@/components/ui";
 import { DirectorAccountForms, PayoutForm, type OwedRow } from "@/components/partners/forms";
 import { RecordLoan } from "@/components/partners/record-loan";
-import { EditContact } from "@/components/contacts/edit-contact";
 import { ReviewButtons } from "@/components/contacts/review-buttons";
 import { canWrite, getSession } from "@/server/session";
 import { date, money } from "@/lib/format";
@@ -198,12 +197,6 @@ export default async function PartnerStatementPage({ params }: { params: Promise
           </Table>
         )}
       </Card>
-      {writer && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold">Details</h2>
-          <EditContact contact={person} base="/partners" />
-        </div>
-      )}
     </div>
   );
 }
