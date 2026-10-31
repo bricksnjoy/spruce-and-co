@@ -114,18 +114,29 @@ describe("full project lifecycle (§13)", () => {
     expect((await one<{ blocked: boolean }>(db, `select blocked from payout_status($1)`, [p])).blocked).toBe(true);
 
     await pay(inv2, t2, "2026-07-05");
-    // the client has paid: still no split until the receipts are paid and the loans repaid (050)
-    await expect(rpc(`select rpc_complete_project($1, '2026-07-06') x`, [p])).rejects.toThrow(/receipts of MVR .* still to pay; loans of MVR 300,000.00/);
+    // the client has paid: no split until the bills are paid; loans do not hold it (053)
+    await expect(rpc(`select rpc_complete_project($1, '2026-07-06') x`, [p])).rejects.toThrow(/bills of MVR .* still to pay$/);
     await expect(rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date: "2026-07-06", contact_id: mujahid, bank_account_id: bank, lines: [line("profit_share", 1)] })]))
       .rejects.toThrow(/completed/);
-    await clear(p);
+    const bills = await q<{ id: string; balance: string }>(db, `select d.id, d.balance from document_balances_v d where d.project_id = $1 and d.type = 'bill' and d.balance > 0`, [p]);
+    await rpc(`select rpc_pay_bills($1, '2026-07-08', $2::jsonb) x`, [bank, JSON.stringify(bills.map((b) => ({ bill: b.id, amount: b.balance })))]);
+    // an expense is paid when recorded, so it never holds the project (053)
+    await save({ type: "expense", date: "2026-07-08", bank_account_id: bank, project_id: p, lines: [{ account_id: acct["5000"], amount: "15000.00" }] });
+    expect((await rpc<{ x: string | null }>(`select profit_hold($1) x`, [p])).x).toBeNull();
     await rpc(`select rpc_complete_project($1, '2026-07-09') x`, [p]);
     expect((await one<{ blocked: boolean; stage: string }>(db, `select blocked, stage from project_payouts_v where id = $1`, [p]))).toEqual({ blocked: false, stage: "settled" });
 
+    // completed with the loans still owed: they are repaid before any return or profit leaves
     const owed = await statement(mujahid, p);
-    expect(owed.principal).toBe(0);
+    expect(owed.principal).toBe(200000);
     expect(owed.financing_return).toBeGreaterThan(0);
     expect(owed.profit_share).toBeGreaterThan(0);
+    await expect(rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date: "2026-07-10", contact_id: mujahid, bank_account_id: bank,
+      lines: [line("profit_share", owed.profit_share)] })])).rejects.toThrow(/Repay the loans first: MVR 300,000.00/);
+    // Mujahid's own principal in the same payout still leaves the lender's loan owed
+    await expect(rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date: "2026-07-10", contact_id: mujahid, bank_account_id: bank,
+      lines: [line("principal", owed.principal), line("profit_share", owed.profit_share)] })])).rejects.toThrow(/MVR 100,000.00 lent/);
+    await clear(p, "2026-07-10");
     await rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date: "2026-07-10", contact_id: mujahid, bank_account_id: bank,
       lines: [line("financing_return", owed.financing_return), line("profit_share", owed.profit_share)] })]);
     expect(await statement(mujahid, p)).toEqual({ principal: 0, financing_return: 0, profit_share: 0 });

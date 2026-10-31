@@ -108,7 +108,10 @@ describe("financing a project from the Capital Pool", () => {
     expect(back.find((r) => r.component === "principal")?.amount).toBe("60000.00");
     // the pool's 20% of 300,000 is shared 60:20 with the company, so his return is 45,000
     expect(back.find((r) => r.component === "financing_return")?.amount).toBe("45000.00");
-    // Muaz financed nothing and has only his profit share
-    expect((await q<{ component: string }>(db, `select component from director_waiting($1) where project_id = $2`, [muaz, b])).map((r) => r.component)).toEqual(["profit_share"]);
+    // Muaz financed nothing and has only his profit share, once Mujahid's loan is repaid first (053)
+    const muazWaits = async () => (await q<{ component: string }>(db, `select component from director_waiting($1) where project_id = $2`, [muaz, b])).map((r) => r.component);
+    expect(await muazWaits()).toEqual([]);
+    await choose(mujahid, "keep", await waiting(mujahid));
+    expect(await muazWaits()).toEqual(["profit_share"]);
   });
 });
