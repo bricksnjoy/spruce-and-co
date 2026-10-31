@@ -96,7 +96,7 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
         <label htmlFor="c-address" className={label}>Address</label>
         <textarea id="c-address" name="address" rows={2} defaultValue={f("address")} className={input} />
       </div>
-
+      {!lenderChoice && <>
       <div>
         <label htmlFor="c-tin" className={label}>TIN</label>
         <input id="c-tin" name="tin" defaultValue={f("tin")} className={`${input} font-mono`} />
@@ -109,6 +109,7 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
         <input type="checkbox" name="gst_registered" defaultChecked={c.gst_registered} className="mt-0.5 h-4 w-4" />
         <span>Registered for GST<span className="block text-xs text-[var(--muted)]">Input GST on their receipts can only be claimed when this is ticked and their TIN is recorded.</span></span>
       </label>
+      </>}
 
       <div>
         <label htmlFor="c-terms" className={label}>Payment terms (days)</label>
