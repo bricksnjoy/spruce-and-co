@@ -173,7 +173,7 @@ export function ExpenseForm({ data, values, onSaved }: {
           </label>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="line-table w-full text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--muted)]">
               <th className="w-56 px-3 py-2 font-medium">For</th><th className="px-2 py-2 font-medium">Description</th>
               {detailed && <><th className="w-20 px-2 py-2 font-medium">Qty</th><th className="w-24 px-2 py-2 font-medium">Rate</th></>}
@@ -185,7 +185,7 @@ export function ExpenseForm({ data, values, onSaved }: {
                 const byQty = l.qty !== "" && l.rate !== "";
                 return (
                   <tr key={i} className="border-t border-[var(--border)] align-top">
-                    <td className="px-3 py-2">
+                    <td data-label="For" className="lt-wide px-3 py-2">
                       <select aria-label={`Line ${i + 1} account`} required value={l.account_id} className={input}
                         onChange={(e) => setLine(i, isLabour(e.target.value) ? { account_id: e.target.value, tax_amount: "", gst_claimable: false } : { account_id: e.target.value })}>
                         <option value="">Choose…</option>
@@ -196,16 +196,16 @@ export function ExpenseForm({ data, values, onSaved }: {
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} description`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} className={input} /></td>
+                    <td data-label="Description" className="lt-wide px-2 py-2"><input aria-label={`Line ${i + 1} description`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} className={input} /></td>
                     {detailed && <>
-                      <td className="px-2 py-2"><input aria-label={`Line ${i + 1} quantity`} inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} className={`${input} tabular-nums`} /></td>
-                      <td className="px-2 py-2"><input aria-label={`Line ${i + 1} rate`} inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} className={`${input} tabular-nums`} /></td>
+                      <td data-label="Qty" className="px-2 py-2"><input aria-label={`Line ${i + 1} quantity`} inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} className={`${input} tabular-nums`} /></td>
+                      <td data-label="Rate" className="px-2 py-2"><input aria-label={`Line ${i + 1} rate`} inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} className={`${input} tabular-nums`} /></td>
                     </>}
-                    <td className="px-2 py-2">
+                    <td data-label="Amount before GST" className="px-2 py-2">
                       {byQty ? <p className="px-3 py-2 text-right tabular-nums">{money(laariToNumber(lineAmount(l)))}</p>
                         : <input aria-label={`Line ${i + 1} amount before GST`} inputMode="decimal" value={l.amount} onChange={(e) => setLine(i, { amount: e.target.value })} className={`${input} text-right tabular-nums`} />}
                     </td>
-                    <td className="px-2 py-2">
+                    <td data-label="GST" className="px-2 py-2">
                       {isLabour(l.account_id) ? <p className="px-1 py-2 text-xs text-[var(--muted)]">No GST on labour</p> : <>
                       <div className="flex gap-1">
                         <input aria-label={`Line ${i + 1} GST`} inputMode="decimal" value={l.tax_amount} onChange={(e) => setLine(i, { tax_amount: e.target.value })} className={`${input} text-right tabular-nums`} />
@@ -220,7 +220,7 @@ export function ExpenseForm({ data, values, onSaved }: {
                       </>}
                     </td>
                     {detailed && (
-                      <td className="px-2 py-2">
+                      <td data-label="Project" className="lt-wide px-2 py-2">
                         <select aria-label={`Line ${i + 1} project`} value={l.project_id} onChange={(e) => setLine(i, { project_id: e.target.value })} className={input}>
                           <option value="">{v.project_id ? "As above" : "Overhead"}</option>
                           {data.projects.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}

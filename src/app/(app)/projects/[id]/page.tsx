@@ -69,7 +69,7 @@ export default async function ProjectPage({ params, searchParams }: {
 
 function Figure({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "bad" | "good" }) {
   return (
-    <Card className="px-5 py-4">
+    <Card className="stat px-5 py-4">
       <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{label}</p>
       <p className={`mt-2 text-xl font-semibold tabular-nums ${tone === "bad" ? "text-red-700" : tone === "good" ? "text-emerald-700" : ""}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>}

@@ -204,7 +204,7 @@ export function QuotationForm({
           </button>
         }>
           <div className="-mx-2 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="line-table w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-[var(--muted)]">
                   <th className="w-6 px-2 py-1.5">#</th>
@@ -219,8 +219,8 @@ export function QuotationForm({
               <tbody>
                 {q.items.map((l, i) => (
                   <tr key={i} className="border-t border-[var(--border)] align-top">
-                    <td className="px-2 py-2.5 text-[var(--muted)]">{i + 1}</td>
-                    <td className="px-0 py-1">
+                    <td className="lt-num px-2 py-2.5 text-[var(--muted)]">{i + 1}</td>
+                    <td data-label="Item & description" className="lt-wide px-0 py-1">
                       <input aria-label={`Line ${i + 1} item`} value={l.title} placeholder="Item"
                         onChange={(e) => setLine(i, { title: e.target.value })} className={`${cell} font-medium`} />
                       <textarea aria-label={`Line ${i + 1} description`} value={l.description} placeholder="Description (optional)"
@@ -228,20 +228,20 @@ export function QuotationForm({
                         onChange={(e) => setLine(i, { description: e.target.value })} className={`${cell} text-xs`} />
                     </td>
                     {template?.body.show_unit && (
-                      <td className="px-0 py-1">
+                      <td data-label="Unit" className="px-0 py-1">
                         <input aria-label={`Line ${i + 1} unit`} value={l.unit}
                           onChange={(e) => setLine(i, { unit: e.target.value })} className={cell} />
                       </td>
                     )}
-                    <td className="px-0 py-1">
+                    <td data-label="Qty" className="px-0 py-1">
                       <input aria-label={`Line ${i + 1} quantity`} type="number" step="0.01" min="0" value={l.qty}
                         onChange={(e) => setLine(i, { qty: Number(e.target.value) })} className={`${cell} text-right`} />
                     </td>
-                    <td className="px-0 py-1">
+                    <td data-label="Rate" className="px-0 py-1">
                       <input aria-label={`Line ${i + 1} rate`} type="number" step="0.01" min="0" value={l.rate}
                         onChange={(e) => setLine(i, { rate: Number(e.target.value) })} className={`${cell} text-right`} />
                     </td>
-                    <td className="px-2 py-2.5 text-right tabular-nums">
+                    <td data-label="Amount" className="px-2 py-2.5 text-right tabular-nums">
                       {money((Number(l.qty) || 0) * (Number(l.rate) || 0))}
                     </td>
                     <td className="px-1 py-2 text-right">

@@ -119,14 +119,14 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">GST {periodLabel(cur.start, cur.end)} to date</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{m(L(curGst?.net))}</p>
           <p className="mt-1 text-xs text-[var(--muted)]">File and pay by {date(cur.due)}</p>
           {unpaid.length > 0 && <p className="mt-1 text-xs text-red-700">Filed, not paid: {unpaid.map((g) => `${periodLabel(g.start_date, g.end_date)} ${m(L(g.payable))}`).join(", ")}</p>}
           <div className="mt-2"><Link2 href="/taxes">Taxes →</Link2></div>
         </Card>
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Next payroll</p>
           {payroll ? <>
             <p className="mt-2 text-base font-semibold">{payroll.label}</p>
@@ -134,14 +134,14 @@ export default async function DashboardPage() {
             <div className="mt-2"><Link2 href={payroll.href}>Payroll →</Link2></div>
           </> : <p className="mt-2 text-sm text-[var(--muted)]">Needs payroll permission.</p>}
         </Card>
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Payouts</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{m(ready)}</p>
           <p className="mt-1 text-xs text-[var(--muted)]">ready to pay · {m(blocked)} blocked</p>
           {(pending?.length ?? 0) > 0 && <p className="mt-1 text-xs text-amber-700">Payouts awaiting approval</p>}
           <div className="mt-2"><Link2 href="/partners">Partners & financing →</Link2></div>
         </Card>
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Reconciliation</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{reconDue.length}</p>
           <p className="mt-1 text-xs text-[var(--muted)]">{reconDue.length === 1 ? "account is" : "accounts are"} not reconciled to {date(lastMonthEnd)}</p>

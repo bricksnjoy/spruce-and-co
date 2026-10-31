@@ -133,7 +133,7 @@ export function DocForm({ data, values, branding, number = null }: {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="line-table w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-[var(--muted)]">
                 <th className="w-20 px-2 py-2 font-medium">Item no.</th>
@@ -147,22 +147,22 @@ export function DocForm({ data, values, branding, number = null }: {
                 const byQty = l.qty !== "" && l.rate !== "";
                 return (
                   <tr key={i} className="border-t border-[var(--border)] align-top">
-                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} item no.`} value={l.item_no} onChange={(e) => setLine(i, { item_no: e.target.value })} className={input} placeholder="1.1" /></td>
-                    <td className="px-3 py-2"><textarea rows={1} aria-label={`Line ${i + 1} description`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} className={input} /></td>
-                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} quantity`} inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} className={`${input} tabular-nums`} /></td>
-                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} unit`} value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className={input} placeholder="nos" /></td>
-                    <td className="px-2 py-2"><input aria-label={`Line ${i + 1} rate`} inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} className={`${input} tabular-nums`} /></td>
-                    <td className="px-2 py-2">
+                    <td data-label="Item no." className="px-2 py-2"><input aria-label={`Line ${i + 1} item no.`} value={l.item_no} onChange={(e) => setLine(i, { item_no: e.target.value })} className={input} placeholder="1.1" /></td>
+                    <td data-label="Description" className="lt-wide px-3 py-2"><textarea rows={1} aria-label={`Line ${i + 1} description`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} className={input} /></td>
+                    <td data-label="Qty" className="px-2 py-2"><input aria-label={`Line ${i + 1} quantity`} inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} className={`${input} tabular-nums`} /></td>
+                    <td data-label="Unit" className="px-2 py-2"><input aria-label={`Line ${i + 1} unit`} value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className={input} placeholder="nos" /></td>
+                    <td data-label="Rate" className="px-2 py-2"><input aria-label={`Line ${i + 1} rate`} inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} className={`${input} tabular-nums`} /></td>
+                    <td data-label="Amount" className="px-2 py-2">
                       {byQty ? <p className="px-3 py-2 text-right tabular-nums">{money(laariToNumber(lineAmount(l)))}</p>
                         : <input aria-label={`Line ${i + 1} amount`} inputMode="decimal" value={l.amount} onChange={(e) => setLine(i, { amount: e.target.value })} className={`${input} text-right tabular-nums`} />}
                     </td>
-                    <td className="px-2 py-2">
+                    <td data-label="GST" className="px-2 py-2">
                       <select aria-label={`Line ${i + 1} GST`} value={l.tax_code_id} onChange={(e) => setLine(i, { tax_code_id: e.target.value })} className={input}>
                         <option value="">None</option>
                         {data.taxCodes.map((t) => <option key={t.id} value={t.id}>{t.rate !== "0" ? `${Number(t.rate)}% · ${t.name}` : t.name}</option>)}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td data-label="Income account" className="lt-wide px-2 py-2">
                       <select aria-label={`Line ${i + 1} income account`} value={l.account_id} onChange={(e) => setLine(i, { account_id: e.target.value })} className={input}>
                         <option value="">Contract revenue</option>
                         {data.incomeAccounts.filter((a) => a.code !== "4000").map((a) => <option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}

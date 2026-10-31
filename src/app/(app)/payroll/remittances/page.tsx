@@ -28,7 +28,7 @@ export default async function Remittances() {
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {(accts ?? []).map((a) => (
-          <Card key={a.id} className="px-5 py-4">
+          <Card key={a.id} className="stat px-5 py-4">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{a.name}</p>
             <p className="mt-2 text-xl font-semibold tabular-nums">{money(laariToNumber(bal.get(a.id) ?? 0n))}</p>
           </Card>

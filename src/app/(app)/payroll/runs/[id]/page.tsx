@@ -38,7 +38,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           <Link href={`/print/payslips/${id}`} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--brand-soft)]">Print payslips</Link></div>} />
       <div className="grid gap-4 sm:grid-cols-4">
         {[["Gross pay", sum("gross")], ["Deductions", sum("deductions")], ["Employer pension", sum("employer_contributions")], ["Net pay", sum("net")]].map(([l, v]) => (
-          <Card key={l} className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{l}</p><p className="mt-2 text-xl font-semibold tabular-nums">{v}</p></Card>
+          <Card key={l} className="stat px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{l}</p><p className="mt-2 text-xl font-semibold tabular-nums">{v}</p></Card>
         ))}
       </div>
       <RunEditor runId={id} status={run.status} displayStatus={run.display_status} editable={editable} isAdmin={s.role === "admin"}

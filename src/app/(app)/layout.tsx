@@ -56,13 +56,17 @@ export default async function AppLayout({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6 md:static">
           <div className="flex items-center gap-2 md:hidden">
             <MobileNav>
               <div className="flex h-16 items-center gap-2.5 border-b border-[var(--border)] px-5">
                 <Logo size={34} />
                 <Wordmark size="sm" />
               </div>
+              <form action="/search" method="get" role="search" className="border-b border-[var(--border)] px-5 py-3">
+                <input name="q" type="search" placeholder="Search number, name or amount" aria-label="Search"
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-2 text-base outline-none focus:border-[var(--brand)]" />
+              </form>
               <Sidebar groups={groups} quickActions={quickActions} />
             </MobileNav>
             <Logo size={28} />
@@ -82,7 +86,7 @@ export default async function AppLayout({
                 {profile?.job_title || user.email}
               </p>
             </div>
-            <Badge value={profile?.role} />
+            <span className="hidden sm:inline-flex"><Badge value={profile?.role} /></span>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-soft)] text-xs font-semibold text-[var(--brand)]">
               {initials(name)}
             </div>

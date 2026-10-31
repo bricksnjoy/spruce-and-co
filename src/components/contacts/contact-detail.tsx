@@ -52,11 +52,11 @@ export async function ContactDetail({ s, side, id, tab, from, to }: {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{side.owedLabel}</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{m(bal?.[side.owedKey])}</p>
         </Card>
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Overdue</p>
           <p className={`mt-2 text-2xl font-semibold tabular-nums ${dbToLaari(bal?.[side.overdueKey]) > 0n ? "text-red-700" : ""}`}>{m(bal?.[side.overdueKey])}</p>
         </Card>

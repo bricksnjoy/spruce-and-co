@@ -75,7 +75,7 @@ export function Stat({
     warn: "text-amber-700",
   }[tone];
   return (
-    <Card className="px-5 py-4">
+    <Card className="stat px-5 py-4">
       <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
         {label}
       </p>

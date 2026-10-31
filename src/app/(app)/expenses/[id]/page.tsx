@@ -57,12 +57,12 @@ export default async function ExpenseDocPage({ params, searchParams }: { params:
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Total</p>
+        <Card className="stat px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Total</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{m(d.total)}{d.currency !== "MVR" ? ` ${d.currency}` : ""}</p></Card>
         {d.type === "bill" ? (
           <>
-            <Card className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Paid or credited</p><p className="mt-2 text-2xl font-semibold tabular-nums">{m(d.applied)}</p></Card>
-            <Card className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Balance due {d.due_date ? date(d.due_date) : ""}</p>
+            <Card className="stat px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Paid or credited</p><p className="mt-2 text-2xl font-semibold tabular-nums">{m(d.applied)}</p></Card>
+            <Card className="stat px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Balance due {d.due_date ? date(d.due_date) : ""}</p>
               <p className={`mt-2 text-2xl font-semibold tabular-nums ${d.status === "overdue" ? "text-red-700" : ""}`}>{m(d.balance)}</p></Card>
           </>
         ) : (

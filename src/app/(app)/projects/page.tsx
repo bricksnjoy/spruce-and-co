@@ -52,7 +52,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             ["Cost to date", sum(rows, "cost_to_date"), "Direct job costs"],
             ["Forecast profit", sum(rows, "forecast_profit"), "Contract value less forecast final cost"],
           ].map(([label, v, hint]) => (
-            <Card key={label as string} className="px-5 py-4">
+            <Card key={label as string} className="stat px-5 py-4">
               <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{label as string}</p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">{money(laariToNumber(v as bigint))}</p>
               <p className="mt-1 text-xs text-[var(--muted)]">{hint as string}</p>
