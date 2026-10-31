@@ -30,8 +30,6 @@ export const NAV: NavGroup[] = [
       { href: "/", label: "Dashboard", roles: ALL },
       { href: "/projects", label: "Projects", roles: ALL },
       { href: "/tasks", label: "Tasks & Calendar", roles: ALL },
-      { href: "/messages", label: "Message Center", roles: MONEY },
-      { href: "/help", label: "Help", roles: ALL },
     ],
   },
   {
@@ -96,6 +94,15 @@ export const NAV: NavGroup[] = [
       { href: "/settings/numbering", label: "Numbering", roles: MONEY },
       { href: "/settings/currencies", label: "Currencies", roles: MONEY },
       { href: "/settings/profit-share", label: "Profit-share schemes", roles: MONEY },
+    ],
+  },
+  // at the foot of the menu
+  {
+    group: "Support",
+    defaultOpen: true,
+    items: [
+      { href: "/messages", label: "Message Center", roles: MONEY },
+      { href: "/help", label: "Help", roles: ALL },
     ],
   },
 ];

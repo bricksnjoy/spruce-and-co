@@ -49,12 +49,13 @@ export default async function ProjectPage({ params, searchParams }: {
         subtitle={<span className="inline-flex flex-wrap items-center gap-2">{`${p.code}${p.customer_name ? ` · ${p.customer_name}` : ""}`}<StageBadge stage={p.stage} /></span>}
         action={writer ? <ProjectMenu id={id} code={p.code} archived={Boolean(p.archived_at)} canUndoCompletion={s.role === "admin" && Boolean(p.completed_at)} canDelete={s.role === "admin"} /> : undefined} />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-neutral-300">
+      {/* tabs: only the open one is underlined; the row scrolls on a phone without showing a scrollbar */}
+      <div className="flex gap-1 overflow-x-auto border-b border-[var(--border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map(([k, l]) => (
           <Link key={k} href={`/projects/${id}?tab=${k}`} aria-current={active === k ? "page" : undefined}
-            className={`-mb-px shrink-0 rounded-t-md border-b-[3px] px-3 py-2 text-sm font-medium ${active === k
-              ? "border-neutral-700 bg-neutral-100 font-semibold text-neutral-900"
-              : "border-transparent text-[var(--muted)] hover:border-neutral-300 hover:text-[var(--text)]"}`}>{l}</Link>
+            className={`-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${active === k
+              ? "border-neutral-900! font-semibold text-neutral-900"
+              : "border-transparent! text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
         ))}
       </div>
 
@@ -270,7 +271,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
       </Card>
       {writer && !p.completed_at && (
         <Card>
-          <CardHeader title="Record financing received" subtitle="Capital Pool money is a shareholder loan; lender money is a project loan. Both are repaid once the client has paid in full. Capital Pool (admin) takes the amount you enter from each director's account and from the company's own money." />
+          <CardHeader title="Add Funds" />
           <FinancingForm projectId={p.id} banks={banks ?? []} initialLender={lender}
             lenders={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("lender"))}
             partners={(contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner"))}
@@ -526,7 +527,13 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
                   <Td right>{writer && form && !r.voided_at && !r.is_draft && r.type === "bill" && Number(r.balance) > 0
                     ? <BillStatusMenu projectId={p.id} billId={r.id} label={docStatus(r, t)} payFrom={form.payFrom} />
                     : <Badge value={docStatus(r, t)} />}</Td>
-                  {writer && <Td right>{!r.voided_at && <DeleteBillButton billId={r.id} number={r.number} />}</Td>}
+                  {writer && <Td right className="whitespace-nowrap">{!r.voided_at && <>
+                    <Link href={`/expenses/${r.id}/edit`} aria-label={`Edit ${r.number ?? "receipt"}`} title="Edit"
+                      className="relative z-[1] inline-flex rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-[var(--hover)] hover:text-[var(--text)]">
+                      <svg aria-hidden viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                    </Link>
+                    <DeleteBillButton billId={r.id} number={r.number} />
+                  </>}</Td>}
                 </tr>
               ))}
             </tbody>
