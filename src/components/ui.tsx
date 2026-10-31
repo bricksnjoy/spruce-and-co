@@ -75,7 +75,7 @@ export function Stat({
     warn: "text-amber-700",
   }[tone];
   return (
-    <Card className="px-5 py-4">
+    <Card className="stat px-5 py-4">
       <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
         {label}
       </p>
@@ -146,10 +146,11 @@ export function Progress({ value }: { value: number }) {
   );
 }
 
+/** A list; on a phone each row shows as a small card, its values labelled from the headings (see TableLabels). */
 export function Table({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">{children}</table>
+      <table className="cards w-full text-sm">{children}</table>
     </div>
   );
 }

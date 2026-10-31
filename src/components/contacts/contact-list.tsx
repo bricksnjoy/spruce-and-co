@@ -39,11 +39,11 @@ export async function ContactList({ s, side, view = "active", query = "" }: { s:
       <PageHeader title={side.title} subtitle={`${bookLabel(s.book)} book · balances from the ledger`} />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{side.owedLabel}</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{money(laariToNumber(totalOwed))}</p>
         </Card>
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Overdue</p>
           <p className={`mt-2 text-2xl font-semibold tabular-nums ${totalOverdue > 0n ? "text-red-700" : ""}`}>{money(laariToNumber(totalOverdue))}</p>
         </Card>

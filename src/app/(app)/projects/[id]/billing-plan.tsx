@@ -5,6 +5,7 @@ import { Card, CardHeader, Empty, Table, Th, Td } from "@/components/ui";
 import { input, small } from "@/components/form-styles";
 import { deleteBillingStage, saveBillingStage, type Result } from "@/app/actions/project-value";
 import { invoiceStage } from "@/app/actions/sales";
+import { DeleteInvoiceButton } from "@/components/sales/delete-invoice";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { today } from "@/lib/format";
@@ -17,6 +18,9 @@ export type Stage = {
   invoice_total?: string | null;
   // the GST its invoice actually charged
   invoice_gst?: string | null;
+  invoice_number?: string | null;
+  // what has been paid on its invoice
+  invoice_paid?: number;
 };
 
 /** The progress-billing plan: stages that become invoices (in the Sales module). */
@@ -70,7 +74,12 @@ export function BillingPlan({ projectId, revised, stages, canEdit, gstRate = "0"
                     )}</Td>
                   <Td right className="font-medium">{money(laariToNumber(amountOf(st) + stageGst(st)))}</Td>
                 </>}
-                <Td right>{st.invoice_id ? <Link href={`/sales/${st.invoice_id}`} className="font-medium text-[var(--brand)] hover:underline">View invoice</Link>
+                <Td right>{st.invoice_id ? (
+                  <span className="inline-flex flex-col items-end gap-1">
+                    <Link href={`/sales/${st.invoice_id}`} className="font-medium text-[var(--brand)] hover:underline">View invoice</Link>
+                    {canEdit && <DeleteInvoiceButton id={st.invoice_id} number={st.invoice_number ?? null} paid={st.invoice_paid ?? 0} label="Delete invoice" />}
+                  </span>
+                )
                   : canEdit ? <button type="button" disabled={pending} onClick={() => invoice(st.id)} className="text-xs font-medium text-[var(--brand)] hover:underline">Create invoice</button>
                   : <span className="text-[var(--muted)]">Not yet</span>}</Td>
                 {canEdit && (

@@ -4,12 +4,14 @@ import { Card, CardHeader, PageHeader, Stat, Badge, Table, Th, Td, Empty } from 
 import { date, today as todayIso } from "@/lib/format";
 import { AddTaskButton, DoneButton } from "./task-controls";
 import { BID_STATUS_LABEL, OPEN_BID, isoToLocal, when, type BidStatus } from "@/lib/bids";
+import { MonthCalendar, type CalendarItem } from "./month-calendar";
 
 export const dynamic = "force-dynamic";
 
 const DAY = 86400000;
 
-export default async function TasksPage() {
+export default async function TasksPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+  const { month: asked } = await searchParams;
   const supabase = await createClient();
   const [{ data: tasks }, { data: milestones }, { data: projects }, { data: staff }, { data: bids }] = await Promise.all([
     supabase.from("project_tasks")
@@ -41,35 +43,32 @@ export default async function TasksPage() {
   const dueThisWeek = open.filter((t) => t.due_date && t.due_date >= today && t.due_date <= weekAhead);
   const blocked = open.filter((t) => t.status === "blocked");
 
-  // simple 14-day calendar strip
-  const days = Array.from({ length: 14 }, (_, i) => new Date(start.getTime() + i * DAY));
-  const byDay = new Map<string, { tasks: number; milestones: number; bids: number }>();
+  // the month calendar: what falls due on each day
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(asked ?? "") ? asked! : today.slice(0, 7);
+  const byDay = new Map<string, CalendarItem[]>();
+  const add = (day: string, item: CalendarItem) => byDay.set(day, [...(byDay.get(day) ?? []), item]);
   for (const t of open) {
     if (!t.due_date) continue;
-    const k = String(t.due_date).slice(0, 10);
-    const r = byDay.get(k) ?? { tasks: 0, milestones: 0, bids: 0 };
-    r.tasks += 1; byDay.set(k, r);
+    const proj = t.projects as unknown as { id: string; code: string } | null;
+    add(String(t.due_date).slice(0, 10), { kind: "task", label: proj ? `${proj.code} · ${t.title}` : t.title, href: proj ? `/projects/${proj.id}` : null });
   }
   for (const m of milestones ?? []) {
     if (!m.planned_date || m.status === "completed") continue;
-    const k = String(m.planned_date).slice(0, 10);
-    const r = byDay.get(k) ?? { tasks: 0, milestones: 0, bids: 0 };
-    r.milestones += 1; byDay.set(k, r);
+    const proj = m.projects as unknown as { id: string; code: string } | null;
+    add(String(m.planned_date).slice(0, 10), { kind: "milestone", label: proj ? `${proj.code} · ${m.name}` : m.name, href: proj ? `/projects/${proj.id}` : null });
   }
   // open bids' pre-bid meetings and submission deadlines, on the Maldives date they fall on
-  const bidDates = (bids ?? []).flatMap((b) => [
+  const allBidDates = (bids ?? []).flatMap((b) => [
     b.prebid_meeting_at && { id: b.id, name: b.name, company: b.company, status: b.status as BidStatus, at: b.prebid_meeting_at as string,
       what: `Pre-bid meeting${b.prebid_attendance ? ` (${b.prebid_attendance})` : ""}`, compulsory: b.prebid_attendance === "compulsory" },
     b.submission_due_at && { id: b.id, name: b.name, company: b.company, status: b.status as BidStatus, at: b.submission_due_at as string,
       what: "Submission deadline", compulsory: true },
   ].filter((x): x is NonNullable<typeof x> => Boolean(x)))
-    .filter((d) => isoToLocal(d.at).slice(0, 10) >= today)
     .sort((a, b) => a.at.localeCompare(b.at));
-  for (const d of bidDates) {
-    const k = isoToLocal(d.at).slice(0, 10);
-    const r = byDay.get(k) ?? { tasks: 0, milestones: 0, bids: 0 };
-    r.bids += 1; byDay.set(k, r);
+  for (const d of allBidDates) {
+    add(isoToLocal(d.at).slice(0, 10), { kind: "bid", label: `${d.what === "Submission deadline" ? "Submission" : "Pre-bid"} · ${d.name}`, href: `/bids/${d.id}` });
   }
+  const bidDates = allBidDates.filter((d) => isoToLocal(d.at).slice(0, 10) >= today);
 
   return (
     <div>
@@ -82,34 +81,10 @@ export default async function TasksPage() {
         <Stat label="Blocked" value={String(blocked.length)} tone={blocked.length ? "bad" : "default"} />
       </div>
 
-      <Card className="mb-4">
-        <CardHeader title="Next 14 days" subtitle="Tasks, milestones and bid dates falling due" />
-        <div className="flex gap-1.5 overflow-x-auto px-5 py-4">
-          {days.map((d) => {
-            const k = iso(d);
-            const r = byDay.get(k);
-            const isToday = k === today;
-            // the Maldives weekend is Friday and Saturday
-            const weekend = [5, 6].includes(d.getUTCDay());
-            return (
-              <div key={k}
-                className={`min-w-[58px] rounded-lg border p-2 text-center ${
-                  isToday ? "border-[var(--brand)] bg-[var(--brand-soft)]" : weekend ? "border-[var(--border)] bg-[var(--bg)]" : "border-[var(--border)]"
-                }`}>
-                <p className="text-[10px] uppercase text-[var(--muted)]">
-                  {new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" }).format(d)}
-                </p>
-                <p className="text-sm font-semibold">{d.getUTCDate()}</p>
-                <div className="mt-1 flex justify-center gap-1">
-                  {r?.tasks ? <span className="rounded bg-[var(--brand)] px-1 text-[10px] font-medium text-white">{r.tasks}</span> : null}
-                  {r?.milestones ? <span className="rounded bg-[var(--accent)] px-1 text-[10px] font-medium text-white">{r.milestones}</span> : null}
-                  {r?.bids ? <span className="rounded bg-amber-500 px-1 text-[10px] font-medium text-white">{r.bids}</span> : null}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="border-t border-[var(--border)] px-5 py-2 text-xs text-[var(--muted)]">
+      <Card className="mb-4 overflow-hidden">
+        <CardHeader title="Calendar" subtitle="Tasks, milestones and bid dates, month by month" />
+        <MonthCalendar month={month} today={today} items={byDay} />
+        <p className="px-5 py-2 text-xs text-[var(--muted)]">
           <span className="inline-block h-2 w-2 rounded-sm bg-[var(--brand)]" /> tasks ·{" "}
           <span className="inline-block h-2 w-2 rounded-sm bg-[var(--accent)]" /> milestones ·{" "}
           <span className="inline-block h-2 w-2 rounded-sm bg-amber-500" /> bid dates

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession, type Session } from "@/server/session";
+import { deletedDocs } from "@/server/deleted-docs";
 import { addDays, date, money, pct, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
@@ -69,7 +70,7 @@ export default async function ProjectPage({ params, searchParams }: {
 
 function Figure({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "bad" | "good" }) {
   return (
-    <Card className="px-5 py-4">
+    <Card className="stat px-5 py-4">
       <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{label}</p>
       <p className={`mt-2 text-xl font-semibold tabular-nums ${tone === "bad" ? "text-red-700" : tone === "good" ? "text-emerald-700" : ""}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>}
@@ -148,8 +149,12 @@ async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer
   // an invoiced stage counts at what its invoice actually says, which may have been changed after it was raised
   const ids = (data ?? []).map((st) => st.invoice_id).filter(Boolean) as string[];
   // before GST, as the stage itself is
-  const { data: invs } = ids.length
-    ? await s.supabase.from("transactions").select("id, voided_at, transaction_lines(amount, tax_amount)").in("id", ids) : { data: [] };
+  const [{ data: invs }, { data: owed }] = ids.length ? await Promise.all([
+    s.supabase.from("transactions").select("id, voided_at, transaction_lines(amount, tax_amount)").in("id", ids),
+    // its number and what has been paid on it, for deleting it from here
+    s.supabase.from("document_balances_v").select("id, number, applied").in("id", ids),
+  ]) : [{ data: [] }, { data: [] }];
+  const paidOn = new Map(((owed ?? []) as { id: string; number: string | null; applied: number }[]).map((d) => [d.id, d]));
   const sumOf = (ls: { amount: string; tax_amount: string | null }[], k: "amount" | "tax_amount") => String(laariToNumber(ls.reduce((t, l) => t + dbToLaari(l[k]), 0n)));
   const invoiced = new Map((invs ?? []).filter((i) => !i.voided_at).map((i) => {
     const ls = (i.transaction_lines ?? []) as { amount: string; tax_amount: string | null }[];
@@ -157,7 +162,8 @@ async function Billing({ s, p, writer }: { s: Session; p: ProjectFigures; writer
   }));
   const stages = ((data ?? []) as Stage[]).map((st) => {
     const inv = st.invoice_id ? invoiced.get(st.invoice_id) : undefined;
-    return { ...st, invoice_total: inv?.net ?? null, invoice_gst: inv?.gst ?? null };
+    const doc = st.invoice_id ? paidOn.get(st.invoice_id) : undefined;
+    return { ...st, invoice_total: inv?.net ?? null, invoice_gst: inv?.gst ?? null, invoice_number: doc?.number ?? null, invoice_paid: Number(doc?.applied ?? 0) };
   });
   // how much of the contract is still to come from the client: to invoice, and to receive
   // still to come = what is not invoiced yet (with its GST) + what the client owes on invoices (with theirs)
@@ -184,11 +190,14 @@ async function Transactions({ s, id }: { s: Session; id: string }) {
     s.supabase.from("journal_lines").select("transaction_id").eq("project_id", id),
   ]);
   const ids = [...new Set([...(byHeader ?? []).map((r) => r.id), ...(byLine ?? []).map((r) => r.transaction_id)])];
-  const { data } = ids.length
-    ? await s.supabase.from("document_balances_v").select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at, contact_id").in("id", ids).order("date", { ascending: false })
-    : { data: [] };
+  const [{ data }, deleted] = await Promise.all([
+    ids.length
+      ? s.supabase.from("document_balances_v").select("id, type, number, date, due_date, total, applied, balance, is_draft, sent_at, voided_at, contact_id").in("id", ids).order("date", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    deletedDocs(s),
+  ]);
   const t = today();
-  const rows = (data ?? []) as (DocBalance & { id: string; number: string | null; date: string })[];
+  const rows = ((data ?? []) as (DocBalance & { id: string; number: string | null; date: string })[]).filter((r) => !deleted.has(r.id));
   return (
     <Card>
       {rows.length === 0 ? <Empty message="Nothing has been posted to this project yet." /> : (

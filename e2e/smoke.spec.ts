@@ -21,6 +21,22 @@ test("every rebuilt screen opens without errors", async ({ page }) => {
   w.assertNone();
 });
 
+test("on a phone, no screen scrolls sideways and the menu opens", async ({ page }) => {
+  const w = watchErrors(page);
+  await page.setViewportSize({ width: 320, height: 700 });
+  await signIn(page, "admin");
+  for (const r of [...ROUTES, "/tasks", "/bids", "/quotations"]) {
+    await page.goto(r);
+    await expectRendered(page);
+    // wide lists scroll inside their own box; the page itself stays phone-wide
+    const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(wide, r).toBeLessThanOrEqual(1);
+  }
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("searchbox", { name: "Search" })).toBeVisible();
+  w.assertNone();
+});
+
 test("every report runs, exports and prints", async ({ page, request }) => {
   const w = watchErrors(page);
   await signIn(page, "admin");

@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
-import { date, dateTime, money, titleize } from "@/lib/format";
+import { addDays, date, dateTime, money, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
 import { DocActions } from "@/components/sales/doc-actions";
+import { RestoreInvoiceButton } from "@/components/sales/delete-invoice";
 
 export const dynamic = "force-dynamic";
 const m = (v: number | string | null | undefined) => money(laariToNumber(dbToLaari(v)));
@@ -17,13 +18,17 @@ export default async function SalesDocPage({ params }: { params: Promise<{ id: s
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { data: d } = await s.supabase.from("sales_list_v").select("*").eq("id", id).maybeSingle();
   if (!d) notFound();
-  const [{ data: t }, { data: lines }, { data: appliedTo }, { data: appliedFrom }, { data: dep }] = await Promise.all([
+  const [{ data: t }, { data: lines }, { data: appliedTo }, { data: appliedFrom }, { data: dep }, { data: binned }] = await Promise.all([
     s.supabase.from("transactions").select("memo, reference, project_id, currency, fx_rate, void_reason, bank_account_id, accounts:bank_account_id(code, name), created_at").eq("id", id).maybeSingle(),
     s.supabase.from("transaction_lines").select("id, description, qty, rate, amount, tax_amount, tax_codes(code), projects(code), accounts(code, name)").eq("transaction_id", id).order("line_no"),
     s.supabase.from("applications").select("amount, from:from_transaction_id(id, type, number, date, voided_at)").eq("to_transaction_id", id),
     s.supabase.from("applications").select("amount, to:to_transaction_id(id, type, number, date)").eq("from_transaction_id", id),
     d.deposited_in ? s.supabase.from("transactions").select("id, number, date").eq("id", d.deposited_in).maybeSingle() : Promise.resolve({ data: null }),
+    s.supabase.from("bill_bin").select("deleted_at").eq("bill_id", id).maybeSingle(),
   ]);
+  // deleted (in the bin) rather than just voided: restorable for 30 days
+  const deletedOn = binned?.deleted_at as string | undefined;
+  const restorable = deletedOn && deletedOn.slice(0, 10) > addDays(today(), -30);
   const hasLines = EDITABLE.includes(d.type);
   const subtotal = (lines ?? []).reduce((a, l) => a + dbToLaari(l.amount), 0n);
   const gst = (lines ?? []).reduce((a, l) => a + dbToLaari(l.tax_amount), 0n);
@@ -38,24 +43,30 @@ export default async function SalesDocPage({ params }: { params: Promise<{ id: s
       </div>
       <PageHeader title={`${titleize(d.type)} ${d.number ?? ""}`}
         subtitle={`${d.customer_name ?? ""}${d.project_code ? ` · ${d.project_code}` : ""} · ${date(d.date)}`}
-        action={<div className="flex items-center gap-3"><Badge value={d.status} />
+        action={<div className="flex flex-wrap items-center gap-3"><Badge value={d.status} />
           <DocActions id={id} type={d.type} status={d.status} voided={Boolean(d.voided_at)} sent={Boolean(d.sent_at)}
-            canEdit={canWrite(s.role)} editable={EDITABLE.includes(d.type)} balance={String(d.balance)} contactId={d.contact_id} /></div>} />
+            canEdit={canWrite(s.role)} editable={EDITABLE.includes(d.type)} balance={String(d.balance)} contactId={d.contact_id}
+            number={d.number} paid={laariToNumber(dbToLaari(d.applied))} /></div>} />
 
-      {d.voided_at && (
+      {deletedOn ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm">
+          <span>Deleted {dateTime(deletedOn)}. It no longer counts anywhere: not in Sales, the project, the customer or the reports.</span>
+          {restorable && canWrite(s.role) && <RestoreInvoiceButton id={id} />}
+        </div>
+      ) : d.voided_at && (
         <p className="rounded-lg border border-[var(--border)] bg-[var(--hover)] px-4 py-2.5 text-sm">
           Void since {dateTime(d.voided_at)}{t?.void_reason ? `: ${t.void_reason}` : ""}. It stays on record with no effect on the books.
         </p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Total</p>
+        <Card className="stat px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Total</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{m(d.total)}{d.currency !== "MVR" ? ` ${d.currency}` : ""}</p></Card>
         {d.type === "invoice" ? (
           <>
-            <Card className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Paid or credited</p>
+            <Card className="stat px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Paid or credited</p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">{m(d.applied)}</p></Card>
-            <Card className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Balance due {d.due_date ? date(d.due_date) : ""}</p>
+            <Card className="stat px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Balance due {d.due_date ? date(d.due_date) : ""}</p>
               <p className={`mt-2 text-2xl font-semibold tabular-nums ${d.status === "overdue" ? "text-red-700" : ""}`}>{m(d.balance)}</p></Card>
           </>
         ) : (

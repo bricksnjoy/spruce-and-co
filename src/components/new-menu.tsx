@@ -34,9 +34,9 @@ export function NewMenu({ canWrite, canPayroll, live }: { canWrite: boolean; can
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu"
-        className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--brand-hover)]">+ New</button>
+        className="whitespace-nowrap rounded-lg bg-[var(--brand)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--brand-hover)]">+ New</button>
       {open && (
-        <div role="menu" className="absolute left-0 z-40 mt-2 grid w-[min(92vw,44rem)] gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg sm:grid-cols-3">
+        <div role="menu" className="absolute left-0 z-40 mt-2 grid w-[min(92vw,44rem)] gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg max-sm:fixed max-sm:inset-x-3 max-sm:top-16 max-sm:max-h-[calc(100dvh-9rem)] max-sm:w-auto max-sm:grid-cols-2 max-sm:overflow-y-auto sm:grid-cols-3">
           {groups.map((g) => (
             <div key={g.title}>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{g.title}</p>

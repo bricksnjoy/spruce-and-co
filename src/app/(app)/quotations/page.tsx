@@ -46,7 +46,7 @@ export default async function QuotationsPage({
         title="Quotations"
         subtitle="Price the work, win it, then invoice it"
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link href="/quotations/signatures"
               className="rounded-lg border border-[var(--border)] bg-[var(--field)] px-3.5 py-2 text-sm font-medium hover:bg-[var(--hover)]">
               Signatures &amp; stamp

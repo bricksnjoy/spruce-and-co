@@ -48,13 +48,13 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           </div>
         ) : undefined} />
 
-      <div className="grid overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-4">
+      <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-4">
         {[["Unpaid receipts", m(unpaid), "unpaid", "bg-blue-50"], ["Overdue", m(overdue), "overdue", "bg-red-50"],
           ["Paid, last 30 days", m(dbToLaari(paid as number | null)), "bill_payment", "bg-emerald-50"],
           ["Awaiting approval", String(pending.length), "awaiting_approval", "bg-amber-50"]].map(([l, v, f, tone]) => (
-          <Link key={l} href={`/expenses?show=${f}`} className={`px-5 py-4 ${tone} hover:brightness-95`}>
+          <Link key={l} href={`/expenses?show=${f}`} className={`px-4 py-3 sm:px-5 sm:py-4 ${tone} hover:brightness-95`}>
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{l}</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{v}</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums sm:text-xl">{v}</p>
           </Link>
         ))}
       </div>

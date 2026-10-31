@@ -47,7 +47,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
         action={<Link href="/accounting/chart" className="text-sm font-medium text-[var(--brand)] hover:underline">← Chart of accounts</Link>} />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="px-5 py-4">
+        <Card className="stat px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Balance</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">{money(laariToNumber(ledgerBalance))}</p>
         </Card>

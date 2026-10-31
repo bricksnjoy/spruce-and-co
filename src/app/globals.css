@@ -80,3 +80,64 @@ tr.row-link :is(a, button, input, select, textarea, label):not(.row-link-main) {
   position: relative;
   z-index: 1;
 }
+
+/*
+ * Phones (under 640px). Summary figures sit two to a row; lists keep each
+ * cell on one line and scroll sideways inside their box rather than breaking
+ * a word per line; the line items of a form become one small card per line,
+ * each field with its own label.
+ */
+@media (max-width: 639px) {
+  /* under 16px, iPhones zoom the page in whenever a field is tapped */
+  :is(input, select, textarea):not([type="checkbox"], [type="radio"], [type="color"]) { font-size: 1rem; }
+
+  /* a grid cell may shrink below its widest field (a file picker, a long select) */
+  main .grid > * { min-width: 0; }
+
+  .grid:has(> .stat) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .grid:has(> .stat) > :not(.stat),
+  .grid:has(> .stat) > .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .stat { padding: 0.75rem 1rem; }
+  /* a large amount wraps after "Rf", never inside the number */
+  .stat > p:nth-child(2) { font-size: 1.0625rem; line-height: 1.4rem; }
+  main input[type="file"] { max-width: 100%; }
+
+  main table:not(.line-table, .cards) :is(th, td) { white-space: nowrap; }
+  main .doc-sheet :is(th, td) { white-space: normal; }
+  main :is(th, td).px-5 { padding-left: 0.875rem; padding-right: 0.875rem; }
+
+  /* lists: each row a card, its first cell the title, the rest labelled two to a row */
+  table.cards, table.cards :is(tbody, tfoot) { display: block; width: 100%; }
+  table.cards thead { display: none; }
+  table.cards tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem 0.75rem; padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); }
+  table.cards tr:last-child { border-bottom: 0; }
+  table.cards td:not(.hidden) { display: block; min-width: 0; padding: 0; border: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+  table.cards td[data-label]::before {
+    content: attr(data-label); display: block; margin-bottom: 0.0625rem;
+    font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.025em; text-transform: uppercase; color: var(--muted);
+  }
+  table.cards td:first-child { grid-column: 1 / -1; font-size: 0.9375rem; }
+  table.cards td:first-child::before { display: none; }
+  table.cards td:empty, table.cards td[data-label=""] { display: none; }
+  table.cards td[colspan], table.cards td:not([data-label]):not(:first-child) { grid-column: 1 / -1; }
+
+  .line-table { min-width: 0; }
+  .line-table thead { display: none; }
+  .line-table, .line-table tbody { display: block; width: 100%; }
+  .line-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem 0.75rem; padding: 0.75rem 1rem; }
+  .line-table td { display: block; min-width: 0; padding: 0; }
+  .line-table td[data-label]::before {
+    content: attr(data-label); display: block; margin-bottom: 0.125rem;
+    font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.025em; text-transform: uppercase; color: var(--muted);
+  }
+  .line-table td.lt-wide, .line-table td:last-child:not([data-label]) { grid-column: 1 / -1; }
+  .line-table td:last-child:not([data-label]) { text-align: right; }
+  .line-table td.lt-num::before { content: "Line "; }
+  .line-table td.lt-num { grid-column: 1 / -1; font-size: 0.75rem; font-weight: 500; }
+}
+
+/* the narrowest phones: the two-up figures get a little more room */
+@media (max-width: 359px) {
+  .stat { padding: 0.75rem; }
+  .stat > p:nth-child(2) { font-size: 1rem; }
+}

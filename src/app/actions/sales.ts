@@ -215,6 +215,33 @@ export async function voidSalesDoc(id: string, reason: string): Promise<Result> 
   return { ok: true };
 }
 
+/**
+ * Delete an invoice, credit note or sales receipt: it leaves every list, the
+ * project and the reports, and its billing stage can be invoiced again. The
+ * payments received for it stay as the customer's credit unless asked to go
+ * with it. It can be restored for 30 days.
+ */
+export async function deleteSalesDoc(id: string, withPayments: boolean): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (!isId(id)) return { error: "No invoice." };
+  const { error } = await w.s.supabase.rpc("rpc_delete_sales_doc", { p_id: id, p_with_payments: withPayments });
+  if (error) return { error: dbMessage(error) };
+  refresh(id);
+  return { ok: true };
+}
+
+/** Put a deleted invoice back as it was, on its billing stage and with its payments. */
+export async function restoreSalesDoc(id: string): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (!isId(id)) return { error: "No invoice." };
+  const { error } = await w.s.supabase.rpc("rpc_restore_bill", { p_id: id });
+  if (error) return { error: dbMessage(error) };
+  refresh(id);
+  return { ok: true };
+}
+
 export async function markSent(id: string): Promise<Result> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
