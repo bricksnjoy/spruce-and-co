@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { clearDraft, hasDraft } from "@/lib/form-draft";
 import { primary } from "@/components/form-styles";
 import { Modal } from "@/components/modal";
@@ -16,13 +17,16 @@ export function NewContact({ kind, base, singular, directors }: { kind: string; 
     return () => clearTimeout(t);
   }, [draft]);
   const close = useCallback(() => setOpen(false), []);
+  const router = useRouter();
+  // once added, stay on the list: the pop-up closes and the list shows them
+  const added = useCallback(() => { setOpen(false); router.refresh(); }, [router]);
   const discard = useCallback(() => { clearDraft(draft); setOpen(false); }, [draft]);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={primary}>New {singular}</button>
       {open && (
         <Modal title={`New ${singular}`} size="md" onClose={discard}>
-          <ContactForm contact={blankContact(kind)} base={base} onDone={close} lenderChoice={kind === "lender"} directors={directors} />
+          <ContactForm contact={blankContact(kind)} base={base} onDone={close} onCreated={added} lenderChoice={kind === "lender"} directors={directors} />
         </Modal>
       )}
     </>

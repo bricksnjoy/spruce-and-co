@@ -23,6 +23,8 @@ async function addContact(page: Page, list: string, button: string, name: string
   await page.getByLabel("Name", { exact: true }).fill(name);
   await extra(page);
   await page.getByRole("button", { name: "Add contact" }).click();
+  // the pop-up closes and the list shows them
+  await page.getByRole("link", { name, exact: true }).first().click();
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
 }
 const pick = async (page: Page, label: string | RegExp, option: string | RegExp) => {

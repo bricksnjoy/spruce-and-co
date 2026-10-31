@@ -26,6 +26,7 @@ test("lenders: add one, record a loan from their page, add another from the proj
   await page.getByLabel("Name", { exact: true }).fill(`Bank ${tag}`);
   await page.getByLabel("Phone").fill("7771234");
   await page.getByRole("button", { name: "Add contact" }).click();
+  await page.getByRole("link", { name: `Bank ${tag}`, exact: true }).click();
   await expect(page.getByRole("heading", { name: `Bank ${tag}`, level: 1 })).toBeVisible();
   await expect(page.getByText("Nothing received from them yet.")).toBeVisible();
 
