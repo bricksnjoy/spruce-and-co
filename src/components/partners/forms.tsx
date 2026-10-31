@@ -45,6 +45,8 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
   const [contact, setContact] = useState(start);
   const [bank, setBank] = useState("");
   const [currency, setCurrency] = useState("MVR");
+  // loans are repaid once the project is completed and the client has paid, unless a number of days is set
+  const [repay, setRepay] = useState("completion");
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<Opt[]>([]);   // shown until the page's list catches up
   const from = (
@@ -90,9 +92,14 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-[var(--muted)]">%</span>
         </div>
         <p className="mt-1 text-xs text-[var(--muted)]">Their share of the profit, split by how much each put in. Blank is 20%.</p></div>
-      <div><label htmlFor="fin-terms" className={label}>Repay within (days)</label>
-        <input id="fin-terms" name="terms_days" inputMode="numeric" placeholder="e.g. 180" className={`${input} tabular-nums`} />
-        <p className="mt-1 text-xs text-[var(--muted)]">Optional: sets when it is due back.</p></div>
+      <div><label htmlFor="fin-repay" className={label}>Repaid</label>
+        <select id="fin-repay" value={repay} onChange={(e) => setRepay(e.target.value)} className={input}>
+          <option value="completion">When the project is completed and the client has paid</option>
+          <option value="days">Within a number of days</option>
+        </select>
+        {repay === "days" && (
+          <input aria-label="Repay within (days)" name="terms_days" inputMode="numeric" required placeholder="Days, e.g. 180" className={`${input} mt-2 tabular-nums`} />
+        )}</div>
       <div className="flex items-center gap-3 sm:col-span-3">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Saving…" : "Record financing"}</button>
         {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
