@@ -66,6 +66,15 @@ async function buildProject(code: string) {
 const invTotal = async (inv: string) => n((await one<{ t: string }>(db, `select total t from document_balances_v where id = $1`, [inv])).t);
 const pay = (inv: string, amount: number, date: string) =>
   save({ type: "customer_payment", date, contact_id: client, bank_account_id: bank, total_amount: amount, applications: [{ to: inv, amount }] });
+/** Clear a project for its split (050): pay its receipts, repay its loans. */
+async function clear(p: string, date = "2026-07-08") {
+  const bills = await q<{ id: string; balance: string }>(db, `select d.id, d.balance from document_balances_v d where d.project_id = $1 and d.type = 'bill' and d.balance > 0`, [p]);
+  if (bills.length) await rpc(`select rpc_pay_bills($1, $2, $3::jsonb) x`, [bank, date, JSON.stringify(bills.map((b) => ({ bill: b.id, amount: b.balance })))]);
+  for (const who of [mujahid, lender]) {
+    const owed = (await statement(who, p)).principal ?? 0;
+    if (owed > 0) await rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date, contact_id: who, bank_account_id: bank, lines: [{ project_id: p, component: "principal", amount: owed }] })]);
+  }
+}
 const statement = async (who: string, p: string) => Object.fromEntries((await q<{ component: string; outstanding: string }>(db,
   `select component, outstanding from partner_statement_v where contact_id = $1 and project_id = $2`, [who, p])).map((r) => [r.component, n(r.outstanding)]));
 
@@ -97,20 +106,28 @@ describe("full project lifecycle (§13)", () => {
     expect(n(fig.cost_to_date)).toBeGreaterThanOrEqual(150000 + 20000 + 12000);
 
     await pay(inv1, t1, "2026-03-01"); // partial: the second invoice is still open
-    await rpc(`select rpc_complete_project($1, '2026-06-30') x`, [p]);
+    // no split while the client owes, and no loan repaid yet either
+    await expect(rpc(`select rpc_complete_project($1, '2026-06-30') x`, [p])).rejects.toThrow(/client still owes/);
     const line = (component: string, amount: number) => ({ project_id: p, component, amount });
     await expect(rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date: "2026-07-01", contact_id: mujahid, bank_account_id: bank, lines: [line("principal", 1000)] })]))
       .rejects.toThrow(/client still owes/);
     expect((await one<{ blocked: boolean }>(db, `select blocked from payout_status($1)`, [p])).blocked).toBe(true);
 
     await pay(inv2, t2, "2026-07-05");
+    // the client has paid: still no split until the receipts are paid and the loans repaid (050)
+    await expect(rpc(`select rpc_complete_project($1, '2026-07-06') x`, [p])).rejects.toThrow(/receipts of MVR .* still to pay; loans of MVR 300,000.00/);
+    await expect(rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date: "2026-07-06", contact_id: mujahid, bank_account_id: bank, lines: [line("profit_share", 1)] })]))
+      .rejects.toThrow(/completed/);
+    await clear(p);
+    await rpc(`select rpc_complete_project($1, '2026-07-09') x`, [p]);
     expect((await one<{ blocked: boolean; stage: string }>(db, `select blocked, stage from project_payouts_v where id = $1`, [p]))).toEqual({ blocked: false, stage: "settled" });
 
     const owed = await statement(mujahid, p);
+    expect(owed.principal).toBe(0);
     expect(owed.financing_return).toBeGreaterThan(0);
     expect(owed.profit_share).toBeGreaterThan(0);
     await rpc(`select rpc_save_payout($1::jsonb) x`, [JSON.stringify({ date: "2026-07-10", contact_id: mujahid, bank_account_id: bank,
-      lines: [line("principal", owed.principal), line("financing_return", owed.financing_return), line("profit_share", owed.profit_share)] })]);
+      lines: [line("financing_return", owed.financing_return), line("profit_share", owed.profit_share)] })]);
     expect(await statement(mujahid, p)).toEqual({ principal: 0, financing_return: 0, profit_share: 0 });
     await tiesOut(p);
   });
@@ -143,7 +160,8 @@ describe("bad-debt path (§13)", () => {
   it("writes off the final invoice: the split adjusts and payouts are released", async () => {
     const { p, inv1, inv2 } = await buildProject("BD-1");
     await pay(inv1, await invTotal(inv1), "2026-03-01");
-    await rpc(`select rpc_complete_project($1, '2026-06-30') x`, [p]);
+    // completed straight through the ledger (the screen waits for the client, 050): a write-off after the split adjusts it
+    await db.transaction((tx) => tx.query(`select complete_project($1, '2026-06-30')`, [p]));
     const base = await one<{ profit_amount: string }>(db, `select profit_amount from distributions where project_id = $1 and reason = 'completion'`, [p]);
     await save({ type: "bad_debt", date: "2026-08-01", contact_id: client, total_amount: await invTotal(inv2), applications: [{ to: inv2, amount: await invTotal(inv2) }] });
     const adj = await one<{ reason: string; profit_amount: string }>(db, `select reason, profit_amount from distributions where project_id = $1 and reason <> 'completion'`, [p]);

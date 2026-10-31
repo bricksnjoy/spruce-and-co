@@ -309,11 +309,13 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
 
 async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: boolean }) {
   if (!p.completed_at) {
-    const [{ data: profit }, { data: preview }, { data: proj }, { data: company }] = await Promise.all([
+    const [{ data: profit }, { data: preview }, { data: proj }, { data: company }, { data: hold }] = await Promise.all([
       s.supabase.rpc("project_profit", { p_project: p.id }),
       s.supabase.rpc("preview_split", { p_project: p.id }),
       s.supabase.from("projects").select("profit_schemes(name, effective_from)").eq("id", p.id).maybeSingle(),
       s.supabase.rpc("company_funding", { p_project: p.id }),
+      // what still stands between the project and its split (050)
+      s.supabase.rpc("profit_hold", { p_project: p.id }),
     ]);
     const lines = (preview ?? []) as { contact_id: string; name: string; component: string; amount: string; principal: string }[];
     const shared = lines.reduce((t, l) => t + dbToLaari(l.amount), 0n);
@@ -325,6 +327,11 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
     const people = [...new Set(lines.map((l) => l.contact_id))];
     return (
       <div className="space-y-5">
+        {hold && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            The profit is split only once the project is clear: {String(hold)}. Repay the loans from each lender&apos;s page (Pay out) once the client has paid.
+          </p>
+        )}
         <Card>
           <CardHeader title="Split preview" subtitle={`If completed now, on the profit to date${scheme ? ` · ${scheme.name} (from ${date(scheme.effective_from)})` : ""}`} />
           {profitL <= 0n ? <Empty message={`Profit to date is ${money(laariToNumber(profitL))}: nothing is shared on a loss or zero profit, and principal is still repaid in full (P2).`} /> : (

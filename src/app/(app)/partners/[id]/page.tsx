@@ -21,7 +21,7 @@ export default async function PartnerStatementPage({ params }: { params: Promise
   const [{ data: person }, { data: statement }, { data: projects }, { data: banks }, { data: payouts }, { data: loans }, { data: open }] = await Promise.all([
     s.supabase.from("contacts").select("*").eq("id", id).maybeSingle(),
     s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding").eq("contact_id", id),
-    s.supabase.from("project_payouts_v").select("id, code, name, stage, blocked, blocked_reason"),
+    s.supabase.from("project_payouts_v").select("id, code, name, stage, blocked, blocked_reason, client_owes"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
     s.supabase.from("transactions").select("id, date, number, total_amount, is_draft, voided_at, void_reason, approval_status, reference, bank_account_id, transaction_lines(project_id, component, amount)")
       .eq("type", "payout").eq("contact_id", id).order("date", { ascending: false }),
@@ -43,7 +43,7 @@ export default async function PartnerStatementPage({ params }: { params: Promise
   const writer = canWrite(s.role);
   const projName = new Map((projects ?? []).map((p) => [p.id, p]));
   const rows = (statement ?? []) as StatementRow[];
-  const proj = new Map(((projects ?? []) as Pick<ProjectPayout, "id" | "code" | "name" | "stage" | "blocked" | "blocked_reason">[]).map((p) => [p.id, p]));
+  const proj = new Map(((projects ?? []) as Pick<ProjectPayout, "id" | "code" | "name" | "stage" | "blocked" | "blocked_reason" | "client_owes">[]).map((p) => [p.id, p]));
   const projectIds = [...new Set(rows.map((r) => r.project_id))].sort((a, b) => (proj.get(a)?.code ?? "").localeCompare(proj.get(b)?.code ?? ""));
   const cell = (pid: string, c: string) => rows.find((r) => r.project_id === pid && r.component === c);
   const sum = (c: string, k: "accrued" | "paid" | "outstanding") => rows.filter((r) => r.component === c).reduce((t, r) => t + dbToLaari(r[k]), 0n);
@@ -53,7 +53,10 @@ export default async function PartnerStatementPage({ params }: { params: Promise
   const invested = rows.filter((r) => !released(r.project_id) && r.component === "principal").reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
   const owed: OwedRow[] = rows.filter((r) => dbToLaari(r.outstanding) > 0n).map((r) => ({
     project_id: r.project_id, code: proj.get(r.project_id)?.code ?? "—", component: r.component, outstanding: String(r.outstanding),
-    blocked: proj.get(r.project_id)?.blocked ?? true, reason: proj.get(r.project_id)?.blocked_reason ?? null,
+    // a loan can be repaid once the client has paid, before the project is completed (050); profit waits for completion
+    ...(r.component === "principal" && proj.get(r.project_id) && Math.abs(Number(proj.get(r.project_id)!.client_owes ?? 0)) < 0.005
+      ? { blocked: false, reason: null }
+      : { blocked: proj.get(r.project_id)?.blocked ?? true, reason: proj.get(r.project_id)?.blocked_reason ?? null }),
   })).sort((a, b) => a.code.localeCompare(b.code) || COMPONENTS.indexOf(a.component as never) - COMPONENTS.indexOf(b.component as never));
 
   return (
