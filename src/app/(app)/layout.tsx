@@ -12,6 +12,7 @@ import type { Book } from "@/lib/books";
 import { NewMenu } from "@/components/new-menu";
 import { PageHelp } from "@/components/page-help";
 import { TableLabels } from "@/components/table-labels";
+import { ProfileMenu } from "@/components/profile-menu";
 
 export default async function AppLayout({
   children,
@@ -105,18 +106,7 @@ export default async function AppLayout({
                 {profile?.job_title || user.email}
               </p>
             </div>
-            <span className="hidden sm:inline-flex"><Badge value={profile?.role} /></span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-soft)] text-xs font-semibold text-[var(--brand)]">
-              {initials(name)}
-            </div>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--text)]"
-              >
-                Sign out
-              </button>
-            </form>
+            <ProfileMenu initials={initials(name)} name={name} email={user.email ?? null} role={<Badge value={profile?.role} />} signOut={signOut} />
           </div>
         </header>
         <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-28 md:pb-6"><BookGuard book={book}><PageHelp />{children}</BookGuard><TableLabels /></main>
