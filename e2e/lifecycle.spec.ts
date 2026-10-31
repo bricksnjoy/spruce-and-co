@@ -124,16 +124,11 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await page.getByRole("button", { name: "Save payment" }).click();
   await page.waitForURL((u) => !u.pathname.endsWith("/new"));
 
-  // 8. complete: the split is posted and payouts are blocked
+  // 8. no split yet: the client still owes, and the loans are not repaid
   await page.goto(`/projects/${projectId}?tab=split`);
-  await expect(page.getByText("Split preview")).toBeVisible();
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Complete and post split" }).click();
-  await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible(); // only shown once the split is posted
-  await page.goto(`/projects/${projectId}?tab=payouts`);
-  await expect(page.getByText(/Payouts are blocked: The client still owes/)).toBeVisible();
+  await expect(page.getByText(/The profit is split only once the project is clear: the client still owes/)).toBeVisible();
 
-  // 9. the final payment releases them
+  // 9. the final payment
   await page.goto("/sales/payments/new");
   await pick(page, "Customer", CUSTOMER);
   const rest = (invTotal - 100000).toFixed(2);
@@ -142,25 +137,40 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await page.getByLabel(`Apply to ${invoiceNo}`).fill(rest);
   await page.getByRole("button", { name: "Save payment" }).click();
   await page.waitForURL((u) => !u.pathname.endsWith("/new"));
+
+  // 10. the loans are repaid first: Mujahid's and the lender's principal
+  const payAll = async (who: string) => {
+    const cid = sql(`select id from contacts where name = '${who}' and book = 'live' limit 1`);
+    await page.goto(`/partners/${cid}`);
+    await expect(page.getByRole("heading", { name: "Pay out" })).toBeVisible();
+    for (const b of await page.getByRole("button", { name: "All", exact: true }).all()) await b.click();
+    await pick(page, "Paid from", /1010/);
+    await page.getByRole("button", { name: /Approve and pay/ }).click();
+    return cid;
+  };
+  const mujahid = await payAll("Mujahid");
+  await expect.poll(() => sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${mujahid}' and project_id = '${projectId}' and component = 'principal'`)).toBe("0.00");
+  const lender = await payAll(LENDER);
+  await expect.poll(() => sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${lender}' and project_id = '${projectId}' and component = 'principal'`)).toBe("0.00");
+
+  // 11. now the project is clear: complete it, the split is posted and payouts are released
+  await page.goto(`/projects/${projectId}?tab=split`);
+  await expect(page.getByText("Split preview")).toBeVisible();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Complete and post split" }).click();
+  await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible(); // only shown once the split is posted
   await page.goto(`/projects/${projectId}?tab=payouts`);
   await expect(page.getByText(/^Payouts are released/)).toBeVisible();
 
-  // 10. pay out all three components to Mujahid
-  const mujahid = sql(`select id from contacts where name = 'Mujahid' and book = 'live' limit 1`);
-  await page.goto(`/partners/${mujahid}`);
-  await expect(page.getByRole("heading", { name: "Pay out" })).toBeVisible();
-  const all = await page.getByRole("button", { name: "All", exact: true }).all();
-  expect(all.length).toBeGreaterThanOrEqual(3); // principal, financing return, profit share
-  for (const b of all) await b.click();
-  await pick(page, "Paid from", /1010/);
-  await page.getByRole("button", { name: /Approve and pay/ }).click();
+  // 12. Mujahid's financing return and profit share
+  await payAll("Mujahid");
   // the payout shows in the history as paid (the Pay out card goes once nothing is owed)
   const code = sql(`select code from projects where id = '${projectId}'`);
   await expect(page.getByRole("row").filter({ hasText: `${code} · Profit share` }).getByText("paid", { exact: true })).toBeVisible();
   const owed = sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${mujahid}' and project_id = '${projectId}'`);
   expect(Number(owed)).toBe(0);
 
-  // 11. every statement ties out
+  // 13. every statement ties out
   await page.goto("/reports/balance-sheet");
   const cell = async (label: string) => (await page.getByRole("row", { name: new RegExp(`^${label}`) }).locator("td").nth(1).innerText()).replace(/[^0-9.()-]/g, "");
   expect(await cell("Total assets")).toBe(await cell("Total liabilities and equity"));
