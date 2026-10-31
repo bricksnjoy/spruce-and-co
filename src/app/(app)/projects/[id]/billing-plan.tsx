@@ -75,9 +75,9 @@ export function BillingPlan({ projectId, revised, stages, canEdit, gstRate = "0"
                   <Td right className="font-medium">{money(laariToNumber(amountOf(st) + stageGst(st)))}</Td>
                 </>}
                 <Td right>{st.invoice_id ? (
-                  <span className="inline-flex flex-col items-end gap-1">
+                  <span className="inline-flex items-center gap-1">
                     <Link href={`/sales/${st.invoice_id}`} className="font-medium text-[var(--brand)] hover:underline">View invoice</Link>
-                    {canEdit && <DeleteInvoiceButton id={st.invoice_id} number={st.invoice_number ?? null} paid={st.invoice_paid ?? 0} label="Delete invoice" />}
+                    {canEdit && <DeleteInvoiceButton id={st.invoice_id} number={st.invoice_number ?? null} paid={st.invoice_paid ?? 0} iconOnly />}
                   </span>
                 )
                   : canEdit ? <button type="button" disabled={pending} onClick={() => invoice(st.id)} className="text-xs font-medium text-[var(--brand)] hover:underline">Create invoice</button>
