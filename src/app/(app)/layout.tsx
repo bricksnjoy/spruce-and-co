@@ -9,7 +9,6 @@ import { Logo, Wordmark } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
 import { BookGuard } from "@/components/book-guard";
 import type { Book } from "@/lib/books";
-import { NewMenu } from "@/components/new-menu";
 import { PageHelp } from "@/components/page-help";
 import { TableLabels } from "@/components/table-labels";
 import { AmountFormat } from "@/components/amount-format";
@@ -93,8 +92,6 @@ export default async function AppLayout({
             <Logo size={28} />
           </div>
           <div className="flex min-w-0 items-center gap-3 max-md:ml-auto">
-            <NewMenu canWrite={["admin", "manager", "finance"].includes(profile?.role ?? "")}
-              canPayroll={profile?.role === "admin" || profile?.role === "finance" || Boolean(profile?.can_payroll)} live={book === "live"} />
             <form action="/search" method="get" role="search" className="hidden sm:block">
               <input name="q" type="search" placeholder="Search" aria-label="Search"
                 className="w-64 rounded-lg border border-[var(--border)] bg-[var(--field)] px-3 py-1.5 text-sm outline-none focus:border-[var(--brand)]" />

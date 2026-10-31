@@ -96,6 +96,27 @@ describe("deleting a project", () => {
     expect(await seen(p)).toEqual({ project: 0, docs: 0 });
   });
 
+  it("frees its code for a new project (migration 052)", async () => {
+    const code = () => as(ADMIN, async () => (await one<{ c: string }>(db, `select next_project_code() c`)).c);
+    await project(db, "SC-001", client, 1000, { start: "2026-01-01" });
+    const p = await project(db, "SC-002", client, 1000, { start: "2026-01-01" });
+    await del(p, "SC-002");
+    // still restorable: not suggested again, but a new project may take it, and the restore then says why it cannot
+    expect(await code()).toBe("SC-003");
+    const q2 = await project(db, "SC-002", client, 1000, { start: "2026-01-01" });
+    await expect(restore(p)).rejects.toThrow(/SC-002 is now used by/);
+    await db.query(`update projects set code = 'SC-009' where id = $1`, [q2]);
+    await restore(p);
+    expect(await seen(p)).toEqual({ project: 1, docs: 0 });
+    await db.query(`delete from projects where id = $1`, [q2]);
+
+    // deleted for good: the code is suggested and taken again
+    await del(p, "SC-002");
+    await as(ADMIN, () => db.query(`select rpc_purge_project($1)`, [p]));
+    expect(await code()).toBe("SC-002");
+    await project(db, "SC-002", client, 1000, { start: "2026-01-01" });
+  });
+
   it("is refused while a document or payment also belongs to another project", async () => {
     const a = await project(db, "A-1", client, 100000, { start: "2026-01-01" });
     const b = await project(db, "B-1", client, 100000, { start: "2026-01-01" });
