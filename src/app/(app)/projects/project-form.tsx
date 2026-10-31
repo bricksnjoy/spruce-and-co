@@ -157,7 +157,7 @@ export function ProjectForm({
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label htmlFor="contract_value" className={label}>Project value (MVR)</label>
-          <input id="contract_value" name="contract_value" type="number" step="0.01"
+          <input id="contract_value" name="contract_value" inputMode="decimal"
             value={value} onChange={(e) => setValue(e.target.value)} className={input} />
         </div>
         <div>
