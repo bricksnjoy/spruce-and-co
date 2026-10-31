@@ -136,3 +136,22 @@ export async function reviewContact(id: string, action: "confirm" | "archive" | 
   refresh(id);
   return { ok: true };
 }
+
+/** Delete a contact that nothing in the books points to (admin only); one with documents or loans is refused. */
+export async function deleteContact(id: string): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (w.s.role !== "admin") return { error: "Only an admin can delete a contact." };
+  const [{ count: docs }, { count: lines }] = await Promise.all([
+    w.s.supabase.from("transactions").select("id", { count: "exact", head: true }).eq("contact_id", id),
+    w.s.supabase.from("journal_lines").select("id", { count: "exact", head: true }).eq("contact_id", id),
+  ]);
+  if ((docs ?? 0) + (lines ?? 0) > 0) {
+    return { error: "They have loans or documents in the books, so they can't be deleted. Delete those first (a loan from the project's Financing tab)." };
+  }
+  const { data, error } = await w.s.supabase.from("contacts").delete().eq("id", id).select("id");
+  if (error) return { error: /foreign key/i.test(error.message) ? "Something in the books still points to them, so they can't be deleted." : dbMessage(error) };
+  if (!data?.length) return { error: "They could not be deleted." };
+  refresh();
+  return { ok: true };
+}
