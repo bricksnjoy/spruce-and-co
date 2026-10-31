@@ -222,3 +222,16 @@ export async function restoreProject(id: string): Promise<Result> {
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** Delete a deleted project for good, so it can no longer be restored (admin only). */
+export async function purgeProject(id: string): Promise<Result> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+  const { error } = await supabase.rpc("rpc_purge_project", { p_project: id });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
