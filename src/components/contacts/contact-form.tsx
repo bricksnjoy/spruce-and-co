@@ -73,14 +73,17 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
         </div>
       </fieldset>
       )}
-      <div>
-        <label htmlFor="c-person" className={label}>Contact person</label>
-        <input id="c-person" name="contact_person" defaultValue={f("contact_person")} className={input} />
-      </div>
-      <div>
-        <label htmlFor="c-company" className={label}>Registered company name</label>
-        <input id="c-company" name="company_name" defaultValue={f("company_name")} className={input} />
-      </div>
+      {/* a new lender needs only who they are and how to reach them */}
+      {!lenderChoice && <>
+        <div>
+          <label htmlFor="c-person" className={label}>Contact person</label>
+          <input id="c-person" name="contact_person" defaultValue={f("contact_person")} className={input} />
+        </div>
+        <div>
+          <label htmlFor="c-company" className={label}>Registered company name</label>
+          <input id="c-company" name="company_name" defaultValue={f("company_name")} className={input} />
+        </div>
+      </>}
       <div>
         <label htmlFor="c-phone" className={label}>Phone</label>
         <input id="c-phone" name="phone" type="tel" defaultValue={f("phone")} className={input} />
