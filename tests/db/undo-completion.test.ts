@@ -73,7 +73,7 @@ describe("undoing a completion", () => {
     const { p, inv } = await completedProject();
     await doc(db, { type: "customer_payment", date: "2026-05-10", contact: client, bank: "1010", total: 400000, apply: [{ to: inv, amount: 400000 }] });
     const pay = (await as(ADMIN, () => one<{ id: string }>(db, `select rpc_save_payout($1::jsonb) id`, [JSON.stringify({
-      date: "2026-06-01", contact_id: mujahid, bank_account_id: bank, lines: [{ project_id: p, component: "financing_return", amount: 20000 }] })]))).id;
+      date: "2026-06-01", contact_id: mujahid, bank_account_id: bank, lines: [{ project_id: p, component: "principal", amount: 200000 }, { project_id: p, component: "financing_return", amount: 20000 }] })]))).id;
     await expect(undo(ADMIN, p)).rejects.toThrow(/has been paid out/);
     await as(ADMIN, () => db.query(`select rpc_void($1, 'wrong')`, [pay]));
     await undo(ADMIN, p);

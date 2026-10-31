@@ -329,7 +329,7 @@ async function Split({ s, p, writer }: { s: Session; p: ProjectFigures; writer: 
       <div className="space-y-5">
         {hold && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            The profit is split only once the project is clear: {String(hold)}. Repay the loans from each lender&apos;s page (Pay out) once the client has paid.
+            The project can be completed once it is clear: {String(hold)}. Loans are repaid first (from each lender&apos;s page, Pay out, once the client has paid); returns and profit shares are paid out after them.
           </p>
         )}
         <Card>

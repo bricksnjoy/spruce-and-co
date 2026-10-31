@@ -50,8 +50,8 @@ describe("payouts need an admin's approval", () => {
     await expect(as(MANAGER, () => db.query(`select rpc_approve_payout($1)`, [id]))).rejects.toThrow(/Only an admin/);
     // posting it any other way is refused
     await expect(as(MANAGER, () => db.query(`select rpc_save_transaction($1::jsonb)`,
-      [JSON.stringify({ type: "payout", date: "2026-06-02", contact_id: mujahid, bank_account_id: bank, total_amount: 1,
-        lines: [{ project_id: p, component: "profit_share", amount: 1, contact_id: mujahid }] })]))).rejects.toThrow(/approval/);
+      [JSON.stringify({ type: "payout", date: "2026-06-02", contact_id: mujahid, bank_account_id: bank, total_amount: 200001,
+        lines: [{ project_id: p, component: "principal", amount: 200000, contact_id: mujahid }, { project_id: p, component: "profit_share", amount: 1, contact_id: mujahid }] })]))).rejects.toThrow(/approval/);
     await as(ADMIN, () => db.query(`select rpc_approve_payout($1)`, [id]));
     const bal = await one<{ b: string }>(db, `select sum(home_debit - home_credit)::text b from journal_lines where transaction_id = $1 and account_id = $2`, [id, bank]);
     expect(Number(bal.b)).toBe(-225000);
@@ -66,7 +66,10 @@ describe("payouts need an admin's approval", () => {
     await expect(as(ADMIN, () => db.query(`select rpc_save_payout($1::jsonb)`, [payoutJson(p, [["financing_return", 20000]])])))
       .rejects.toThrow(/client still owes MVR 400,000.00/);
     await doc(db, { type: "customer_payment", date: "2026-05-10", contact: client, bank: "1010", total: 400000, apply: [{ to: inv, amount: 400000 }] });
-    const id = (await as(ADMIN, () => one<{ id: string }>(db, `select rpc_save_payout($1::jsonb) id`, [payoutJson(p, [["financing_return", 20000]])]))).id;
+    // loans are repaid first (053)
+    await expect(as(ADMIN, () => db.query(`select rpc_save_payout($1::jsonb)`, [payoutJson(p, [["financing_return", 20000]])])))
+      .rejects.toThrow(/Repay the loans first: MVR 200,000.00/);
+    const id = (await as(ADMIN, () => one<{ id: string }>(db, `select rpc_save_payout($1::jsonb) id`, [payoutJson(p, [["principal", 200000], ["financing_return", 20000]])]))).id;
     const t = await one<{ is_draft: boolean; approval_status: string }>(db, `select is_draft, approval_status from transactions where id = $1`, [id]);
     expect(t).toEqual({ is_draft: false, approval_status: "approved" });
   });
@@ -74,7 +77,7 @@ describe("payouts need an admin's approval", () => {
   it("an approved payout cannot be changed to pay something else", async () => {
     const { p, inv } = await settledProject();
     await doc(db, { type: "customer_payment", date: "2026-05-10", contact: client, bank: "1010", total: 400000, apply: [{ to: inv, amount: 400000 }] });
-    const id = (await as(ADMIN, () => one<{ id: string }>(db, `select rpc_save_payout($1::jsonb) id`, [payoutJson(p, [["profit_share", 25000]])]))).id;
+    const id = (await as(ADMIN, () => one<{ id: string }>(db, `select rpc_save_payout($1::jsonb) id`, [payoutJson(p, [["principal", 200000], ["profit_share", 25000]])]))).id;
     await expect(db.transaction(async (tx) => {
       await tx.query(`update transaction_lines set amount = 20000 where transaction_id = $1`, [id]);
       await tx.query(`update transactions set updated_at = now() where id = $1`, [id]);
