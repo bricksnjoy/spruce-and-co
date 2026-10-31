@@ -233,3 +233,14 @@ export async function deleteScheme(id: string): Promise<Result> {
   refresh();
   return { ok: true };
 }
+
+/** Take a loan or Capital Pool contribution out of the books (it is voided, so it stays on record but counts nowhere). */
+export async function deleteFinancing(id: string): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (!isId(id)) return { error: "No financing entry." };
+  const { error } = await w.s.supabase.rpc("rpc_void", { p_id: id, p_reason: "Deleted" });
+  if (error) return { error: dbMessage(error) };
+  refresh();
+  return { ok: true };
+}

@@ -142,12 +142,19 @@ export async function deleteContact(id: string): Promise<Result> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
   if (w.s.role !== "admin") return { error: "Only an admin can delete a contact." };
-  const [{ count: docs }, { count: lines }] = await Promise.all([
+  const [{ count: live }, { count: all }] = await Promise.all([
+    w.s.supabase.from("transactions").select("id", { count: "exact", head: true }).eq("contact_id", id).is("voided_at", null),
     w.s.supabase.from("transactions").select("id", { count: "exact", head: true }).eq("contact_id", id),
-    w.s.supabase.from("journal_lines").select("id", { count: "exact", head: true }).eq("contact_id", id),
   ]);
-  if ((docs ?? 0) + (lines ?? 0) > 0) {
-    return { error: "They have loans or documents in the books, so they can't be deleted. Delete those first (a loan from the project's Financing tab)." };
+  if ((live ?? 0) > 0) {
+    return { error: "They have loans or documents in the books, so they can't be deleted. Delete those first (a loan from the bin on the project's Financing tab)." };
+  }
+  // only deleted (void) documents left: they stay on record, so the contact is put away instead
+  if ((all ?? 0) > 0) {
+    const { error } = await w.s.supabase.from("contacts").update({ active: false, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) return { error: dbMessage(error) };
+    refresh();
+    return { ok: true };
   }
   const { data, error } = await w.s.supabase.from("contacts").delete().eq("id", id).select("id");
   if (error) return { error: /foreign key/i.test(error.message) ? "Something in the books still points to them, so they can't be deleted." : dbMessage(error) };
