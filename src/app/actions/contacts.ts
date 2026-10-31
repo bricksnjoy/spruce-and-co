@@ -58,6 +58,10 @@ function check(f: ReturnType<typeof fields>, kinds: string[]): string | null {
 }
 
 function kindsFrom(fd: FormData, keep: string[] = []) {
+  // a new lender is either an outside lender or one of the directors (a partner)
+  const lender = fd.get("lender_type");
+  if (lender === "director") return ["partner"];
+  if (lender === "external") return ["lender"];
   const picked = EDITABLE_KINDS.filter((k) => fd.get(`kind_${k}`) === "on");
   return [...new Set([...picked, ...keep.filter((k) => !EDITABLE_KINDS.includes(k))])];
 }

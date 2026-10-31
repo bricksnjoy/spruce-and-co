@@ -22,8 +22,10 @@ export const blankContact = (kind: string): ContactFields => ({
  * Add or edit a customer, vendor or lender. `base` is where the new contact's page lives;
  * with `onCreated` a new contact is handed back instead (a pick list adding one in place).
  */
-export function ContactForm({ contact: c, base, onDone, onCreated }: {
+export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice = false }: {
   contact: ContactFields; base: string; onDone?: () => void; onCreated?: (id: string, name: string) => void;
+  /** a new lender: an external lender or one of the company's directors, nothing else */
+  lenderChoice?: boolean;
 }) {
   const [state, action, pending] = useActionState(c.id ? updateContact : createContact, null as Result | null);
   const router = useRouter();
@@ -46,6 +48,19 @@ export function ContactForm({ contact: c, base, onDone, onCreated }: {
         <label htmlFor="c-name" className={label}>Name</label>
         <input id="c-name" name="name" required defaultValue={c.name} className={input} />
       </div>
+      {lenderChoice ? (
+        <fieldset className="sm:col-span-2">
+          <legend className={label}>Who is lending</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[["external", "External lender", "A bank, a friend or another company"], ["director", "Company director", "One of the directors, lending from their own money"]].map(([v, l, h]) => (
+              <label key={v} className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] p-3 text-sm transition-colors hover:bg-[var(--hover)] has-[:checked]:border-[var(--brand)] has-[:checked]:bg-[var(--brand-soft)]">
+                <input type="radio" name="lender_type" value={v} defaultChecked={v === "external"} className="mt-0.5 h-4 w-4 accent-[var(--brand)]" />
+                <span><span className="font-medium">{l}</span><span className="block text-xs text-[var(--muted)]">{h}</span></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : (
       <fieldset className="sm:col-span-2">
         <legend className={label}>This contact is a</legend>
         <div className="flex flex-wrap gap-4 text-sm">
@@ -57,6 +72,7 @@ export function ContactForm({ contact: c, base, onDone, onCreated }: {
           {c.kinds.includes("partner") && <span className="text-[var(--muted)]">Partner (set with the capital pool)</span>}
         </div>
       </fieldset>
+      )}
       <div>
         <label htmlFor="c-person" className={label}>Contact person</label>
         <input id="c-person" name="contact_person" defaultValue={f("contact_person")} className={input} />
