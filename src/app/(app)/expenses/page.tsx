@@ -67,7 +67,6 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ListFilter base="/expenses" show={show} q={q} options={FILTERS} placeholder="Search number, vendor, project or amount" />
-        <Link href="/expenses/vendors" className="text-xs text-[var(--muted)] hover:underline">Vendors →</Link>
       </div>
 
       <Card>
