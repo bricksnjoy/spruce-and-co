@@ -86,6 +86,16 @@ describe("deleting a project", () => {
     expect(await seen(p)).toEqual({ project: 0, docs: 0 });
   });
 
+  it("can be deleted for good from deleted projects, by an admin only", async () => {
+    const p = await fullProject();
+    await del(p, "X-1");
+    await expect(as(MANAGER, () => db.query(`select rpc_purge_project($1)`, [p]))).rejects.toThrow();
+    await as(ADMIN, () => db.query(`select rpc_purge_project($1)`, [p]));
+    expect(await as(ADMIN, () => q(db, `select * from deleted_projects()`))).toEqual([]);
+    await expect(restore(p)).rejects.toThrow(/not in deleted projects/);
+    expect(await seen(p)).toEqual({ project: 0, docs: 0 });
+  });
+
   it("is refused while a document or payment also belongs to another project", async () => {
     const a = await project(db, "A-1", client, 100000, { start: "2026-01-01" });
     const b = await project(db, "B-1", client, 100000, { start: "2026-01-01" });

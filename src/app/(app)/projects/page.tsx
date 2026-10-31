@@ -6,7 +6,7 @@ import { date, money, pct } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
 import { bookLabel } from "@/lib/books";
 import { STAGE_LABEL, STAGE_TONE, type ProjectFigures } from "@/lib/project-figures";
-import { RestoreProjectButton } from "@/components/projects/restore-project";
+import { PurgeProjectButton, RestoreProjectButton } from "@/components/projects/restore-project";
 import { RunWip } from "./run-wip";
 
 export const dynamic = "force-dynamic";
@@ -161,7 +161,7 @@ function DeletedProjects({ rows }: { rows: Deleted[] }) {
                 <Td>{r.deleted_by ?? "—"}</Td>
                 <Td right>{r.documents}</Td>
                 <Td className="whitespace-nowrap">{date(new Date(new Date(r.deleted_at).getTime() + 30 * 86400000).toISOString().slice(0, 10))}</Td>
-                <Td right><RestoreProjectButton id={r.id} /></Td>
+                <Td right><span className="inline-flex items-center justify-end gap-1"><RestoreProjectButton id={r.id} /><PurgeProjectButton id={r.id} code={r.code} /></span></Td>
               </tr>
             ))}
           </tbody>
