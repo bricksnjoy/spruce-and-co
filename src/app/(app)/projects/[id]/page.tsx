@@ -280,7 +280,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
       )}
       {(txns ?? []).some((t) => !t.voided_at) && (
         <Card>
-          <CardHeader title="Financing received" />
+          <CardHeader title="Funding history" />
           <Table>
             <thead><tr><Th>Date</Th><Th>No.</Th><Th>From</Th><Th>Reference</Th><Th right>Amount</Th>{writer && <Th>{""}</Th>}</tr></thead>
             <tbody>
