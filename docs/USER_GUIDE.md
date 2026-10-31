@@ -110,7 +110,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 2. Mark sent records that it went to the customer.
 3. Receive payment opens a payment for this customer.
 4. Edit changes it (the new figures replace the old; the change is kept in the audit log). Void keeps it on record but reverses it.
-5. Delete… removes an invoice, credit note or sales receipt from everything: Sales, the customer, the project and the reports; its billing stage can be invoiced again. Payments received for it stay as the customer's credit, unless you tick to delete them too. Restore it from the page (Sales → Deleted) within 30 days.
+5. Delete… removes an invoice, credit note or sales receipt from everything: Sales, the customer, the project and the reports; its billing stage can be invoiced again. Payments received for it are deleted with it too, unless you untick that (then they stay as the customer's credit). Restore it from the page (Sales → Deleted) within 30 days.
 
 > A document with payments applied cannot be voided until the payments are removed or voided; Delete… handles them for you.
 

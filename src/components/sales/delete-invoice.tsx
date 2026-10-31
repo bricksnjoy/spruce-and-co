@@ -16,8 +16,8 @@ const Bin = ({ size = 16 }: { size?: number }) => (
 /**
  * A bin icon that deletes an invoice after asking in a dialog: it leaves
  * Sales, the project and the reports, and its billing stage can be invoiced
- * again. When payments were received for it, they stay as the customer's
- * credit unless ticked to go too.
+ * again. The payments received for it go with it unless unticked, when they
+ * stay as the customer's credit.
  */
 export function DeleteInvoiceButton({ id, number, paid, iconOnly = false, afterDelete }: {
   id: string; number: string | null;
@@ -31,11 +31,11 @@ export function DeleteInvoiceButton({ id, number, paid, iconOnly = false, afterD
   const router = useRouter();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
-  const [withPayments, setWithPayments] = useState(false);
+  const [withPayments, setWithPayments] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const name = number ?? "this invoice";
-  const close = () => { if (!pending) { setOpen(false); setError(null); setWithPayments(false); } };
+  const close = () => { if (!pending) { setOpen(false); setError(null); setWithPayments(true); } };
 
   // the safe choice has the focus; Escape closes
   useEffect(() => {
@@ -87,7 +87,7 @@ export function DeleteInvoiceButton({ id, number, paid, iconOnly = false, afterD
                 <input type="checkbox" checked={withPayments} onChange={(e) => setWithPayments(e.target.checked)} className="mt-0.5 h-4 w-4 accent-red-600" />
                 <span>
                   <span className="font-medium">Also delete the {money(paid)} received for it</span>
-                  <span className="mt-0.5 block text-xs text-[var(--muted)]">Leave unticked if the money really came in: it stays as the customer&apos;s credit.</span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted)]">Untick if the money really came in: it then stays as the customer&apos;s credit.</span>
                 </span>
               </label>
             )}
