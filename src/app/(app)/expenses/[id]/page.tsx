@@ -41,7 +41,7 @@ export default async function ExpenseDocPage({ params, searchParams }: { params:
       <Link href="/expenses" className="text-xs text-[var(--muted)] hover:underline">← Expenses</Link>
       <PageHeader title={`${titleize(d.type)} ${d.number ?? t?.tax_invoice_no ?? ""}`}
         subtitle={`${d.vendor_name ?? "No vendor"}${d.project_code ? ` · ${d.project_code}` : ""} · ${date(d.date)}`}
-        action={<div className="flex items-center gap-3"><Badge value={d.status} />
+        action={<div className="flex flex-wrap items-center gap-3"><Badge value={d.status} />
           <ExpenseActions id={id} type={d.type} status={d.status} voided={Boolean(d.voided_at)} canEdit={writer} isAdmin={s.role === "admin"}
             contactId={d.contact_id} balance={String(d.balance)} poClosed={d.type === "purchase_order" && d.status === "closed"} /></div>} />
 

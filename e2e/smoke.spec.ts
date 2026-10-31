@@ -23,7 +23,7 @@ test("every rebuilt screen opens without errors", async ({ page }) => {
 
 test("on a phone, no screen scrolls sideways and the menu opens", async ({ page }) => {
   const w = watchErrors(page);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 320, height: 700 });
   await signIn(page, "admin");
   for (const r of [...ROUTES, "/tasks", "/bids", "/quotations"]) {
     await page.goto(r);

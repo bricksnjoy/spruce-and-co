@@ -38,7 +38,7 @@ export default async function SalesDocPage({ params }: { params: Promise<{ id: s
       </div>
       <PageHeader title={`${titleize(d.type)} ${d.number ?? ""}`}
         subtitle={`${d.customer_name ?? ""}${d.project_code ? ` · ${d.project_code}` : ""} · ${date(d.date)}`}
-        action={<div className="flex items-center gap-3"><Badge value={d.status} />
+        action={<div className="flex flex-wrap items-center gap-3"><Badge value={d.status} />
           <DocActions id={id} type={d.type} status={d.status} voided={Boolean(d.voided_at)} sent={Boolean(d.sent_at)}
             canEdit={canWrite(s.role)} editable={EDITABLE.includes(d.type)} balance={String(d.balance)} contactId={d.contact_id} /></div>} />
 

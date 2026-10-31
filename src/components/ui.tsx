@@ -146,10 +146,11 @@ export function Progress({ value }: { value: number }) {
   );
 }
 
+/** A list; on a phone each row shows as a small card, its values labelled from the headings (see TableLabels). */
 export function Table({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">{children}</table>
+      <table className="cards w-full text-sm">{children}</table>
     </div>
   );
 }

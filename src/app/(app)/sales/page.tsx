@@ -52,14 +52,14 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
         ) : undefined} />
 
       {/* the money bar */}
-      <div className="grid overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-4">
+      <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-4">
         {[
           ["Unpaid", unpaid, "unpaid", "bg-blue-50"], ["Overdue", overdue, "overdue", "bg-red-50"],
           ["Paid, last 30 days", dbToLaari(paid as number | null), "customer_payment", "bg-emerald-50"], ["Not yet banked", undeposited, "deposit", "bg-amber-50"],
         ].map(([l, v, f, tone]) => (
-          <Link key={l as string} href={f === "deposit" ? "/sales/deposits/new" : `/sales?show=${f}`} className={`px-5 py-4 ${tone} hover:brightness-95`}>
+          <Link key={l as string} href={f === "deposit" ? "/sales/deposits/new" : `/sales?show=${f}`} className={`px-4 py-3 sm:px-5 sm:py-4 ${tone} hover:brightness-95`}>
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{l as string}</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{m(v as bigint)}</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums sm:text-xl">{m(v as bigint)}</p>
           </Link>
         ))}
       </div>
