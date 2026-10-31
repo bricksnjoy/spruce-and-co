@@ -42,13 +42,18 @@ function fields(fd: FormData) {
     licence_expiry: text(fd, "licence_expiry"),
     insurance_expiry: text(fd, "insurance_expiry"),
     notes: text(fd, "notes"),
+    // a lender's share of the project's profit; blank is the scheme's 20%. Only set when the form has it.
+    ...(fd.has("profit_percent") ? { profit_percent: pctOf(text(fd, "profit_percent")) } : {}),
   };
 }
+
+const pctOf = (v: string | null) => (v === null ? null : /^\d{1,3}(\.\d{1,2})?$/.test(v) && Number(v) <= 100 ? Number(v) : NaN);
 
 function check(f: ReturnType<typeof fields>, kinds: string[]): string | null {
   if (!f.name) return "Enter the name.";
   if (!kinds.length) return "Tick at least one of customer, vendor or lender.";
   if (f.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return "That email address does not look right.";
+  if (Number.isNaN(f.profit_percent)) return "The profit percentage is a number from 0 to 100, e.g. 20.";
   if (Number.isNaN(f.terms_days)) return "Payment terms are a number of days, e.g. 30.";
   if (f.vendor_kind && !VENDOR_KINDS.includes(f.vendor_kind)) return "Choose what kind of vendor this is.";
   if (!isDate(f.licence_expiry) || !isDate(f.insurance_expiry)) return "Enter expiry dates as dates.";
