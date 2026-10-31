@@ -49,9 +49,9 @@ export async function recordFinancing(_prev: unknown, fd: FormData): Promise<Res
       reference: text(fd, "reference"), memo: text(fd, "memo") },
   });
   if (error) return { error: dbMessage(error) };
-  // their share of the profit is kept on the lender (or member): blank is the usual 20%
+  // the profit share belongs to this loan only: blank is the usual 20%
   if (fd.has("profit_percent")) {
-    const { error: e2 } = await w.s.supabase.from("contacts").update({ profit_percent: pct === null ? null : Number(pct) }).eq("id", contact);
+    const { error: e2 } = await w.s.supabase.rpc("rpc_set_financing_percent", { p_id: data as string, p_percent: pct === null ? null : Number(pct) });
     if (e2) return { error: `Recorded, but the profit share was not saved: ${dbMessage(e2)}`, id: data as string };
   }
   refresh();

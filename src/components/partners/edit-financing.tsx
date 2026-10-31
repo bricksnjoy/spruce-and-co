@@ -7,7 +7,7 @@ import { MoneyInput } from "@/components/money-input";
 import { input, label, primary } from "@/components/form-styles";
 import { recordFinancing } from "@/app/actions/partners";
 
-type Entry = { id: string; type: string; date: string; due_date: string | null; contact_id: string | null; bank_account_id: string | null; total_amount: number | string | null; reference: string | null };
+type Entry = { id: string; type: string; profit_percent?: number | string | null; date: string; due_date: string | null; contact_id: string | null; bank_account_id: string | null; total_amount: number | string | null; reference: string | null };
 type Who = { id: string; name: string; profit_percent?: number | string | null };
 
 /** A pencil on a financing entry: who, where, when and how much, changed in a pop-up. */
@@ -57,8 +57,9 @@ export function EditFinancingButton({ projectId, entry, who, banks }: {
               <MoneyInput id="ef-amt" name="amount" required defaultValue={Number(entry.total_amount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} className={`${input} tabular-nums`} /></div>
             <div><label htmlFor="ef-ref" className={label}>Reference</label>
               <input id="ef-ref" name="reference" defaultValue={entry.reference ?? ""} className={input} /></div>
-            <div key={contact}><label htmlFor="ef-pct" className={label}>Profit share (%)</label>
-              <input id="ef-pct" name="profit_percent" inputMode="decimal" placeholder="20" defaultValue={String(who.find((c) => c.id === contact)?.profit_percent ?? "")} className={`${input} tabular-nums`} /></div>
+            <div><label htmlFor="ef-pct" className={label}>Profit share (%)</label>
+              <input id="ef-pct" name="profit_percent" inputMode="decimal" placeholder="20" defaultValue={entry.profit_percent == null ? "" : String(Number(entry.profit_percent))} className={`${input} tabular-nums`} />
+              <p className="mt-1 text-xs text-[var(--muted)]">For this loan only. Blank is 20%.</p></div>
             {days !== null && (
               <div><label htmlFor="ef-days" className={label}>Repay within (days)</label>
                 <input id="ef-days" name="terms_days" inputMode="numeric" defaultValue={String(days)} className={`${input} tabular-nums`} /></div>
