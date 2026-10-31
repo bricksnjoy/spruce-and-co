@@ -18,7 +18,7 @@ export default async function PartnersPage() {
   const [{ data: projects }, { data: statement }, { data: contacts }, { data: pending }, { data: capital }, { data: accounts }] = await Promise.all([
     s.supabase.from("project_payouts_v").select("*").order("code"),
     s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding"),
-    s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").order("name"),
+    s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
     s.supabase.from("transactions").select("id, date, number, contact_id, total_amount, created_at, transaction_lines(project_id, component, amount)")
       .eq("type", "payout").eq("is_draft", true).is("voided_at", null).order("date"),
     // the company's own money is part of the Capital Pool too
@@ -39,7 +39,8 @@ export default async function PartnersPage() {
   const returns = rows.filter((r) => r.component !== "principal").reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
   const ready = rows.filter((r) => blocked.get(r.project_id) === false).reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
   const waiting = rows.filter((r) => blocked.get(r.project_id) !== false).reduce((t, r) => t + dbToLaari(r.outstanding), 0n);
-  const personIds = [...new Set([...(contacts ?? []).map((c) => c.id), ...people.keys()])];
+  // deleted (put away) lenders are left out
+  const personIds = [...new Set([...(contacts ?? []).map((c) => c.id), ...people.keys()])].filter((id) => names.has(id));
   // Capital Pool members and external lenders are listed apart; a member who also lends is listed with the pool
   const isPool = new Set((contacts ?? []).filter((c) => (c.kinds as string[]).includes("partner")).map((c) => c.id));
   const pool = personIds.filter((id) => isPool.has(id));
@@ -163,7 +164,7 @@ export default async function PartnersPage() {
       )}
 
       {directorsTable}
-      {peopleTable("Lenders", "External lenders: their loans and returns, kept apart from the Capital Pool", lenders, "No lenders yet. Add one on the Lenders page.")}
+      {peopleTable("Lenders", "Lenders and directors lending: their loans and returns, kept apart from the Capital Pool", lenders, "No lenders yet. Add one on the Lenders page.")}
 
       <Card>
         <CardHeader title="Projects" subtitle="Financing received, what is still owed, and whether payouts are released" />
