@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { input, label, hint, primary } from "@/components/form-styles";
+import { clearDraft, useFormDraft } from "@/lib/form-draft";
 import { createContact, updateContact, type Result } from "@/app/actions/contacts";
 
 export type ContactFields = {
@@ -32,17 +33,22 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
   const router = useRouter();
   const isVendor = c.kinds.includes("vendor");
   const typed = useRef("");
+  // a new contact's typing survives a refresh (the pop-up reopens with it)
+  const formRef = useRef<HTMLFormElement>(null);
+  const draft = c.id ? null : `new-contact:${c.kinds[0] ?? "contact"}`;
+  useFormDraft(formRef, draft);
 
   useEffect(() => {
     if (!state?.ok) return;
+    if (draft) clearDraft(draft);
     if (!c.id && state.id) { if (onCreated) onCreated(state.id, typed.current); else router.push(`${base}/${state.id}`); }
     else onDone?.();
-  }, [state, c.id, base, router, onDone, onCreated]);
+  }, [state, c.id, base, router, onDone, onCreated, draft]);
 
   const f = (k: keyof ContactFields) => (c[k] == null ? "" : String(c[k]));
   return (
     // submitted by hand so a refusal (e.g. a duplicate) keeps what was typed
-    <form className="grid gap-4 sm:grid-cols-2"
+    <form ref={formRef} className="grid gap-4 sm:grid-cols-2"
       onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); typed.current = String(fd.get("name") ?? "").trim(); startTransition(() => action(fd)); }}>
       {c.id && <input type="hidden" name="id" value={c.id} />}
       <div className="sm:col-span-2">
