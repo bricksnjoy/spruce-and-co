@@ -48,7 +48,7 @@ export function MobileNav({ children, tabs = [] }: { children: ReactNode; tabs?:
           <path d="M3 5h14M3 10h14M3 15h14" />
         </svg>
       </button>
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[var(--border)] bg-[var(--surface)] pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[var(--border)] bg-[var(--surface)] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden print:hidden">
         {tabs.map((href) => {
           const t = TABS[href];
           const on = href === "/" ? pathname === "/" : pathname.startsWith(href);
