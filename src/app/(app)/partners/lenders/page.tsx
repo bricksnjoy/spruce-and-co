@@ -11,8 +11,6 @@ export const dynamic = "force-dynamic";
 const m = (v: bigint) => money(laariToNumber(v));
 
 type Row = { id: string; name: string; contact_person: string | null; phone: string | null; email: string | null; needs_review: boolean; kinds: string[] };
-const VIEWS: [string, string][] = [["active", "Active"], ["archived", "Archived"]];
-
 /** External lenders: who lent what to which projects, what has been repaid, and what is still owed. */
 export default async function LendersPage({ searchParams }: { searchParams: Promise<{ view?: string; q?: string }> }) {
   const s = await getSession();
@@ -48,12 +46,7 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
         <Stat label="Lent to projects" value={m(total("lent"))} hint="Every loan received from these lenders" />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1">
-          {VIEWS.map(([v, l]) => (
-            <Link key={v} href={href(v)} className={`rounded-full px-3 py-1 text-xs font-medium ${view === v ? "bg-[var(--brand)] text-white" : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <form className="flex gap-2" action="/partners/lenders">
           <input type="hidden" name="view" value={view} />
           <input name="q" defaultValue={query} placeholder="Search lenders" aria-label="Search lenders"
