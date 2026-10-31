@@ -532,10 +532,11 @@ async function Bills({ s, p, writer, openNew }: { s: Session; p: ProjectFigures;
                   <Td>{vn.get(r.contact_id ?? "") ?? <span className="text-[var(--muted)]">{forWhat.get(r.id) || "—"}</span>}</Td>
                   <Td className="whitespace-nowrap">{r.due_date ? date(r.due_date) : ""}</Td>
                   <Td right>{m(r.total)}</Td>
-                  <Td right>{Number(r.balance) ? m(r.balance) : ""}</Td>
+                  {/* an expense is paid from the bank or cash when it is recorded: nothing is left to pay */}
+                  <Td right>{r.type !== "expense" && Number(r.balance) ? m(r.balance) : ""}</Td>
                   <Td right>{writer && form && !r.voided_at && !r.is_draft && r.type === "bill" && Number(r.balance) > 0
                     ? <BillStatusMenu projectId={p.id} billId={r.id} label={docStatus(r, t)} payFrom={form.payFrom} />
-                    : <Badge value={docStatus(r, t)} />}</Td>
+                    : <Badge value={r.type === "expense" && !r.voided_at && !r.is_draft ? "paid" : docStatus(r, t)} />}</Td>
                   {writer && <Td right className="whitespace-nowrap">{!r.voided_at && <>
                     <Link href={`/expenses/${r.id}/edit`} aria-label={`Edit ${r.number ?? "receipt"}`} title="Edit"
                       className="relative z-[1] inline-flex rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-[var(--hover)] hover:text-[var(--text)]">
