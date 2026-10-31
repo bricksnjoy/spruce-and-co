@@ -119,7 +119,7 @@ export default async function AppLayout({
             </form>
           </div>
         </header>
-        <main className="flex-1 p-4 pb-24 sm:p-6 sm:pb-24 md:pb-6"><BookGuard book={book}><PageHelp />{children}</BookGuard><TableLabels /></main>
+        <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-28 md:pb-6"><BookGuard book={book}><PageHelp />{children}</BookGuard><TableLabels /></main>
       </div>
     </div>
   );
