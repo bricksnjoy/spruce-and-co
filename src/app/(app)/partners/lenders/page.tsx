@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { Card, Empty, PageHeader, Stat, Table, Th, Td } from "@/components/ui";
 import { NewContact } from "@/components/contacts/new-contact";
 import { DeleteContactButton } from "@/components/contacts/delete-contact";
+import { EditLenderButton } from "@/components/contacts/edit-lender";
+import type { ContactFields } from "@/components/contacts/contact-form";
 import { canWrite, getSession } from "@/server/session";
 import { money } from "@/lib/format";
 import { dbToLaari, laariToNumber } from "@/lib/money";
@@ -18,7 +20,7 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
   if (!s) redirect("/login");
   const { view = "active", q } = await searchParams;
   const query = q?.trim() ?? "";
-  let req = s.supabase.from("contacts").select("id, name, contact_person, phone, email, needs_review, kinds")
+  let req = s.supabase.from("contacts").select("*")
     .contains("kinds", ["lender"]).eq("active", view !== "archived").order("name");
   if (query) req = req.ilike("name", `%${query.replace(/[%_\\]/g, (x) => `\\${x}`)}%`);
 
@@ -61,7 +63,7 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
       <Card>
         {per.length === 0 ? <Empty message={query ? `No lenders match "${query}".` : "No lenders yet. Press \"New lender\" to add one."} /> : (
           <Table>
-            <thead><tr><Th>Lender</Th><Th>Contact</Th><Th right>Projects</Th><Th right>Lent</Th><Th right>Repaid</Th><Th right>Principal owed</Th><Th right>Return owed</Th><Th right>Total owed</Th>{s.role === "admin" && <Th>{""}</Th>}</tr></thead>
+            <thead><tr><Th>Lender</Th><Th>Contact</Th><Th right>Projects</Th><Th right>Lent</Th><Th right>Repaid</Th><Th right>Principal owed</Th><Th right>Return owed</Th><Th right>Total owed</Th>{canWrite(s.role) && <Th>{""}</Th>}</tr></thead>
             <tbody>
               {per.map((r) => (
                 <tr key={r.id} className="row-link hover:bg-[var(--hover)]">
@@ -77,7 +79,10 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
                   <Td right>{m(r.principal)}</Td>
                   <Td right>{m(r.ret)}</Td>
                   <Td right className="font-semibold">{m(r.principal + r.ret)}</Td>
-                  {s.role === "admin" && <Td right className="w-12 py-1"><DeleteContactButton id={r.id} name={r.name} /></Td>}
+                  {canWrite(s.role) && <Td right className="w-24 whitespace-nowrap py-1">
+                    <EditLenderButton contact={r as unknown as ContactFields & { id: string }} />
+                    {s.role === "admin" && <DeleteContactButton id={r.id} name={r.name} />}
+                  </Td>}
                 </tr>
               ))}
             </tbody>

@@ -23,13 +23,16 @@ export const blankContact = (kind: string): ContactFields => ({
  * Add or edit a customer, vendor or lender. `base` is where the new contact's page lives;
  * with `onCreated` a new contact is handed back instead (a pick list adding one in place).
  */
-export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice = false, directors = [] }: {
+export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice = false, directors = [], lenderEdit = false }: {
   contact: ContactFields; base: string; onDone?: () => void; onCreated?: (id: string, name: string) => void;
   /** a new lender: an external lender or one of the company's directors, nothing else */
   lenderChoice?: boolean;
   /** the directors already in the app, to pick from when a director lends */
   directors?: { id: string; name: string }[];
+  /** editing a lender from Lenders: only who they are and how to reach them */
+  lenderEdit?: boolean;
 }) {
+  const lean = lenderChoice || lenderEdit;
   const [who, setWho] = useState<"external" | "director">("external");
   const dir = lenderChoice && who === "director";
   const [state, action, pending] = useActionState(c.id ? updateContact : createContact, null as Result | null);
@@ -80,6 +83,9 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
             </div>
           )}
         </fieldset>
+      ) : lenderEdit ? (
+        // what they are stays as it is
+        c.kinds.filter((k) => ["customer", "vendor", "lender"].includes(k)).map((k) => <input key={k} type="hidden" name={`kind_${k}`} value="on" />)
       ) : (
       <fieldset className="sm:col-span-2">
         <legend className={label}>This contact is a</legend>
@@ -95,7 +101,7 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
       )}
       <div className={dir ? "hidden" : "contents"}>
       {/* a new lender needs only who they are and how to reach them */}
-      {!lenderChoice && <>
+      {!lean && <>
         <div>
           <label htmlFor="c-person" className={label}>Contact person</label>
           <input id="c-person" name="contact_person" defaultValue={f("contact_person")} className={input} />
@@ -117,7 +123,7 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
         <label htmlFor="c-address" className={label}>Address</label>
         <textarea id="c-address" name="address" rows={2} defaultValue={f("address")} className={input} />
       </div>
-      {!lenderChoice && <>
+      {!lean && <>
       <div>
         <label htmlFor="c-tin" className={label}>TIN</label>
         <input id="c-tin" name="tin" defaultValue={f("tin")} className={`${input} font-mono`} />
@@ -133,7 +139,7 @@ export function ContactForm({ contact: c, base, onDone, onCreated, lenderChoice 
       </>}
 
       {/* a lender's terms, currency and profit share go on each loan (Record financing) */}
-      {!lenderChoice && <>
+      {!lean && <>
       <div>
         <label htmlFor="c-terms" className={label}>Payment terms (days)</label>
         <input id="c-terms" name="terms_days" inputMode="numeric" defaultValue={f("terms_days")} className={`${input} tabular-nums`} placeholder="30" />
