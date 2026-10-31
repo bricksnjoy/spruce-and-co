@@ -426,6 +426,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/tasks` — What is due across every project.
 
 1. Add a task with a project and due date; tick it when done.
+2. The calendar shows the month: each day lists its open tasks, milestones and bid dates (on a phone, coloured counts). Use ‹ › for the months either side and "This month" to come back.
 
 ### Message center
 

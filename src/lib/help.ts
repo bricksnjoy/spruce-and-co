@@ -404,7 +404,7 @@ export const HELP: Help[] = [
 
 
   // ── Other ──
-  { path: "/tasks", area: "Other", title: "Tasks & calendar", purpose: "What is due across every project.", steps: ["Add a task with a project and due date; tick it when done."] },
+  { path: "/tasks", area: "Other", title: "Tasks & calendar", purpose: "What is due across every project.", steps: ["Add a task with a project and due date; tick it when done.", "The calendar shows the month: each day lists its open tasks, milestones and bid dates (on a phone, coloured counts). Use ‹ › for the months either side and \"This month\" to come back."] },
   { path: "/messages", area: "Other", title: "Message center", purpose: "Send an SMS or email to anyone, and see what was sent.", steps: ["Choose who, write the message, send. The history lists what went out."] },
   {
     path: "/bids", area: "Other", title: "Bids",
