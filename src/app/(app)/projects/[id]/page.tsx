@@ -4,6 +4,7 @@ import { Badge, Card, CardHeader, Empty, PageHeader, Table, Th, Td } from "@/com
 import { canWrite, getSession, type Session } from "@/server/session";
 import { deletedDocs } from "@/server/deleted-docs";
 import { DeleteFinancingButton } from "@/components/partners/delete-financing";
+import { EditFinancingButton } from "@/components/partners/edit-financing";
 import { addDays, date, money, pct, titleize, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, percentOf } from "@/lib/money";
 import { docStatus, type DocBalance } from "@/lib/doc-status";
@@ -226,7 +227,7 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
     s.supabase.from("project_financing_v").select("contact_id, source_type, received, repaid, outstanding").eq("project_id", p.id),
     s.supabase.from("contacts").select("id, name, kinds, profit_percent").or("kinds.cs.{partner},kinds.cs.{lender}").eq("active", true).order("name"),
     s.supabase.from("accounts").select("id, code, name").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
-    s.supabase.from("transactions").select("id, date, number, type, contact_id, total_amount, reference, voided_at")
+    s.supabase.from("transactions").select("id, date, due_date, number, type, contact_id, bank_account_id, total_amount, reference, voided_at")
       .eq("project_id", p.id).in("type", ["loan_receipt", "capital_contribution"]).order("date"),
     s.supabase.rpc("company_funding", { p_project: p.id }),
     // only an admin finances from the Capital Pool, so only an admin is shown what it holds
@@ -286,7 +287,13 @@ async function Financing({ s, p, writer, lender }: { s: Session; p: ProjectFigur
                 <tr key={t.id}>
                   <Td className="whitespace-nowrap">{date(t.date)}</Td><Td className="font-mono text-xs">{t.number}</Td>
                   <Td>{names.get(t.contact_id!) ?? "—"}</Td><Td>{t.reference ?? ""}</Td><Td right>{m(t.total_amount)}</Td>
-                  {writer && <Td right className="w-12 py-1"><DeleteFinancingButton id={t.id} number={t.number} /></Td>}
+                  {writer && <Td right className="w-24 whitespace-nowrap py-1">
+                    {(t.type === "loan_receipt" || t.type === "capital_contribution") && (
+                      <EditFinancingButton projectId={p.id} entry={t} banks={banks ?? []}
+                        who={(contacts ?? []).filter((c) => (c.kinds as string[]).includes(t.type === "loan_receipt" ? "lender" : "partner"))} />
+                    )}
+                    <DeleteFinancingButton id={t.id} number={t.number} />
+                  </Td>}
                 </tr>
               ))}
             </tbody>
