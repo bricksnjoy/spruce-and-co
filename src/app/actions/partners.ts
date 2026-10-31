@@ -45,7 +45,7 @@ export async function recordFinancing(_prev: unknown, fd: FormData): Promise<Res
   if (days !== null && !/^\d{1,4}$/.test(days)) return { error: "Repay within is a number of days, e.g. 180." };
   const due = days === null ? null : new Date(Date.parse(`${date}T00:00:00Z`) + Number(days) * 86_400_000).toISOString().slice(0, 10);
   const { data, error } = await w.s.supabase.rpc("rpc_save_transaction", {
-    p: { type, date, due_date: due, contact_id: contact, project_id: project, bank_account_id: bank, total_amount: amount, currency, fx_rate: fx,
+    p: { ...(isId(text(fd, "id")) ? { id: text(fd, "id") } : {}), type, date, due_date: due, contact_id: contact, project_id: project, bank_account_id: bank, total_amount: amount, currency, fx_rate: fx,
       reference: text(fd, "reference"), memo: text(fd, "memo") },
   });
   if (error) return { error: dbMessage(error) };
