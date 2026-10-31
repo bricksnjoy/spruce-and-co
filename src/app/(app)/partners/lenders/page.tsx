@@ -36,7 +36,6 @@ export default async function LendersPage({ searchParams }: { searchParams: Prom
     ret: sum(returns, r.id, "outstanding"), retPaid: sum(returns, r.id, "paid"),
   }));
   const total = (k: "lent" | "principal" | "ret") => per.reduce((t, p) => t + p[k], 0n);
-  const href = (v: string) => `/partners/lenders?${new URLSearchParams({ view: v, ...(query ? { q: query } : {}) })}`;
 
   return (
     <div className="max-w-6xl space-y-5">
