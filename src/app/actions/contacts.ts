@@ -82,6 +82,18 @@ function refresh(id?: string) {
 export async function createContact(_prev: unknown, fd: FormData): Promise<Result> {
   const w = await writer();
   if ("error" in w) return { error: w.error };
+  // a director lending is already in the app: they are added to Lenders, not made again
+  if (fd.get("lender_type") === "director") {
+    const id = String(fd.get("director_id") ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Choose the director." };
+    const { data: d } = await w.s.supabase.from("contacts").select("kinds").eq("id", id).maybeSingle();
+    if (!d) return { error: "That director was not found." };
+    const kinds = [...new Set([...(d.kinds as string[]), "lender"])];
+    const { error } = await w.s.supabase.from("contacts").update({ kinds, active: true, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) return { error: dbMessage(error) };
+    refresh(id);
+    return { ok: true, id };
+  }
   const f = fields(fd);
   const kinds = kindsFrom(fd);
   const bad = check(f, kinds);

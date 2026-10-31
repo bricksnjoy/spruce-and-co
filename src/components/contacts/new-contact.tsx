@@ -7,7 +7,7 @@ import { Modal } from "@/components/modal";
 import { ContactForm, blankContact } from "./contact-form";
 
 /** "New customer / vendor / lender": the form opens in a pop-up over the list. */
-export function NewContact({ kind, base, singular }: { kind: string; base: string; singular: string }) {
+export function NewContact({ kind, base, singular, directors }: { kind: string; base: string; singular: string; directors?: { id: string; name: string }[] }) {
   const [open, setOpen] = useState(false);
   const draft = `new-contact:${kind}`;
   // unsaved typing from before a refresh: open the pop-up again with it
@@ -22,7 +22,7 @@ export function NewContact({ kind, base, singular }: { kind: string; base: strin
       <button type="button" onClick={() => setOpen(true)} className={primary}>New {singular}</button>
       {open && (
         <Modal title={`New ${singular}`} size="md" onClose={discard}>
-          <ContactForm contact={blankContact(kind)} base={base} onDone={close} lenderChoice={kind === "lender"} />
+          <ContactForm contact={blankContact(kind)} base={base} onDone={close} lenderChoice={kind === "lender"} directors={directors} />
         </Modal>
       )}
     </>
