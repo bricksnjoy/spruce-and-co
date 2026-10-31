@@ -12,6 +12,7 @@ import type { Book } from "@/lib/books";
 import { NewMenu } from "@/components/new-menu";
 import { PageHelp } from "@/components/page-help";
 import { TableLabels } from "@/components/table-labels";
+import { AmountFormat } from "@/components/amount-format";
 import { ProfileMenu } from "@/components/profile-menu";
 
 export default async function AppLayout({
@@ -109,7 +110,7 @@ export default async function AppLayout({
             <ProfileMenu initials={initials(name)} name={name} email={user.email ?? null} role={<Badge value={profile?.role} />} signOut={signOut} />
           </div>
         </header>
-        <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-28 md:pb-6"><BookGuard book={book}><PageHelp />{children}</BookGuard><TableLabels /></main>
+        <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-28 md:pb-6"><BookGuard book={book}><PageHelp />{children}</BookGuard><TableLabels /><AmountFormat /></main>
       </div>
     </div>
   );
