@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/modal";
+import { MoneyInput } from "@/components/money-input";
 import { input, label, primary } from "@/components/form-styles";
 import { recordFinancing } from "@/app/actions/partners";
 
@@ -53,7 +54,7 @@ export function EditFinancingButton({ projectId, entry, who, banks }: {
             <div><label htmlFor="ef-date" className={label}>Date received</label>
               <input id="ef-date" name="date" type="date" required defaultValue={entry.date} className={input} /></div>
             <div><label htmlFor="ef-amt" className={label}>Amount (MVR)</label>
-              <input id="ef-amt" name="amount" inputMode="decimal" required defaultValue={String(entry.total_amount ?? "")} className={`${input} tabular-nums`} /></div>
+              <MoneyInput id="ef-amt" name="amount" required defaultValue={Number(entry.total_amount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} className={`${input} tabular-nums`} /></div>
             <div><label htmlFor="ef-ref" className={label}>Reference</label>
               <input id="ef-ref" name="reference" defaultValue={entry.reference ?? ""} className={input} /></div>
             <div key={contact}><label htmlFor="ef-pct" className={label}>Profit share (%)</label>

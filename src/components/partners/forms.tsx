@@ -1,5 +1,6 @@
 "use client";
 
+import { MoneyInput } from "@/components/money-input";
 import { startTransition, useActionState, useState, useTransition } from "react";
 import { input, label, primary, small } from "@/components/form-styles";
 import {
@@ -78,7 +79,7 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
           {banks.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
         </select></div>
       <div><label htmlFor="fin-date" className={label}>Date received</label><input id="fin-date" name="date" type="date" required defaultValue={today()} className={input} /></div>
-      <div key={`a-${state?.id ?? ""}`}><label htmlFor="fin-amt" className={label}>Amount ({currency})</label><input id="fin-amt" name="amount" inputMode="decimal" required className={`${input} tabular-nums`} /></div>
+      <div key={`a-${state?.id ?? ""}`}><label htmlFor="fin-amt" className={label}>Amount ({currency})</label><MoneyInput id="fin-amt" name="amount" required placeholder="0.00" className={`${input} tabular-nums`} /></div>
       <div><label htmlFor="fin-cur" className={label}>Currency</label>
         <div className="flex gap-2">
           <select id="fin-cur" name="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={input}><option>MVR</option><option>USD</option></select>

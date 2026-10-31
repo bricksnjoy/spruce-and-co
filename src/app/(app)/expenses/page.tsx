@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ListFilter } from "@/components/list-filter";
 import { redirect } from "next/navigation";
 import { Badge, Card, Empty, PageHeader, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
@@ -14,10 +15,11 @@ const m = (v: number | string | bigint | null | undefined) => money(typeof v ===
 const FILTERS: [string, string][] = [["all", "All"], ["bill", "Receipts"], ["unpaid", "Unpaid"], ["overdue", "Overdue"], ["awaiting_approval", "Awaiting approval"],
   ["expense", "Expenses"], ["bill_payment", "Payments made"], ["vendor_credit", "Vendor credits"], ["purchase_order", "Purchase orders"]];
 
-export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
+export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ show?: string; q?: string }> }) {
   const s = await getSession();
   if (!s) redirect("/login");
-  const show = (await searchParams).show ?? "all";
+  const { show = "all", q: rawQ } = await searchParams;
+  const q = rawQ?.trim() ?? "";
   const t = today();
   const [{ data }, { data: paid }, { data: bin }] = await Promise.all([
     s.supabase.from("expenses_list_v").select("id, type, number, date, due_date, total, balance, vendor_name, project_code, status, voided_at, tax_invoice_no")
@@ -33,7 +35,11 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const overdue = open.filter((r) => r.status === "overdue").reduce((a, r) => a + dbToLaari(r.balance), 0n);
   const pending = rows.filter((r) => r.status === "awaiting_approval");
   // a payment is shown on the bill it pays (its status turns Paid), so "All" leaves payments to their own tab
-  const shown = rows.filter((r) => show === "all" ? r.type !== "bill_payment" : show === "unpaid" ? open.includes(r) : ["overdue", "awaiting_approval"].includes(show) ? r.status === show : r.type === show);
+  const needle = q.toLowerCase().replace(/,/g, "");
+  const matches = (r: Row) => !needle || [r.number, r.vendor_name, r.project_code, r.tax_invoice_no, String(r.total)]
+    .some((v) => (v ?? "").toLowerCase().replace(/,/g, "").includes(needle));
+  const shown = rows.filter((r) => show === "all" ? r.type !== "bill_payment" : show === "unpaid" ? open.includes(r) : ["overdue", "awaiting_approval"].includes(show) ? r.status === show : r.type === show)
+    .filter(matches);
   const writer = canWrite(s.role);
 
   return (
@@ -59,12 +65,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-1">
-        {FILTERS.map(([k, l]) => (
-          <Link key={k} href={`/expenses?show=${k}`} className={`rounded-full px-3 py-1 text-xs font-medium ${show === k ? "bg-[var(--brand)] text-white" : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"}`}>{l}</Link>
-        ))}
-        <Link href="/expenses/vendors" className="ml-auto text-xs text-[var(--muted)] hover:underline">Vendors →</Link>
-        {show === "all" && <p className="w-full text-xs text-[var(--muted)]">Each receipt shows whether it is paid; the payments themselves are under “Payments made”.</p>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ListFilter base="/expenses" show={show} q={q} options={FILTERS} placeholder="Search number, vendor, project or amount" />
+        <Link href="/expenses/vendors" className="text-xs text-[var(--muted)] hover:underline">Vendors →</Link>
       </div>
 
       <Card>
