@@ -11,7 +11,7 @@ export function Modal({ title, onClose, children, size = "lg" }: { title: string
   }, [onClose]);
   return (
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={onClose}>
-      <div className={`my-6 w-full ${size === "md" ? "max-w-2xl" : "max-w-6xl"} rounded-xl bg-[var(--bg,var(--surface))] shadow-xl`} onClick={(e) => e.stopPropagation()}>
+      <div className={`my-6 w-full ${size === "md" ? "max-w-2xl" : "max-w-6xl"} overflow-hidden rounded-2xl bg-[var(--bg,var(--surface))] shadow-xl`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-5 py-3">
           <h2 className="text-base font-semibold">{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="text-[var(--muted)] hover:text-[var(--text)]">✕</button>
