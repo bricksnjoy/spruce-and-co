@@ -107,8 +107,9 @@ export function FinancingForm({ projectId, lenders, partners, banks, initialLend
     </form>
       {adding && (
         <Modal title="New lender" size="md" onClose={() => setAdding(false)}>
-          <ContactForm contact={blankContact("lender")} base="/partners/lenders" onDone={() => setAdding(false)}
-            onCreated={(id, name) => { setAdded((a) => [...a, { id, name }]); setContact(id); setAdding(false); router.refresh(); }} />
+          <ContactForm contact={blankContact("lender")} base="/partners/lenders" onDone={() => setAdding(false)} lenderChoice
+            directors={partners.filter((d) => !lenders.some((l) => l.id === d.id))}
+            onCreated={(id, name) => { setAdded((a) => [...a, { id, name: name || partners.find((d) => d.id === id)?.name || "" }]); setContact(id); setAdding(false); router.refresh(); }} />
         </Modal>
       )}
     </>
