@@ -288,18 +288,17 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 ### Partner or lender page
 
-`/partners/[id]` — One person's statement by project: principal, financing return and profit share — accrued, paid, outstanding — the money received from them, and paying them.
+`/partners/[id]` — One person's money, in the order it moves: what they lent, getting the loan back, and their earnings (financing return and profit share).
 
-1. Read the three tiles and the By project table.
-2. Director's account (Capital Pool members): what waits for their choice, what is in their director's account and what is invested in projects. Once a project is completed and the client has paid in full, its principal, financing return and profit share wait for their choice.
-3. An admin records the choice: "Keep in the company" puts the amount into their director's account (the cash stays in the company, ready to finance the next project); "Take out now" pays it to them from the account you choose. "Pay out of the director's account" pays them some of what they kept. The account's history lists each amount in and out, and what it was reinvested in.
-4. Loans and money received lists each loan or contribution with its project.
-5. For a lender, "Record a loan": choose the project and its Financing tab opens with the lender picked.
-6. Details at the bottom: change their name, phone, bank details, or tick them as a customer or vendor too.
-7. Pay out: type an amount against each line ("All" fills what is owed), choose the account and date. Lines on blocked projects say why.
-8. An admin's payout is paid at once; anyone else's goes to an admin for approval.
+1. The tiles: loans still to repay, earnings still to settle, and (a director) what is in their director's account.
+2. Each project has two steps. 1 Loan: once the client has paid, "Repay loan" (a director: "Pay back" or "Keep in the company"). If the client has not paid yet, an admin can "Repay from the Capital Pool": type how much comes from each director's account and from the company's own money. The Capital Pool gets it back from the project when the client pays, and earns no share.
+3. 2 Earnings: once the project is finished, the client has paid and every loan on it is repaid, "Take it out" pays it from a bank or cash account; a director can "Keep in the company" instead, into their director's account. The financing return is settled first, then the profit share.
+4. Director's account: money kept in the company. An admin can "Take money out" or "Reinvest in a project".
+5. History: everything lent, repaid, paid out and kept, newest first. A payout waiting for approval can be approved (admin) or turned down there.
+6. Settled projects fold away at the bottom of Projects. "Account by project" opens the same figures as a table.
 
-> Nothing can be paid until the project is completed and the client owes nothing.
+> An admin's payment happens at once; anyone else's goes to an admin for approval.
+> Loans come first: no earnings leave a project while a loan to it is still owed.
 
 ### Distribution history
 

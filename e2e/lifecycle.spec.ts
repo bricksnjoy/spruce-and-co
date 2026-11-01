@@ -124,9 +124,9 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await page.getByRole("button", { name: "Save payment" }).click();
   await page.waitForURL((u) => !u.pathname.endsWith("/new"));
 
-  // 8. no split yet: the client still owes, and the loans are not repaid
+  // 8. not yet: the client still owes
   await page.goto(`/projects/${projectId}?tab=split`);
-  await expect(page.getByText(/The profit is split only once the project is clear: the client still owes/)).toBeVisible();
+  await expect(page.getByText(/The project can be completed once it is clear: the client still owes/)).toBeVisible();
 
   // 9. the final payment
   await page.goto("/sales/payments/new");
@@ -138,22 +138,7 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await page.getByRole("button", { name: "Save payment" }).click();
   await page.waitForURL((u) => !u.pathname.endsWith("/new"));
 
-  // 10. the loans are repaid first: Mujahid's and the lender's principal
-  const payAll = async (who: string) => {
-    const cid = sql(`select id from contacts where name = '${who}' and book = 'live' limit 1`);
-    await page.goto(`/partners/${cid}`);
-    await expect(page.getByRole("heading", { name: "Pay out" })).toBeVisible();
-    for (const b of await page.getByRole("button", { name: "All", exact: true }).all()) await b.click();
-    await pick(page, "Paid from", /1010/);
-    await page.getByRole("button", { name: /Approve and pay/ }).click();
-    return cid;
-  };
-  const mujahid = await payAll("Mujahid");
-  await expect.poll(() => sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${mujahid}' and project_id = '${projectId}' and component = 'principal'`)).toBe("0.00");
-  const lender = await payAll(LENDER);
-  await expect.poll(() => sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${lender}' and project_id = '${projectId}' and component = 'principal'`)).toBe("0.00");
-
-  // 11. now the project is clear: complete it, the split is posted and payouts are released
+  // 10. the project is clear: complete it with the loans still owed (053); the split is posted and payouts are released
   await page.goto(`/projects/${projectId}?tab=split`);
   await expect(page.getByText("Split preview")).toBeVisible();
   await page.getByRole("checkbox").check();
@@ -162,11 +147,35 @@ test("a project from customer to payouts, through the screens", async ({ page })
   await page.goto(`/projects/${projectId}?tab=payouts`);
   await expect(page.getByText(/^Payouts are released/)).toBeVisible();
 
-  // 12. Mujahid's financing return and profit share
-  await payAll("Mujahid");
-  // the payout shows in the history as paid (the Pay out card goes once nothing is owed)
+  // 11. on each person's page the loan comes first: Mujahid keeps his in the company, the lender is repaid
+  const open = async (who: string) => {
+    const cid = sql(`select id from contacts where name = '${who}' and book = 'live' limit 1`);
+    await page.goto(`/partners/${cid}`);
+    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    return cid;
+  };
+  const owedOn = (cid: string, component: string) =>
+    sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${cid}' and project_id = '${projectId}' and component ${component}`);
+  const mujahid = await open("Mujahid");
+  await expect(page.getByText(/Loans on this project are repaid first|Repay the loan first/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Keep in the company" }).first().click();
+  await page.getByRole("dialog").getByRole("button", { name: "Keep in the company" }).click();
+  await expect.poll(() => owedOn(mujahid, "= 'principal'")).toBe("0.00");
+  const lender = await open(LENDER);
+  await page.getByRole("button", { name: "Repay loan" }).click();
+  await pick(page, "Paid from", /1010/);
+  await page.getByRole("dialog").getByRole("button", { name: "Pay now" }).click();
+  await expect.poll(() => owedOn(lender, "= 'principal'")).toBe("0.00");
+
+  // 12. then Mujahid's financing return and profit share, taken out
+  await open("Mujahid");
+  await page.getByRole("button", { name: "Take it out" }).click();
+  await pick(page, "Paid from", /1010/);
+  await page.getByRole("dialog").getByRole("button", { name: "Pay now" }).click();
+  await expect.poll(() => owedOn(mujahid, "<> 'principal'")).toBe("0.00");
+  // the history shows it, and the project is settled
   const code = sql(`select code from projects where id = '${projectId}'`);
-  await expect(page.getByRole("row").filter({ hasText: `${code} · Profit share` }).getByText("paid", { exact: true })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: `Paid out: earnings on ${code}` }).getByText("Done", { exact: true })).toBeVisible();
   const owed = sql(`select coalesce(sum(outstanding), 0) from partner_statement_v where contact_id = '${mujahid}' and project_id = '${projectId}'`);
   expect(Number(owed)).toBe(0);
 

@@ -22,6 +22,7 @@ async function writer() {
 const refresh = () => {
   revalidatePath("/partners", "layout");
   revalidatePath("/projects", "layout");
+  revalidatePath("/people", "layout");
 };
 
 /** Money in for a project: a loan from an external lender or a Capital Pool contribution (§5). */
@@ -240,6 +241,60 @@ export async function deleteFinancing(id: string): Promise<Result> {
   if ("error" in w) return { error: w.error };
   if (!isId(id)) return { error: "No financing entry." };
   const { error } = await w.s.supabase.rpc("rpc_void", { p_id: id, p_reason: "Deleted" });
+  if (error) return { error: dbMessage(error) };
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Settle one person's money on one project (migration 054): their loan or their
+ * earnings (financing return first, then profit share), taken out from a bank or
+ * cash account, or (a director) kept in the company in their director's account.
+ */
+export async function settle(_prev: unknown, fd: FormData): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  const contact = text(fd, "contact_id"), project = text(fd, "project_id"), what = text(fd, "what"), choice = text(fd, "choice");
+  const date = text(fd, "date"), bank = text(fd, "bank_id");
+  if (!isId(contact) || !isId(project)) return { error: "Nothing to settle." };
+  if (what !== "principal" && what !== "earnings") return { error: "Choose the loan or the earnings." };
+  if (choice !== "take" && choice !== "keep") return { error: "Choose to take it out or keep it in the company." };
+  if (choice === "take" && !isId(bank)) return { error: "Choose the account it is paid from." };
+  if (!isDate(date)) return { error: "Enter the date." };
+  const amount = moneyToDb(text(fd, "amount"));
+  if (amount === null || Number(amount) <= 0) return { error: "Enter the amount." };
+  const { data, error } = await w.s.supabase.rpc("rpc_settle", {
+    p_contact: contact, p_project: project, p_what: what, p_choice: choice, p_amount: amount, p_date: date, p_bank: choice === "take" ? bank : null,
+  });
+  if (error) return { error: dbMessage(error) };
+  refresh();
+  return { ok: true, id: data as string };
+}
+
+/**
+ * Repay a loan from the Capital Pool before the client has paid (admin only,
+ * migration 054): how much comes from each director's account and from the
+ * company's own money (fields amt:<contact id> and amt:company). The pool is
+ * paid back once the client pays, and earns no share.
+ */
+export async function repayFromCapitalPool(_prev: unknown, fd: FormData): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  if (w.s.role !== "admin") return { error: "Only an admin repays a loan from the Capital Pool." };
+  const contact = text(fd, "contact_id"), project = text(fd, "project_id"), date = text(fd, "date"), bank = text(fd, "bank_id");
+  if (!isId(contact) || !isId(project)) return { error: "No loan to repay." };
+  if (!isId(bank)) return { error: "Choose the account the loan is repaid from." };
+  if (!isDate(date)) return { error: "Enter the date." };
+  const parts: { contact_id: string | null; amount: string }[] = [];
+  for (const [k, v] of fd.entries()) {
+    const f = /^amt:([0-9a-f-]{36}|company)$/i.exec(k);
+    if (!f || String(v).trim() === "") continue;
+    const amount = moneyToDb(String(v));
+    if (amount === null) return { error: "Each amount must be a number." };
+    if (Number(amount) > 0) parts.push({ contact_id: f[1] === "company" ? null : f[1], amount });
+  }
+  if (!parts.length) return { error: "Enter how much comes from at least one." };
+  const { error } = await w.s.supabase.rpc("rpc_repay_from_capital_pool", { p_contact: contact, p_project: project, p_date: date, p_bank: bank, p_parts: parts });
   if (error) return { error: dbMessage(error) };
   refresh();
   return { ok: true };
