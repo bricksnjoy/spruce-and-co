@@ -7,6 +7,8 @@ export type AccountProject = { id: string; code: string; name: string; completed
 export type PartnerLine = { lent: bigint; repaid: bigint; ret: bigint; share: bigint; paid: bigint; owed: bigint };
 /** One completed project on the company's account, in laari. */
 export type CompanyLine = { profit: bigint; shared: bigint };
+/** A company bank or cash account, with its balance in the books (laari, in MVR). */
+export type BankAccount = { id: string; code: string; name: string; subtype: string; currency: string; description: string | null; balance: bigint };
 export type Account = {
   id: string; name: string; kind: "company" | "director" | "lender";
   /** Owed to them on projects, plus (a director) what is in their director's account; the company's own money for the company. */
@@ -23,14 +25,18 @@ export type Account = {
  * for the company, each completed project's profit and what it keeps.
  */
 export async function loadAccounts(s: Session) {
-  const [{ data: statement }, { data: contacts }, { data: projects }, { data: dists }, { data: accounts }, { data: capital }] = await Promise.all([
+  const [{ data: statement }, { data: contacts }, { data: projects }, { data: dists }, { data: accounts }, { data: capital }, { data: moneyAccts }, { data: bals }] = await Promise.all([
     s.supabase.from("partner_statement_v").select("contact_id, project_id, component, accrued, paid, outstanding"),
     s.supabase.from("contacts").select("id, name, kinds").or("kinds.cs.{partner},kinds.cs.{lender}").order("name"),
     s.supabase.from("projects").select("id, code, name, completed_at").order("code"),
     s.supabase.from("distributions").select("project_id, created_at, profit_amount, distribution_lines(amount)").order("created_at"),
     s.supabase.from("director_accounts_v").select("contact_id, balance").eq("book", s.book),
     s.supabase.rpc("company_capital_available"),
+    s.supabase.from("accounts").select("id, code, name, subtype, currency, description").in("subtype", ["bank", "cash"]).eq("active", true).order("code"),
+    s.supabase.rpc("rpc_account_balances", {}),
   ]);
+  const balance = new Map(((bals ?? []) as { account_id: string; balance: string | number }[]).map((b) => [b.account_id, dbToLaari(b.balance)]));
+  const banks: BankAccount[] = ((moneyAccts ?? []) as Omit<BankAccount, "balance">[]).map((a) => ({ ...a, balance: balance.get(a.id) ?? 0n }));
   const rows = (statement ?? []) as StatementRow[];
   const proj = new Map(((projects ?? []) as AccountProject[]).map((p) => [p.id, p]));
   const byCode = (a: string, b: string) => (proj.get(a)?.code ?? "").localeCompare(proj.get(b)?.code ?? "");
@@ -70,7 +76,7 @@ export async function loadAccounts(s: Session) {
       };
     });
 
-  return { company, people, proj };
+  return { company, people, proj, banks };
 }
 
 export const ACCOUNT_LABEL: Record<Account["kind"], string> = { company: "Company account", director: "Director's account", lender: "Lender account" };
