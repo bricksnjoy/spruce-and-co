@@ -28,7 +28,7 @@ test("lenders: add one, record a loan from their page, add another from the proj
   await page.getByRole("button", { name: "Add contact" }).click();
   await page.getByRole("link", { name: `Bank ${tag}`, exact: true }).click();
   await expect(page.getByRole("heading", { name: `Bank ${tag}`, level: 1 })).toBeVisible();
-  await expect(page.getByText("Nothing received from them yet.")).toBeVisible();
+  await expect(page.getByText("Not in any project yet.")).toBeVisible();
 
   // Record a loan: the project's Financing tab opens with the lender picked
   await pick(page, "Project", `LN-${tag}`);
@@ -61,7 +61,7 @@ test("lenders: add one, record a loan from their page, add another from the proj
   await expect(bank).toContainText("250,000.00");
   await expect(page.getByRole("row").filter({ hasText: `Friend ${tag}` })).toContainText("50,000.00");
   await bank.getByRole("link", { name: `Bank ${tag}` }).click();
-  await expect(page.getByRole("row").filter({ hasText: `LN-${tag}` }).filter({ hasText: "Loan" })).toContainText("250,000.00");
+  await expect(page.getByRole("row").filter({ hasText: `Lent to LN-${tag}` })).toContainText("250,000.00");
 
   // Partners & financing lists them under Lenders, apart from the Capital Pool; the lender ledger balances
   await page.goto("/partners");
