@@ -4,11 +4,10 @@ import { MoneyInput } from "@/components/money-input";
 import { startTransition, useActionState, useState, useTransition } from "react";
 import { input, label, primary, small } from "@/components/form-styles";
 import {
-  approvePayout, completeProject, deleteScheme, directorChoice, directorWithdraw, financeFromCapitalPool, recordFinancing, rejectPayout, savePayout, saveScheme, type Result,
+  approvePayout, completeProject, deleteScheme, financeFromCapitalPool, recordFinancing, rejectPayout, saveScheme, type Result,
 } from "@/app/actions/partners";
 import { money, today } from "@/lib/format";
 import { dbToLaari, laariToNumber, toLaari } from "@/lib/money";
-import { COMPONENT_LABEL } from "@/lib/partners";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/modal";
 import { ContactForm, blankContact } from "@/components/contacts/contact-form";
@@ -20,16 +19,6 @@ type Capital = { contact_id: string | null; name: string; available: string };
 const submit = (action: (fd: FormData) => void) => (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault(); const fd = new FormData(e.currentTarget); startTransition(() => action(fd));
 };
-const m = (v: string | number | null | undefined) => money(laariToNumber(dbToLaari(v)));
-
-function BankSelect({ id, banks }: { id: string; banks: Bank[] }) {
-  return (
-    <select id={id} name="bank_id" required defaultValue="" className={input}>
-      <option value="">Choose…</option>
-      {banks.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
-    </select>
-  );
-}
 
 /** Money received for a project: an external loan or a Capital Pool contribution. A new lender can be added here. */
 export function FinancingForm({ projectId, lenders, partners, banks, initialLender, capital }: {
@@ -169,60 +158,6 @@ function CapitalPoolForm({ projectId, capital }: { projectId: string; capital: C
   );
 }
 
-/**
- * A director's choices (admin): for money waiting for them, keep it in the company
- * (it goes into their director's account) or take it out now; and pay them out of
- * their director's account.
- */
-export function DirectorAccountForms({ contactId, name, waiting, inAccount, banks }: {
-  contactId: string; name: string; waiting: string; inAccount: string; banks: Bank[];
-}) {
-  const [choiceState, choose, choosing] = useActionState(directorChoice, null as Result | null);
-  const [outState, withdraw, withdrawing] = useActionState(directorWithdraw, null as Result | null);
-  const [choice, setChoice] = useState<"keep" | "take">("keep");
-  const hasWaiting = dbToLaari(waiting) > 0n, hasAccount = dbToLaari(inAccount) > 0n;
-  return (
-    <div className="divide-y divide-[var(--border)]">
-      {hasWaiting && (
-        <form key={`c-${waiting}`} onSubmit={submit(choose)} className="space-y-3 px-5 py-4">
-          <input type="hidden" name="contact_id" value={contactId} />
-          <p className="text-sm font-medium">{m(waiting)} is waiting for {name}&apos;s choice</p>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex items-center gap-2"><input type="radio" name="choice" value="keep" checked={choice === "keep"} onChange={() => setChoice("keep")} /> Keep in the company (into the director&apos;s account)</label>
-            <label className="flex items-center gap-2"><input type="radio" name="choice" value="take" checked={choice === "take"} onChange={() => setChoice("take")} /> Take out now</label>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div><label htmlFor="dc-amt" className={label}>Amount (MVR)</label><input id="dc-amt" name="amount" inputMode="decimal" required defaultValue={laariToNumber(dbToLaari(waiting)).toFixed(2)} className={`${input} tabular-nums`} /></div>
-            {choice === "take" && <div><label htmlFor="dc-bank" className={label}>Paid from</label><BankSelect id="dc-bank" banks={banks} /></div>}
-            <div><label htmlFor="dc-date" className={label}>Date</label><input id="dc-date" name="date" type="date" required defaultValue={today()} className={input} /></div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={choosing} className={primary}>{choosing ? "Saving…" : choice === "keep" ? "Keep in the company" : "Pay out"}</button>
-            {choiceState?.error && <p className="text-sm text-red-700">{choiceState.error}</p>}
-            {choiceState?.ok && <p className="text-sm text-[var(--muted)]">Recorded.</p>}
-          </div>
-        </form>
-      )}
-      {hasAccount && (
-        <form key={`w-${inAccount}`} onSubmit={submit(withdraw)} className="space-y-3 px-5 py-4">
-          <input type="hidden" name="contact_id" value={contactId} />
-          <p className="text-sm font-medium">Pay out of the director&apos;s account <span className="font-normal text-[var(--muted)]">· {m(inAccount)} in it</span></p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div><label htmlFor="dw-amt" className={label}>Amount (MVR)</label><input id="dw-amt" name="amount" inputMode="decimal" required className={`${input} tabular-nums`} /></div>
-            <div><label htmlFor="dw-bank" className={label}>Paid from</label><BankSelect id="dw-bank" banks={banks} /></div>
-            <div><label htmlFor="dw-date" className={label}>Date</label><input id="dw-date" name="date" type="date" required defaultValue={today()} className={input} /></div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={withdrawing} className={primary}>{withdrawing ? "Saving…" : "Pay out"}</button>
-            {outState?.error && <p className="text-sm text-red-700">{outState.error}</p>}
-            {outState?.ok && <p className="text-sm text-[var(--muted)]">Paid.</p>}
-          </div>
-        </form>
-      )}
-    </div>
-  );
-}
-
 /** Confirm the split preview and complete the project. */
 export function CompleteForm({ projectId, profit }: { projectId: string; profit: string }) {
   const [state, action, pending] = useActionState(completeProject, null as Result | null);
@@ -239,59 +174,6 @@ export function CompleteForm({ projectId, profit }: { projectId: string; profit:
       <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className={primary}>{pending ? "Posting…" : "Complete and post split"}</button>
         {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
-      </div>
-    </form>
-  );
-}
-
-export type OwedRow = { project_id: string; code: string; component: string; outstanding: string; blocked: boolean; reason: string | null };
-
-/** Pay one person what is owed, line by line; blocked projects cannot be paid. */
-export function PayoutForm({ contactId, banks, rows, isAdmin }: { contactId: string; banks: Bank[]; rows: OwedRow[]; isAdmin: boolean }) {
-  const [state, action, pending] = useActionState(savePayout, null as Result | null);
-  const [amts, setAmts] = useState<Record<string, string>>({});
-  const total = Object.values(amts).reduce((s, v) => s + (toLaari(v) ?? 0n), 0n);
-  return (
-    <form key={state?.id ?? "p"} onSubmit={submit(action)} className="space-y-4 px-5 py-4">
-      <input type="hidden" name="contact_id" value={contactId} />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs text-[var(--muted)]"><th className="py-1.5 pr-3 font-medium">Project</th><th className="pr-3 font-medium">Component</th>
-            <th className="pr-3 text-right font-medium">Owed</th><th className="text-right font-medium">Pay now</th></tr></thead>
-          <tbody className="divide-y divide-[var(--border)]">
-            {rows.map((r) => {
-              const k = `amt:${r.project_id}:${r.component}`;
-              return (
-                <tr key={k}>
-                  <td className="py-2 pr-3 font-mono text-xs">{r.code}</td>
-                  <td className="pr-3">{COMPONENT_LABEL[r.component] ?? r.component}</td>
-                  <td className="pr-3 text-right tabular-nums">{m(r.outstanding)}</td>
-                  <td className="text-right">
-                    {r.blocked ? <span className="text-xs text-red-700">{r.reason}</span> : (
-                      <span className="inline-flex items-center gap-2">
-                        <button type="button" className="text-xs text-[var(--brand)] hover:underline" onClick={() => setAmts((a) => ({ ...a, [k]: String(r.outstanding) }))}>All</button>
-                        <input name={k} aria-label={`Pay ${COMPONENT_LABEL[r.component]} on ${r.code}`} inputMode="decimal" value={amts[k] ?? ""}
-                          onChange={(e) => setAmts((a) => ({ ...a, [k]: e.target.value }))} className={`${input} w-32 py-1 text-right tabular-nums`} />
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div><label htmlFor="po-bank" className={label}>Paid from</label><BankSelect id="po-bank" banks={banks} /></div>
-        <div><label htmlFor="po-date" className={label}>Date</label><input id="po-date" name="date" type="date" required defaultValue={today()} className={input} /></div>
-        <div><label htmlFor="po-ref" className={label}>Reference</label><input id="po-ref" name="reference" className={input} /></div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending || total <= 0n} className={primary}>
-          {pending ? "Saving…" : isAdmin ? `Approve and pay ${money(laariToNumber(total))}` : `Send ${money(laariToNumber(total))} for approval`}
-        </button>
-        {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
-        {state?.ok && <p className="text-sm text-[var(--muted)]">{isAdmin ? "Paid." : "Sent to an admin for approval."}</p>}
       </div>
     </form>
   );
