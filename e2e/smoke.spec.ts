@@ -5,7 +5,7 @@ import { expectRendered, signIn, watchErrors } from "./helpers";
 const ROUTES = [
   "/", "/projects", "/projects/new", "/sales", "/sales/customers", "/sales/new?type=invoice", "/sales/payments/new", "/sales/deposits/new", "/sales/advances",
   "/expenses", "/expenses/vendors", "/expenses/new?type=bill", "/expenses/pay", "/payroll", "/payroll/employees", "/payroll/remittances",
-  "/banking", "/banking/rules", "/taxes", "/partners", "/partners/distributions", "/reports", "/accounting/chart", "/accounting/health",
+  "/banking", "/banking/rules", "/taxes", "/partners", "/partners/distributions", "/people/accounts", "/people/accounts/company", "/reports", "/accounting/chart", "/accounting/health",
   "/accounting/journal", "/accounting/journal/new", "/accounting/journal/new?type=opening_balance", "/search?q=INV",
   "/settings/company", "/settings/accounting", "/settings/taxes", "/settings/numbering", "/settings/currencies", "/settings/profit-share", "/help",
 ];

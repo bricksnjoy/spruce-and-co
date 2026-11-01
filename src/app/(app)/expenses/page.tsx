@@ -21,12 +21,17 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const { show = "all", q: rawQ } = await searchParams;
   const q = rawQ?.trim() ?? "";
   const t = today();
-  const [{ data }, { data: paid }, { data: bin }] = await Promise.all([
+  const [{ data }, { data: paid }, { data: bin }, { data: docLines }] = await Promise.all([
     s.supabase.from("expenses_list_v").select("id, type, number, date, due_date, total, balance, vendor_name, project_code, status, voided_at, tax_invoice_no")
       .order("date", { ascending: false }).limit(500),
     s.supabase.rpc("bills_paid_since", { p_since: addDays(t, -30) }),
     s.supabase.from("bill_bin").select("bill_id, payments"),
+    // each document's amount before GST and its GST, from its lines
+    s.supabase.from("transactions").select("id, transaction_lines(amount, tax_amount)")
+      .in("type", ["bill", "vendor_credit", "expense", "purchase_order"]).order("date", { ascending: false }).limit(1000),
   ]);
+  const split = new Map(((docLines ?? []) as { id: string; transaction_lines: { amount: string | number; tax_amount: string | number }[] }[])
+    .map((t) => [t.id, (t.transaction_lines ?? []).reduce((x, l) => ({ net: x.net + dbToLaari(l.amount), gst: x.gst + dbToLaari(l.tax_amount) }), { net: 0n, gst: 0n })]));
   // deleted bills, and the payments deleted with them, are on their project's Bills tab to restore
   const deleted = new Set(((bin ?? []) as { bill_id: string; payments: string[] }[]).flatMap((b) => [b.bill_id, ...b.payments]));
   const rows = ((data ?? []) as Row[]).filter((r) => !deleted.has(r.id));
@@ -72,7 +77,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <Card>
         {shown.length === 0 ? <Empty message="Nothing here yet." /> : (
           <Table>
-            <thead><tr><Th>Date</Th><Th>Type</Th><Th>No.</Th><Th>Vendor</Th><Th>Due</Th><Th right>Total</Th><Th right>Balance</Th><Th right>Status</Th></tr></thead>
+            <thead><tr><Th>Date</Th><Th>Type</Th><Th>No.</Th><Th>Vendor</Th><Th>Due</Th><Th right>Amount</Th><Th right>GST</Th><Th right>Total</Th><Th right>Balance</Th><Th right>Status</Th></tr></thead>
             <tbody>
               {shown.map((r) => (
                 <tr key={r.id} className={`row-link hover:bg-[var(--hover)] ${r.voided_at ? "text-[var(--muted)]" : ""}`}>
@@ -81,9 +86,12 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                   <Td><Link href={`/expenses/${r.id}`} className="row-link-main font-mono text-xs font-medium hover:text-[var(--brand)] hover:underline">{r.number ?? r.tax_invoice_no ?? "view"}</Link></Td>
                   <Td>{r.vendor_name ?? "—"}{r.project_code && <span className="ml-1 text-xs text-[var(--muted)]">{r.project_code}</span>}</Td>
                   <Td className={`whitespace-nowrap ${r.status === "overdue" ? "text-red-700" : ""}`}>{r.type === "bill" && r.due_date ? date(r.due_date) : ""}</Td>
-                  <Td right>{m(r.total)}</Td>
+                  <Td right>{split.has(r.id) ? m(split.get(r.id)!.net) : ""}</Td>
+                  <Td right className="text-[var(--muted)]">{split.has(r.id) ? m(split.get(r.id)!.gst) : ""}</Td>
+                  <Td right className="font-medium">{m(r.total)}</Td>
                   <Td right>{r.type === "bill" ? m(r.balance) : ""}</Td>
-                  <Td right><Badge value={r.status} /></Td>
+                  {/* an expense is paid from the bank or cash when it is recorded */}
+                  <Td right><Badge value={r.type === "expense" && r.status === "posted" ? "paid" : r.status} /></Td>
                 </tr>
               ))}
             </tbody>

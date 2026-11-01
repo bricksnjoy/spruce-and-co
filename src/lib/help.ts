@@ -300,12 +300,11 @@ export const HELP: Help[] = [
 
   {
     path: "/people/accounts", area: "People", title: "Accounts",
-    purpose: "The company's and each partner's account, one line per project.",
+    purpose: "Every account, in three groups: the company's, the directors' and the lenders'.",
     steps: [
-      "Each account shows its balance: for a partner, what they are owed on projects plus (a director) their director's account; for the company, its own money. Tap one to open it.",
-      "Company: each completed project's profit, what goes to the partners and what the company keeps.",
-      "Each partner or lender: what they lent and what has been repaid, the financing return and profit share earned, what has been paid out, and what is still owed.",
-      "Loans are repaid first; the return and profit share are paid after. Open a person's statement to pay them out.",
+      "Company accounts: the company's own money (bank and cash less everything it owes) and each bank or cash account with its balance in the books. Tap a bank account to open it in Banking.",
+      "Directors' accounts: what each director is owed on projects plus what they kept in the company. Lenders' accounts: what each lender is owed on projects. Tap one to see it project by project.",
+      "\"+ New account\" opens a company bank or cash account, a new director, or a new lender (an outside lender, or a director who lends).",
     ],
   },
 

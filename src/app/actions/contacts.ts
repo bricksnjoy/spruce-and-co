@@ -64,6 +64,8 @@ function check(f: ReturnType<typeof fields>, kinds: string[]): string | null {
 
 function kindsFrom(fd: FormData, keep: string[] = []) {
   // a new lender is either an outside lender or one of the directors (a partner)
+  // a new director (People → Accounts → New account)
+  if (fd.get("new_director") === "on") return ["partner"];
   const lender = fd.get("lender_type");
   if (lender === "director") return ["partner"];
   if (lender === "external") return ["lender"];
@@ -73,7 +75,7 @@ function kindsFrom(fd: FormData, keep: string[] = []) {
 
 /** Paths that show a contact, for revalidation. */
 function refresh(id?: string) {
-  for (const base of ["/sales/customers", "/expenses/vendors", "/partners/lenders", "/partners"]) {
+  for (const base of ["/sales/customers", "/expenses/vendors", "/partners/lenders", "/partners", "/people/accounts"]) {
     revalidatePath(base);
     if (id) revalidatePath(`${base}/${id}`);
   }

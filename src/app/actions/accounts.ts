@@ -97,3 +97,29 @@ export async function updateAccount(_prev: unknown, fd: FormData): Promise<Resul
   revalidatePath(`/accounting/chart/${id}`);
   return { ok: true };
 }
+
+/**
+ * A new company bank or cash account (People → Accounts → New account): the
+ * next free code from 1011 up (1010–1099 are money accounts), in MVR or USD.
+ */
+export async function createBankAccount(_prev: unknown, fd: FormData): Promise<Result> {
+  const w = await writer();
+  if ("error" in w) return { error: w.error };
+  const name = text(fd, "name");
+  if (!name) return { error: "Give the account a name, e.g. BML Current." };
+  const kind = text(fd, "kind") === "cash" ? "cash" : "bank";
+  const currency = text(fd, "currency") === "USD" ? "USD" : "MVR";
+  const { data: used } = await w.s.supabase.from("accounts").select("code").gte("code", "1000").lte("code", "1099");
+  const taken = new Set((used ?? []).map((a) => a.code));
+  let n = 1011;
+  while (taken.has(String(n)) && n < 1099) n++;
+  if (taken.has(String(n))) return { error: "No free account code left between 1011 and 1099; add it in the Chart of accounts." };
+  const { data, error } = await w.s.supabase.from("accounts").insert({
+    code: String(n), name, type: "asset", subtype: kind, currency, description: text(fd, "number") ? `Account no. ${text(fd, "number")}` : null,
+  }).select("id").single();
+  if (error) return { error: dbMessage(error) };
+  revalidatePath("/accounting/chart");
+  revalidatePath("/banking");
+  revalidatePath("/people/accounts");
+  return { ok: true, id: data.id };
+}
