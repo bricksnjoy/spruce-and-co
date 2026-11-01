@@ -307,6 +307,17 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Each card is one split (on completion) or adjustment (bad debt, late cost) with who got what.
 
+## People
+
+### Accounts
+
+`/people/accounts` — The company's and each partner's account, one line per project.
+
+1. Each account shows its balance: for a partner, what they are owed on projects plus (a director) their director's account; for the company, its own money. Tap one to open it.
+2. Company: each completed project's profit, what goes to the partners and what the company keeps.
+3. Each partner or lender: what they lent and what has been repaid, the financing return and profit share earned, what has been paid out, and what is still owed.
+4. Loans are repaid first; the return and profit share are paid after. Open a person's statement to pay them out.
+
 ## Banking
 
 ### Banking
