@@ -300,6 +300,16 @@ export const HELP: Help[] = [
     steps: ["Each card is one split (on completion) or adjustment (bad debt, late cost) with who got what."],
   },
 
+  {
+    path: "/people/accounts", area: "People", title: "Accounts",
+    purpose: "The company's and each partner's account, one line per project.",
+    steps: [
+      "Company: each completed project's profit, what goes to the partners and what the company keeps.",
+      "Each partner or lender: what they lent and what has been repaid, the financing return and profit share earned, what has been paid out, and what is still owed.",
+      "Loans are repaid first; the return and profit share are paid after. Open a person's statement to pay them out.",
+    ],
+  },
+
   // ── Banking ──
   {
     path: "/banking", area: "Banking", title: "Banking",
