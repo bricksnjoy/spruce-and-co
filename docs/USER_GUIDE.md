@@ -446,10 +446,10 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 ### Bids
 
-`/bids` — Tenders the company is chasing, from registering to won or lost.
+`/bids` — Tenders the company is chasing, from posted to won or lost.
 
 1. "+ New bid": the bid's name, the company that put it out, where the work is (location), the Gazette link, the pre-bid meeting (compulsory or optional), the submission deadline and when the papers should be ready (blank: 2 days before the deadline).
-2. The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.
+2. The tabs filter by stage: Posted (the tender is out, not registered for yet), Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.
 3. The meeting and deadline show on Tasks & Calendar.
 
 > In a Telegram group with topics, everything about bids goes to one topic (Bid timelines); a command is answered in the topic it was typed in.
@@ -464,8 +464,10 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/bids/[id]` — One bid: its details, its stage and its history.
 
 1. Press a stage to move the bid along; a note typed first goes with it, to the history and the Telegram group.
-2. "Add a note" records something on the history only.
-3. "Edit" changes the details and dates.
+2. "Bid submitted" asks for the signing sheet (a photo or scan). The bid's summary goes to the Telegram group's Bid summary topic: the picture, "Bid Name: … by …", "Bid submitted," and the Gazette notice, with Won and Lost buttons. Pressing one there moves the bid here too, with who pressed it in its history. Sending /bidsummary in another topic sends the summaries there instead.
+3. Once a bid is won, "Turn into a project" opens a new project filled in from the bid (name, location, notes; the company as customer when it is one) as an active project; saving it links the two, and the bid then shows "Open project".
+4. "Add a note" records something on the history only.
+5. "Edit" changes the details and dates.
 
 ### Quotations
 

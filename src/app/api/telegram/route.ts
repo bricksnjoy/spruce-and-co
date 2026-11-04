@@ -1,13 +1,14 @@
 import {
   assignKeyboard, assignMessage, COMMAND_VIEW, renderView, TASK_OF, unhex, VIEW_KEYS, type BidView, type Person,
 } from "@/lib/bid-views";
-import { editTelegram, sendTelegram, telegramCall, telegramReady } from "@/lib/telegram";
-import { botAssign, botAssignments, botBids, botPeople, isBotSecret, personOf, postReminder } from "@/server/bid-bot";
+import { editTelegram, editTelegramCaption, sendTelegram, telegramCall, telegramReady } from "@/lib/telegram";
+import { botAssign, botAssignments, botBids, botPeople, botPutSetting, botSetBidStatus, isBotSecret, personOf, postReminder } from "@/server/bid-bot";
+import { SUMMARY_PRESS, summaryKeys, summaryMessage, unhexId } from "@/lib/bid-summary";
 
 type TgUser = { id: number; is_bot?: boolean; first_name?: string; last_name?: string; username?: string };
 type Update = {
   message?: { text?: string; chat?: { id?: number }; message_thread_id?: number; is_topic_message?: boolean; from?: TgUser; new_chat_members?: TgUser[]; left_chat_member?: TgUser };
-  callback_query?: { id: string; data?: string; from?: TgUser; message?: { message_id: number; chat?: { id?: number } } };
+  callback_query?: { id: string; data?: string; from?: TgUser; message?: { message_id: number; chat?: { id?: number }; photo?: unknown[] } };
 };
 const VIEWS: Record<string, BidView> = { "v:cal": "cal", "v:list": "list", "v:stage": "stage" };
 
@@ -42,6 +43,11 @@ export async function POST(request: Request) {
   if (asked) {
     const r = await botBids();
     await sendTelegram("error" in r ? `The bids could not be read: ${r.error}` : renderView(asked, r.bids, new Date()), { keyboard: VIEW_KEYS, topic });
+  } else if (command === "bidsummary") {
+    // sent in the "Bid summary" topic: submitted bids' summaries go there from now on
+    const r = await botPutSetting("summary_topic", topic != null ? String(topic) : "");
+    await sendTelegram("error" in r ? `That could not be kept: ${r.error}`
+      : topic != null ? "Submitted bids will be summarised in this topic, with Won and Lost buttons." : "Submitted bids will be summarised in the group's General chat.", { topic });
   } else if (command === "reminder") {
     const r = await postReminder(new Date());
     if (!r.sent) await sendTelegram(`Nothing to remind: ${r.reason ?? "the reminder could not be sent."}`, { topic });
@@ -52,9 +58,22 @@ export async function POST(request: Request) {
     const where = press.message;
     const view = press.data ? VIEWS[press.data] : undefined;
     const pick = /^(as|me):([0-9a-f]{32}):([ps])(?::(\d+))?$/.exec(press.data ?? "");
+    const result = SUMMARY_PRESS.exec(press.data ?? "");
     if (inGroup && where && view) {
       const r = await botBids();
       if (!("error" in r)) await editTelegram(where.chat!.id!, where.message_id, renderView(view, r.bids, new Date()), VIEW_KEYS);
+    } else if (inGroup && where && result) {
+      // Won or Lost under a submitted bid's summary: the bid moves on the site too
+      const bid = unhexId(result[2]), status = result[1] === "w" ? "won" : "lost";
+      const by = press.from ? personOf(press.from)?.name ?? "" : "";
+      const r = await botSetBidStatus(bid, status, by);
+      if ("error" in r) toast = r.error;
+      else {
+        toast = `${r.bid?.name ?? "The bid"}: ${status === "won" ? "won" : "lost"}`;
+        const all = await botBids();
+        const b = "error" in all ? undefined : all.bids.find((x) => x.id === bid);
+        if (b) await editTelegramCaption(where.chat!.id!, where.message_id, summaryMessage(b, { result: { status, by } }), summaryKeys(bid), Boolean(where.photo));
+      }
     } else if (inGroup && where && pick) {
       const bid = unhex(pick[2]), task = TASK_OF[pick[3]];
       people ??= await botPeople();

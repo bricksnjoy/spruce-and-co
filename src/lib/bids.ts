@@ -1,10 +1,11 @@
 /** Bids (tenders): their stages, and what is posted to the Telegram group about them. */
 import { tg } from "./telegram";
 
-export const BID_STATUSES = ["registered", "prebid_meeting", "papers_ready", "submitted", "won", "lost"] as const;
+export const BID_STATUSES = ["posted", "registered", "prebid_meeting", "papers_ready", "submitted", "won", "lost"] as const;
 export type BidStatus = (typeof BID_STATUSES)[number];
 
 export const BID_STATUS_LABEL: Record<BidStatus, string> = {
+  posted: "Posted",
   registered: "Registered",
   prebid_meeting: "Pre-bid meeting",
   papers_ready: "Papers ready",
@@ -13,6 +14,7 @@ export const BID_STATUS_LABEL: Record<BidStatus, string> = {
   lost: "Bid lost",
 };
 export const BID_STATUS_TONE: Record<BidStatus, string> = {
+  posted: "bg-stone-100 text-stone-700",
   registered: "bg-slate-100 text-slate-700",
   prebid_meeting: "bg-sky-100 text-sky-800",
   papers_ready: "bg-violet-100 text-violet-800",
@@ -21,7 +23,7 @@ export const BID_STATUS_TONE: Record<BidStatus, string> = {
   lost: "bg-red-100 text-red-700",
 };
 export const isBidStatus = (s: unknown): s is BidStatus => BID_STATUSES.includes(s as BidStatus);
-export const OPEN_BID: BidStatus[] = ["registered", "prebid_meeting", "papers_ready", "submitted"];
+export const OPEN_BID: BidStatus[] = ["posted", "registered", "prebid_meeting", "papers_ready", "submitted"];
 
 export type Bid = {
   id: string; name: string; company: string | null; location: string | null; gazette_url: string | null; status: BidStatus;
