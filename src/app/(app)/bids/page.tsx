@@ -4,6 +4,7 @@ import { Card, Empty, PageHeader, Stat, Table, Th, Td } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
 import { BidFormButton } from "@/components/bids/bid-form";
 import { TelegramBoardButton } from "@/components/bids/telegram-board";
+import { StageFilter } from "@/components/bids/stage-filter";
 import { telegramReady } from "@/lib/telegram";
 import { BID_STATUSES, BID_STATUS_LABEL, BID_STATUS_TONE, OPEN_BID, when, type Bid, type BidStatus } from "@/lib/bids";
 
@@ -26,16 +27,15 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
     && Date.parse(b.submission_due_at) - Date.parse(now) < 7 * 86400_000).length;
   const shown = BID_STATUSES.includes(filter as BidStatus) ? bids.filter((b) => b.status === filter)
     : filter === "all" ? bids : open;
-  const tab = (key: string, text: string, n: number) => (
-    <Link key={key} href={key === "open" ? "/bids" : `/bids?status=${key}`}
-      className={`rounded-full px-3 py-1 text-xs font-medium ${(filter ?? "open") === key ? "bg-[var(--brand)] text-white" : "border border-[var(--border)] text-[var(--muted)] hover:bg-[var(--hover)]"}`}>
-      {text} <span className="opacity-70">{n}</span>
-    </Link>
-  );
+  const options: [string, string][] = [
+    ["open", `Open (${open.length})`],
+    ...BID_STATUSES.map((st): [string, string] => [st, `${BID_STATUS_LABEL[st]} (${bids.filter((b) => b.status === st).length})`]),
+    ["all", `All (${bids.length})`],
+  ];
 
   return (
     <div>
-      <PageHeader title="Bids" subtitle="Tenders from registering to won or lost; dates go on the calendar and the Telegram group hears each step"
+      <PageHeader title="Bids" subtitle="Tenders from posted to won or lost; dates go on the calendar and the Telegram group hears each step"
         action={canWrite(s.role) && s.book === "live" ? <BidFormButton className="rounded-lg bg-[var(--brand)] px-3.5 py-2 text-sm font-medium text-white hover:bg-[var(--brand-hover)]" /> : undefined} />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -45,10 +45,8 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
         <Stat label="Win rate" value={decided ? `${Math.round((won / decided) * 100)}%` : "—"} hint={`${decided} decided`} />
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        {tab("open", "Open", open.length)}
-        {BID_STATUSES.map((st) => tab(st, BID_STATUS_LABEL[st], bids.filter((b) => b.status === st).length))}
-        {tab("all", "All", bids.length)}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <StageFilter value={BID_STATUSES.includes(filter as BidStatus) || filter === "all" ? filter! : "open"} options={options} />
         {s.role === "admin" && telegramReady() && <div className="ml-auto"><TelegramBoardButton /></div>}
       </div>
 
