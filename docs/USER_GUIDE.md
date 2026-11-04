@@ -449,7 +449,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 `/bids` — Tenders the company is chasing, from posted to won or lost.
 
 1. "+ New bid": the bid's name, the company that put it out, where the work is (location), the Gazette link, the pre-bid meeting (compulsory or optional), the submission deadline and when the papers should be ready (blank: 2 days before the deadline).
-2. The tabs filter by stage: Posted (the tender is out, not registered for yet), Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.
+2. The Show drop-down picks the bids: Open (the default), one stage — Posted (the tender is out, not registered for yet), Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost — or All. Each shows how many bids it holds.
 3. The meeting and deadline show on Tasks & Calendar.
 
 > In a Telegram group with topics, everything about bids goes to one topic (Bid timelines); a command is answered in the topic it was typed in.

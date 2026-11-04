@@ -420,7 +420,7 @@ export const HELP: Help[] = [
     purpose: "Tenders the company is chasing, from posted to won or lost.",
     steps: [
       "\"+ New bid\": the bid's name, the company that put it out, where the work is (location), the Gazette link, the pre-bid meeting (compulsory or optional), the submission deadline and when the papers should be ready (blank: 2 days before the deadline).",
-      "The tabs filter by stage: Posted (the tender is out, not registered for yet), Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.",
+      "The Show drop-down picks the bids: Open (the default), one stage — Posted (the tender is out, not registered for yet), Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost — or All. Each shows how many bids it holds.",
       "The meeting and deadline show on Tasks & Calendar.",
     ],
     tips: [
