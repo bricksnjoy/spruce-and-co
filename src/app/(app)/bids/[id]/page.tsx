@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Card, CardHeader, PageHeader } from "@/components/ui";
 import { canWrite, getSession } from "@/server/session";
 import { BidFormButton } from "@/components/bids/bid-form";
-import { DeleteBid, NoteForm, StageControl } from "@/components/bids/bid-controls";
+import { DeleteBid, MakeProject, NoteForm, StageControl } from "@/components/bids/bid-controls";
 import { BID_STATUS_LABEL, BID_STATUS_TONE, isBidStatus, when, type Bid } from "@/lib/bids";
 import { papersDue, shortDay } from "@/lib/bid-views";
 import { dateTime } from "@/lib/format";
@@ -26,6 +26,7 @@ export default async function BidPage({ params }: { params: Promise<{ id: string
   const picked = (task: string) => ((going ?? []) as { task: string; name: string }[]).filter((g) => g.task === task).map((g) => g.name).join(", ") || "—";
   if (!data) notFound();
   const b = data as Bid;
+  const { data: linked } = b.project_id ? await s.supabase.from("projects").select("code").eq("id", b.project_id).maybeSingle() : { data: null };
   const writer = canWrite(s.role) && s.book === "live";
 
   return (
@@ -45,6 +46,12 @@ export default async function BidPage({ params }: { params: Promise<{ id: string
             <CardHeader title="Stage" subtitle={telegramReady() ? "Each change is posted to the Telegram group" : "Telegram is not set up yet, so the group is not told"} />
             <div className="px-5 py-4">
               {writer && !b.location && <p className="mb-3 text-xs text-amber-700">No location yet: press Edit to add it, so the Telegram message says where the work is.</p>}
+              {b.status === "won" && (writer || b.project_id) && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <span className="text-sm text-emerald-900">{b.project_id ? "This bid is now a project." : "Won: turn it into an active project."}</span>
+                  <MakeProject id={b.id} projectId={b.project_id} projectCode={linked?.code ?? null} />
+                </div>
+              )}
               {writer ? <StageControl id={b.id} status={b.status} />
                 : <span className={`rounded-full px-3 py-1 text-xs font-medium ${BID_STATUS_TONE[b.status]}`}>{BID_STATUS_LABEL[b.status]}</span>}
             </div>

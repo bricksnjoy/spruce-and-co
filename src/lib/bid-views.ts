@@ -14,13 +14,13 @@ export const VIEW_KEYS: Keyboard = [[["📅 Calendar", "v:cal"], ["📋 List", "
 /** The bot's commands in the group, as Telegram's menu lists them. */
 export const BOT_COMMANDS: [string, string][] = [
   ["bids", "Every bid, by stage"], ["calendar", "Bid dates on a calendar"], ["list", "Upcoming bid dates as a list"],
-  ["reminder", "Send the 8 PM bid reminder now"], ["help", "What the bot does"],
+  ["reminder", "Send the 8 PM bid reminder now"], ["bidsummary", "Send submitted bids' summaries to this topic"], ["help", "What the bot does"],
 ];
 export const COMMAND_VIEW: Record<string, BidView> = { bids: "stage", stages: "stage", calendar: "cal", list: "list", help: "help", start: "help" };
 
 /** Not yet submitted: its pre-bid meeting and deadline still call for something to be done. */
-const TO_SUBMIT: BidStatus[] = ["registered", "prebid_meeting", "papers_ready"];
-const OPEN: BidStatus[] = ["registered", "prebid_meeting", "papers_ready", "submitted"];
+const TO_SUBMIT: BidStatus[] = ["posted", "registered", "prebid_meeting", "papers_ready"];
+const OPEN: BidStatus[] = ["posted", "registered", "prebid_meeting", "papers_ready", "submitted"];
 const TZ = "Indian/Maldives";
 const AHEAD = 60;
 
@@ -180,7 +180,7 @@ export function fromToday(today: string, day: string, passed = false): string {
   return n === 1 ? "tomorrow" : `in ${n} days`;
 }
 
-const TO_PREPARE: BidStatus[] = ["registered", "prebid_meeting"];
+const TO_PREPARE: BidStatus[] = ["posted", "registered", "prebid_meeting"];
 const bullet = (b: BoardBid) => `• ${tg(b.name)}${b.company ? ` – ${tg(b.company)}` : ""}`;
 const byDate = (k: (b: BoardBid) => string | null) => (a: BoardBid, b: BoardBid) => (k(a) ?? "~").localeCompare(k(b) ?? "~") || a.name.localeCompare(b.name);
 
@@ -341,6 +341,7 @@ export const HELP = [
   "/calendar — bid dates on a calendar",
   "/list — upcoming bid dates as a list",
   "/reminder — the 8 PM reminder, now",
+  "/bidsummary — send it in the Bid summary topic: each submitted bid is summarised there with its signing sheet, and Won / Lost buttons that update the site",
 ].join("\n");
 
 export function renderView(view: BidView, bids: BoardBid[], now: Date): string {

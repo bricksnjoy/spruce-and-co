@@ -94,3 +94,34 @@ export async function telegramWebhook() {
   const r = await telegramCall<{ url?: string }>("getWebhookInfo", {});
   return r.ok ? r.result.url ?? "" : null;
 }
+
+/**
+ * Send a photo with a caption (Telegram HTML) and buttons, to the group or one of
+ * its topics. The picture goes up as a file, so nothing is stored on the site.
+ */
+export async function sendTelegramPhoto(photo: Blob, fileName: string, caption: string, opts: { keyboard?: Keyboard; topic?: number } = {}): Promise<SendOutcome> {
+  const token = botToken();
+  if (!token || !process.env.TELEGRAM_CHAT_ID) return { ok: false, error: "Telegram is not set up." };
+  const form = new FormData();
+  form.set("chat_id", String(process.env.TELEGRAM_CHAT_ID));
+  if (opts.topic != null) form.set("message_thread_id", String(opts.topic));
+  form.set("caption", caption);
+  form.set("parse_mode", "HTML");
+  if (opts.keyboard) form.set("reply_markup", JSON.stringify(markup(opts.keyboard)));
+  form.set("photo", photo, fileName);
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: "POST", body: form });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string; result?: { message_id?: number } };
+    if (!res.ok || !data.ok) return { ok: false, error: data.description ?? `Telegram answered ${res.status}` };
+    return { ok: true, id: data.result?.message_id != null ? String(data.result.message_id) : null };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/** Replace a photo's caption and buttons, or a text message's text when it has no photo. */
+export async function editTelegramCaption(chatId: string | number, messageId: number, html: string, keyboard?: Keyboard, isPhoto = true) {
+  if (!isPhoto) return editTelegram(chatId, messageId, html, keyboard);
+  const r = await telegramCall("editMessageCaption", { chat_id: chatId, message_id: messageId, caption: html, parse_mode: "HTML", reply_markup: markup(keyboard) });
+  return r.ok || /not modified/i.test(r.error) ? { ok: true as const } : r;
+}

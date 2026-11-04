@@ -44,6 +44,7 @@ export function ProjectForm({
   values = {},
   nextCode,
   gstRate,
+  bidId,
 }: {
   mode: "create" | "edit";
   customers: { id: string; name: string }[];
@@ -51,6 +52,8 @@ export function ProjectForm({
   nextCode?: string;
   /** the standard rate in force (Settings → Taxes); GST is worked out from the value */
   gstRate: string;
+  /** a won bid this project is made from; the two are linked once it is saved */
+  bidId?: string;
 }) {
   const action = mode === "create" ? createProject : updateProject;
   const [state, formAction, pending] = useActionState(
@@ -95,6 +98,7 @@ export function ProjectForm({
     />
     <form action={formAction} className="space-y-5">
       {values.id && <input type="hidden" name="id" value={values.id} />}
+      {bidId && <input type="hidden" name="bid_id" value={bidId} />}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-2">

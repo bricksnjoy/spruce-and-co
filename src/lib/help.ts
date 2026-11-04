@@ -417,10 +417,10 @@ export const HELP: Help[] = [
   { path: "/messages", area: "Other", title: "Message center", purpose: "Send an SMS or email to anyone, and see what was sent.", steps: ["Choose who, write the message, send. The history lists what went out."] },
   {
     path: "/bids", area: "Other", title: "Bids",
-    purpose: "Tenders the company is chasing, from registering to won or lost.",
+    purpose: "Tenders the company is chasing, from posted to won or lost.",
     steps: [
       "\"+ New bid\": the bid's name, the company that put it out, where the work is (location), the Gazette link, the pre-bid meeting (compulsory or optional), the submission deadline and when the papers should be ready (blank: 2 days before the deadline).",
-      "The tabs filter by stage: Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.",
+      "The tabs filter by stage: Posted (the tender is out, not registered for yet), Registered, Pre-bid meeting, Papers ready, Bid submitted, Bid won, Bid lost.",
       "The meeting and deadline show on Tasks & Calendar.",
     ],
     tips: [
@@ -435,7 +435,12 @@ export const HELP: Help[] = [
   {
     path: "/bids/[id]", area: "Other", title: "Bid",
     purpose: "One bid: its details, its stage and its history.",
-    steps: ["Press a stage to move the bid along; a note typed first goes with it, to the history and the Telegram group.", "\"Add a note\" records something on the history only.", "\"Edit\" changes the details and dates."],
+    steps: [
+      "Press a stage to move the bid along; a note typed first goes with it, to the history and the Telegram group.",
+      "\"Bid submitted\" asks for the signing sheet (a photo or scan). The bid's summary goes to the Telegram group's Bid summary topic: the picture, \"Bid Name: … by …\", \"Bid submitted,\" and the Gazette notice, with Won and Lost buttons. Pressing one there moves the bid here too, with who pressed it in its history. Sending /bidsummary in another topic sends the summaries there instead.",
+      "Once a bid is won, \"Turn into a project\" opens a new project filled in from the bid (name, location, notes; the company as customer when it is one) as an active project; saving it links the two, and the bid then shows \"Open project\".",
+      "\"Add a note\" records something on the history only.", "\"Edit\" changes the details and dates.",
+    ],
   },
   { path: "/quotations", area: "Other", title: "Quotations", purpose: "Price the work, win it, then invoice it.", steps: ["\"New quotation\", fill in the lines, save (type the days it is valid for, or pick the date); print it with your template and signature.", "Mark it won, then \"Convert to invoice\" for a percentage or an amount: the invoice opens in Sales filled in, with the quotation number as its reference. Save it to post it.", "Templates and Signatures & stamp set how they look; the signer and stamp of the invoice template also go on printed invoices.", "Quotations print in the boxed layout: a ruled grid with Job No., Qty, Unit, Rate and Amount, the grand total in words, \"Quotation Received by\", the customer's confirmation box and the conditions. Templates → Layout switches a template back to Modern."] },
   { path: "/estimator", area: "Other", title: "Cabinet estimator", purpose: "Price kitchen and cabinet jobs from wall measurements.", steps: ["Enter the walls and units; the cut list, drawings and price follow."] },

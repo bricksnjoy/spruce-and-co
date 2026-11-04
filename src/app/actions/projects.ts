@@ -119,6 +119,15 @@ export async function createProject(_prev: unknown, fd: FormData): Promise<Resul
     return { error: error.message };
   }
 
+  // made from a won bid: the bid points to its project
+  const bid = text(fd, "bid_id");
+  if (bid && /^[0-9a-f-]{36}$/i.test(bid)) {
+    await supabase.from("bids").update({ project_id: project.id, updated_at: new Date().toISOString() }).eq("id", bid);
+    await supabase.from("bid_events").insert({ bid_id: bid, note: `Became project ${code}` });
+    revalidatePath(`/bids/${bid}`);
+    revalidatePath("/bids");
+  }
+
   revalidatePath("/projects");
   revalidatePath("/");
   redirect(`/projects/${project.id}`);

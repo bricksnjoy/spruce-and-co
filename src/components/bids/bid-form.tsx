@@ -39,7 +39,7 @@ export function BidForm({ bid, onDone }: { bid?: Bid; onDone?: () => void }) {
         {!bid && (
           <div>
             <label htmlFor="b-status" className={label}>Stage</label>
-            <select id="b-status" name="status" defaultValue="registered" className={input}>
+            <select id="b-status" name="status" defaultValue="posted" className={input}>
               {BID_STATUSES.map((s) => <option key={s} value={s}>{BID_STATUS_LABEL[s]}</option>)}
             </select>
           </div>

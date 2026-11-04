@@ -5,7 +5,8 @@ import { headers } from "next/headers";
 import { canWrite, dbMessage, getSession, type Session } from "@/server/session";
 import { bidMessage, isBidStatus, localToIso, type Bid } from "@/lib/bids";
 import { stagePeers, stageView, VIEW_KEYS, type BoardBid } from "@/lib/bid-views";
-import { sendTelegram, telegramReady } from "@/lib/telegram";
+import { bidTopic, sendTelegram, sendTelegramPhoto, telegramReady } from "@/lib/telegram";
+import { summaryKeys, summaryMessage } from "@/lib/bid-summary";
 import { ensureWebhook } from "@/server/bid-bot";
 
 export type BidResult = { error?: string; ok?: boolean; id?: string; note?: string };
@@ -60,7 +61,7 @@ export async function saveBid(_prev: unknown, fd: FormData): Promise<BidResult> 
   if (papers && !/^\d{4}-\d{2}-\d{2}$/.test(papers)) return { error: "Enter when the papers should be ready as a date." };
   const attendance = text(fd, "prebid_attendance");
   if (attendance && attendance !== "optional" && attendance !== "compulsory") return { error: "Attendance is optional or compulsory." };
-  const status = text(fd, "status") ?? "registered";
+  const status = text(fd, "status") ?? "posted";
   if (!isBidStatus(status)) return { error: "Unknown stage." };
 
   const row = {
@@ -140,4 +141,36 @@ export async function postBidBoard(): Promise<BidResult> {
   const r = await sendTelegram(stageView((data ?? []) as BoardBid[]), { keyboard: VIEW_KEYS });
   if (!r.ok) return { error: `Telegram did not take it: ${r.error}` };
   return { ok: true, note: hook.ok ? "Posted to the group. The /bids, /calendar and /list commands work there too." : `Posted, but the commands could not be connected: ${hook.error}` };
+}
+
+/**
+ * Mark a bid submitted, with its signing sheet: the group is told as for any
+ * stage, and a summary (the sheet's picture, the bid and Won / Lost buttons)
+ * goes to the "Bid summary" topic, set by sending /bidsummary there.
+ */
+export async function submitBid(_prev: unknown, fd: FormData): Promise<BidResult> {
+  const id = text(fd, "id");
+  if (!isId(id)) return { error: "No such bid." };
+  const sheet = fd.get("sheet");
+  const file = sheet instanceof File && sheet.size > 0 ? sheet : null;
+  if (file && !file.type.startsWith("image/")) return { error: "The signing sheet should be a picture (a photo or a scan)." };
+  if (file && file.size > 10 * 1024 * 1024) return { error: "The picture is larger than 10MB; Telegram takes photos up to 10MB." };
+  const moved = await setBidStatus(id, "submitted", text(fd, "note"));
+  if (moved.error || !telegramReady()) return moved;
+
+  const w = await writer();
+  if ("error" in w) return moved;
+  const { data: b } = await w.s.supabase.from("bids").select(COLS).eq("id", id).maybeSingle();
+  if (!b) return moved;
+  // the Bid summary topic, kept by the bot; the bids' own topic until it is set
+  const { data: set } = await w.s.supabase.from("bot_settings").select("value").eq("name", "summary_topic").maybeSingle();
+  const raw = set?.value ?? process.env.TELEGRAM_SUMMARY_TOPIC_ID ?? null;
+  const topic = raw && /^\d+$/.test(raw) ? Number(raw) : raw === "" ? undefined : bidTopic();
+  const caption = summaryMessage(b as Bid);
+  const r = file
+    ? await sendTelegramPhoto(file, file.name || "signing-sheet.jpg", caption, { keyboard: summaryKeys(id), topic })
+    : await sendTelegram(caption, { keyboard: summaryKeys(id), topic });
+  const unset = set == null && !process.env.TELEGRAM_SUMMARY_TOPIC_ID ? " (send /bidsummary in the Bid summary topic so they go there)" : "";
+  if (!r.ok) return { ...moved, note: `Submitted, but the Bid summary did not go: ${r.error}` };
+  return { ...moved, note: moved.note ?? (unset ? `Submitted and summarised in the bids topic${unset}.` : undefined) };
 }

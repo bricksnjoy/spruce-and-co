@@ -114,3 +114,15 @@ export async function postReminder(now: Date): Promise<{ sent: boolean; asked: n
   }
   return sent.ok ? { sent: true, asked } : { sent: false, asked, reason: sent.error };
 }
+
+/** Keep one of the bot's settings, e.g. the Bid summary topic. */
+export async function botPutSetting(name: string, value: string) {
+  const { error } = await db().rpc("bot_put_setting", { p_key: botSecret(), p_name: name, p_value: value });
+  return error ? { error: error.message } : { ok: true as const };
+}
+
+/** Won or lost, pressed under a bid's summary: the bid moves on the site. */
+export async function botSetBidStatus(bid: string, status: "won" | "lost", by: string) {
+  const { data, error } = await db().rpc("bot_set_bid_status", { p_key: botSecret(), p_bid: bid, p_status: status, p_by: by });
+  return error ? { error: error.message } : { ok: true as const, bid: ((data ?? []) as { name: string; status: string }[])[0] };
+}
