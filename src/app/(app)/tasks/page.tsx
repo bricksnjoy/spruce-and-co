@@ -5,6 +5,10 @@ import { date, today as todayIso } from "@/lib/format";
 import { AddTaskButton, DoneButton } from "./task-controls";
 import { BID_STATUS_LABEL, OPEN_BID, isoToLocal, when, type BidStatus } from "@/lib/bids";
 import { MonthCalendar, type CalendarItem } from "./month-calendar";
+import { GoogleCalendarButtons } from "./google-calendar";
+import { headers } from "next/headers";
+import { getSession } from "@/server/session";
+import { feedKey } from "@/server/calendar-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +74,13 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   }
   const bidDates = allBidDates.filter((d) => isoToLocal(d.at).slice(0, 10) >= today);
 
+  // the calendar feed's private address, for an admin to add to Google Calendar
+  const s = await getSession();
+  const key = s?.role === "admin" ? feedKey() : null;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const feed = key && host ? `https://${host}/api/calendar/${key}.ics` : null;
+
   return (
     <div>
       <PageHeader title="Tasks & calendar" subtitle="What's due across every project"
@@ -90,6 +101,13 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           <span className="inline-block h-2 w-2 rounded-sm bg-amber-500" /> bid dates
         </p>
       </Card>
+
+      {feed && (
+        <Card className="mb-4">
+          <CardHeader title="Google Calendar" subtitle="The bids' pre-bid meetings, papers-ready days and submission deadlines, and the projects' tasks and milestones, in your Google Calendar. Google updates it by itself every few hours. The address is private: share it only with people who should see these dates."
+            action={<GoogleCalendarButtons feed={feed} />} />
+        </Card>
+      )}
 
       {bidDates.length > 0 && (
         <Card className="mb-4">

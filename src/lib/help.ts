@@ -413,7 +413,7 @@ export const HELP: Help[] = [
 
 
   // ── Other ──
-  { path: "/tasks", area: "Other", title: "Tasks & calendar", purpose: "What is due across every project.", steps: ["Add a task with a project and due date; tick it when done.", "The calendar shows the month: each day lists its open tasks, milestones and bid dates (on a phone, coloured counts). Use ‹ › for the months either side and \"This month\" to come back."] },
+  { path: "/tasks", area: "Other", title: "Tasks & calendar", purpose: "What is due across every project.", steps: ["Add a task with a project and due date; tick it when done.", "The calendar shows the month: each day lists its open tasks, milestones and bid dates (on a phone, coloured counts). Use ‹ › for the months either side and \"This month\" to come back.", "Google Calendar (admins): \"Add to Google Calendar\" opens Google Calendar for the Gmail you are signed in to and adds the company calendar: pre-bid meetings and submission deadlines at their times, papers-ready days, open tasks and milestones. Google refreshes it by itself every few hours; changes are made here, not in Google. \"Copy the address\" gives the private link for Apple Calendar or Outlook, or to add it by hand (Google Calendar → Other calendars → + → From URL)."] },
   { path: "/messages", area: "Other", title: "Message center", purpose: "Send an SMS or email to anyone, and see what was sent.", steps: ["Choose who, write the message, send. The history lists what went out."] },
   {
     path: "/bids", area: "Other", title: "Bids",
