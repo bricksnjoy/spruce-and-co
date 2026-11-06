@@ -437,6 +437,7 @@ Each page also has a "How to use this page" box at the top, and the Help page li
 
 1. Add a task with a project and due date; tick it when done.
 2. The calendar shows the month: each day lists its open tasks, milestones and bid dates (on a phone, coloured counts). Use ‹ › for the months either side and "This month" to come back.
+3. Google Calendar (admins): "Add to Google Calendar" opens Google Calendar for the Gmail you are signed in to and adds the company calendar: pre-bid meetings and submission deadlines at their times, papers-ready days, open tasks and milestones. Google refreshes it by itself every few hours; changes are made here, not in Google. "Copy the address" gives the private link for Apple Calendar or Outlook, or to add it by hand (Google Calendar → Other calendars → + → From URL).
 
 ### Message center
 

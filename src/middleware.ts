@@ -1,8 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// /api/telegram checks its own secret: Telegram and the morning timer are never signed in
-const PUBLIC_PATHS = ["/login", "/auth", "/error", "/api/telegram"];
+// /api/telegram and /api/calendar check their own keys: Telegram, the morning timer and Google Calendar are never signed in
+const PUBLIC_PATHS = ["/login", "/auth", "/error", "/api/telegram", "/api/calendar"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
